@@ -9,6 +9,7 @@
   --button:  #282A2C;
   --function-button: #4A595A;
   --upload-button: #5db974;
+    --form-button: #1f7a36;
   --panel: rgba(51, 55, 59, 0.78);
   --panel-strong: rgba(51, 55, 59, 0.9);
   --panel-border: rgba(255, 255, 255, 0.12);
@@ -500,7 +501,7 @@ summary.avatar-btn::-webkit-details-marker {
   border-radius: 12px;
   padding: 10px 12px;
   border: 1px solid #000000;
-  background: #1f7a36 !important;
+  background: var(--form-button) !important;
   color: #ffffff !important;
   cursor: pointer;
   text-overflow: ellipsis;
@@ -532,6 +533,10 @@ summary.avatar-btn::-webkit-details-marker {
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
+}
+
+#login_submit, #signup_submit {
+    background-color: var(--form-button) !important;
 }
 
 #refresh_status {
@@ -733,6 +738,10 @@ summary.avatar-btn::-webkit-details-marker {
 }
 
 .modal-dialog {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
   margin: 0 !important;
   width: min(560px, 92vw);
 }
@@ -750,12 +759,43 @@ summary.avatar-btn::-webkit-details-marker {
   color: var(--ink) !important;
 }
 
+.modal-header {
+  display: flex;
+  margin-inline: auto;;
+}
+
+.modal-footer > button {
+    background: var(--accent) !important;
+    color: var(--ink) !important;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
 .modal-body {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
+}
+
+..input-group {
+    position: relative;
+}
+
+.input-group-btn.input-group-prepend {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10001;
+    background-color: var(--form-button) !important;
+}
+
+.input-group-prepend:hover {
+    background-color: rgba(79, 197, 109, 0.8) !important;
 }
 
 .modal-header .btn-close,
