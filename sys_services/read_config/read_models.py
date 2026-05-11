@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from services.system_dirs import ROOT_DIR
+from sys_services.system_dirs import ROOT_DIR
 
 load_dotenv(ROOT_DIR / ".env")
 

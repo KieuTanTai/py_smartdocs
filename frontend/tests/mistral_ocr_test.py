@@ -3,11 +3,13 @@ import sys
 from pathlib import Path
 
 CURRENT_DIR = Path(__file__).resolve()
-FRONTEND_ROOT = CURRENT_DIR.parents[1]
-if str(FRONTEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(FRONTEND_ROOT))
+ROOT_DIR = CURRENT_DIR.parents[2]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
-from services.read_mistral_config import MISTRAL_CONFIG
+from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
+from sys_services.logging import Logger
+from sys_services.enums.type_message import TypeMessage
 from mistralai.client import Mistral
 
 client = Mistral(api_key=MISTRAL_CONFIG["apiKey"])
@@ -30,7 +32,7 @@ signed_url = client.files.get_signed_url(file_id=uploaded_pdf.id)  # type: ignor
 print("Signed URL response:", signed_url)
 
 ocr_response = client.ocr.process(
-    model="mistral-ocr-latest",
+    model=MISTRAL_CONFIG["model"],
     document={
         "type": "document_url",
         "document_url": signed_url.url,
@@ -40,8 +42,20 @@ ocr_response = client.ocr.process(
     # extract_footer=True, # default is False
     include_image_base64=True,
 )
-with open(Path(__file__).parent / "output"/ f"output_{uploaded_pdf.id}.md", "w") as f:  # type: ignore
-    for page in ocr_response.pages:
-        f.write(page.markdown)
+try:
+    with open(Path(__file__).parent / "output" / f"output_{uploaded_pdf.id}.md", "w") as f:  # type: ignore
+        for page in ocr_response.pages:
+            f.write(page.markdown)
+    Logger.log(
+        TypeMessage.INFO,
+        f"OCR output successfully written to file: output_{uploaded_pdf.id}.md",
+        source_log=Path(__file__).name
+    )
+except Exception as e:
+    Logger.log(
+        TypeMessage.ERROR,
+        f"An error occurred while writing OCR output to file: {e}",
+        source_log=Path(__file__).name
+    )
 
 client.files.delete(file_id=uploaded_pdf.id)  # type: ignore

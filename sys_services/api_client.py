@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 import httpx
 from typing import Any, Dict, Optional
-from services.system_dirs import DEFAULT_BASE_URL
+from sys_services.system_dirs import DEFAULT_BASE_URL
+
 
 class ApiError(RuntimeError):
     pass

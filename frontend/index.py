@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import json
 import time
 from typing import Any, Dict, List, Optional
@@ -12,10 +19,10 @@ from components.settings.system_settings import system_settings_modal
 from components.sidebars.left import left_sidebar_ui
 from components.sidebars.right import right_sidebar_ui
 from components.upload_files import upload_modal
-from services.api_client import ApiClient, ApiError
-from services.read_google_config import GOOGLE_PICKER_CONFIG, INITIAL_API_BASE_URL
-from services.system_dirs import BASE_DIR
-from services.read_models import LIST_MODELS
+from sys_services.api_client import ApiClient, ApiError
+from sys_services.read_config.read_google_config import GOOGLE_PICKER_CONFIG, INITIAL_API_BASE_URL
+from sys_services.system_dirs import BASE_DIR
+from sys_services.read_config.read_models import LIST_MODELS
 
 app_ui = ui.page_fluid(
     ui.tags.head(
