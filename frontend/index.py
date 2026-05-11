@@ -47,6 +47,71 @@ app_ui = ui.page_fluid(
                                 }
                             });
                         });
+
+                        // Sidebar drag and drop functionality
+                        const uploadDragArea = document.getElementById('upload-drag-area');
+                        const sidebarFileInput = document.querySelector('input[name="upload_files_sidebar"]');
+                        
+                        if (uploadDragArea && sidebarFileInput) {
+                            uploadDragArea.addEventListener('click', () => {
+                                sidebarFileInput.click();
+                            });
+
+                            uploadDragArea.addEventListener('dragover', (e) => {
+                                e.preventDefault();
+                                uploadDragArea.style.borderColor = 'var(--upload-button)';
+                                uploadDragArea.style.background = 'rgba(93, 185, 116, 0.15)';
+                            });
+
+                            uploadDragArea.addEventListener('dragleave', () => {
+                                uploadDragArea.style.borderColor = '';
+                                uploadDragArea.style.background = '';
+                            });
+
+                            uploadDragArea.addEventListener('drop', (e) => {
+                                e.preventDefault();
+                                uploadDragArea.style.borderColor = '';
+                                uploadDragArea.style.background = '';
+                                if (e.dataTransfer.files && sidebarFileInput) {
+                                    sidebarFileInput.files = e.dataTransfer.files;
+                                    const event = new Event('change', { bubbles: true });
+                                    sidebarFileInput.dispatchEvent(event);
+                                }
+                            });
+                        }
+
+                        // Sidebar button click handlers
+                        const driveBtnSidebar = document.querySelector('button[id*="upload_source_drive_sidebar"]');
+                        const localBtnSidebar = document.querySelector('button[id*="upload_source_local_sidebar"]');
+                        
+                        if (driveBtnSidebar && sidebarFileInput) {
+                            driveBtnSidebar.addEventListener('click', () => {
+                                sidebarFileInput.click();
+                            });
+                        }
+                        
+                        if (localBtnSidebar && sidebarFileInput) {
+                            localBtnSidebar.addEventListener('click', () => {
+                                sidebarFileInput.click();
+                            });
+                        }
+
+                        // Modal button click handlers
+                        const driveBtnModal = document.querySelector('button[id*="upload_source_drive"]:not([id*="sidebar"])');
+                        const localBtnModal = document.querySelector('button[id*="upload_source_local"]:not([id*="sidebar"])');
+                        const modalFileInput = document.querySelector('input[name="upload_files"]');
+                        
+                        if (driveBtnModal && modalFileInput) {
+                            driveBtnModal.addEventListener('click', () => {
+                                modalFileInput.click();
+                            });
+                        }
+                        
+                        if (localBtnModal && modalFileInput) {
+                            localBtnModal.addEventListener('click', () => {
+                                modalFileInput.click();
+                            });
+                        }
                         """),
     ),
     ui.tags.div(
@@ -86,6 +151,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     system_prompt = reactive.Value("")
     mock_on_fail = reactive.Value(True)
     current_user = reactive.Value(None)
+    upload_source = reactive.Value("local")
 
     def set_status(label: str, detail: str, kind: str = "info") -> None:
         status.set({"label": label, "detail": detail, "kind": kind})
@@ -329,12 +395,32 @@ def server(input: Any, output: Any, session: Any) -> None:
         ui.modal_show(upload_modal())
 
     @reactive.effect
+    @reactive.event(input.upload_source_local)
+    def _set_upload_source_local() -> None:
+        upload_source.set("local")
+
+    @reactive.effect
+    @reactive.event(input.upload_source_drive)
+    def _set_upload_source_drive() -> None:
+        upload_source.set("drive")
+
+    @reactive.effect
+    @reactive.event(input.upload_source_local_sidebar)
+    def _set_upload_source_local_sidebar() -> None:
+        upload_source.set("local")
+
+    @reactive.effect
+    @reactive.event(input.upload_source_drive_sidebar)
+    def _set_upload_source_drive_sidebar() -> None:
+        upload_source.set("drive")
+
+    @reactive.effect
     @reactive.event(input.upload_files)
     def _handle_upload() -> None:
         files = input.upload_files() or []
         if not files:
             return
-        source = input.upload_source() or "local"
+        source = upload_source.get()
         current_docs = docs.get()
         for info in files:
             try:
@@ -359,6 +445,37 @@ def server(input: Any, output: Any, session: Any) -> None:
                 set_status("Upload failed", str(exc), "error")
         docs.set(current_docs)
         ui.modal_remove()
+
+    @reactive.effect
+    @reactive.event(input.upload_files_sidebar)
+    def _handle_upload_sidebar() -> None:
+        files = input.upload_files_sidebar() or []
+        if not files:
+            return
+        source = upload_source.get()
+        current_docs = docs.get()
+        for info in files:
+            try:
+                response = client().upload_document(info, source)
+                doc = normalize_doc(response, info, source)
+                current_docs = current_docs + [doc]
+                set_status("Upload complete", doc["title"], "success")
+                try:
+                    index_response = client().index_document(doc["id"])
+                    doc["status"] = index_response.get("status", "processing")
+                except ApiError:
+                    pass
+            except ApiError as exc:
+                current_docs = current_docs + [
+                    {
+                        "id": f"local-{int(time.time())}",
+                        "title": info.get("name", "Untitled"),
+                        "status": "uploaded-local",
+                        "source": source,
+                    }
+                ]
+                set_status("Upload failed", str(exc), "error")
+        docs.set(current_docs)
 
     @reactive.effect
     @reactive.event(input.refresh_status)
