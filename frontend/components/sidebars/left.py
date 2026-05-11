@@ -13,7 +13,7 @@ def left_sidebar_ui() -> ui.Tag:
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.img(src="file.png", class_="icon"),
-                    ui.tags.div("Drag files here", class_="muted"),
+                    ui.tags.div("Drag files here", class_="muted padding-left-8"),
                     class_="upload-drag-area flex-row align-items-center padding-8 border border-radius-8",
                     id="upload-drag-area",
                 ),
@@ -30,9 +30,14 @@ def left_sidebar_ui() -> ui.Tag:
                         class_="upload-source-btn-sidebar",
                         title="Upload from Local",
                     ),
-                    class_="upload-buttons-col margin-top-8 flex-row gap-8",
+                    class_="upload-buttons-col margin-top-8 margin-bottom-8 flex-row gap-8",
                 ),
                 class_="upload-wrapper flex-col",
+            ),
+            ui.input_file(
+                "upload_files_sidebar",
+                "",
+                multiple=True,
             ),
             class_="card",
         ),

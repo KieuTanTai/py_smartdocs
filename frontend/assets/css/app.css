@@ -82,6 +82,10 @@ body {
   padding: var(--padding-8);
 }
 
+.padding-left-8 {
+  padding-left: var(--padding-8);
+}
+
 .padding-16 {
   padding: var(--padding-16);
 }
@@ -96,6 +100,10 @@ body {
 
 .margin-top-8 {
   margin-top: var(--margin-8);
+}
+
+.margin-bottom-8 {
+  margin-bottom: var(--margin-8);
 }
 
 .margin-16 {
@@ -886,6 +894,10 @@ summary.avatar-btn::-webkit-details-marker {
   align-items: center;
   justify-content: center;
   gap: 12px;
+}
+
+.input-group {
+  display: none !important;
 }
 
 .upload-source-btn:hover {

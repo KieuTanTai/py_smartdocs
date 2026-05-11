@@ -1,17 +1,9 @@
 from __future__ import annotations
 
-import os
-import sys
+import json
 import time
-from pathlib import Path
 from typing import Any, Dict, List, Optional
-
 from shiny import App, reactive, render, ui
-
-BASE_DIR = Path(__file__).resolve().parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
-
 from components.account.login import login_modal
 from components.account.signup import signup_modal
 from components.chat.box_chat import box_chat_ui
@@ -23,96 +15,27 @@ from components.sidebars.left import left_sidebar_ui
 from components.sidebars.right import right_sidebar_ui
 from components.upload_files import upload_modal
 from services.api_client import ApiClient, ApiError
+from services.read_google_config import GOOGLE_PICKER_CONFIG, INITIAL_API_BASE_URL
+from services.system_dirs import BASE_DIR
+from services.read_models import LIST_MODELS
 
-DEFAULT_MODELS = [
-    "auto",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
-    "ollama:llama3",
-    "ollama:mistral",
-]
 
-INITIAL_API_BASE_URL = os.getenv("SMARTDOCS_API_BASE_URL", "http://localhost:8000")
+
+print("Google Picker configuration loaded:", GOOGLE_PICKER_CONFIG)
 
 app_ui = ui.page_fluid(
     ui.tags.head(
         ui.tags.link(rel="stylesheet", href="css/app.css"),
         ui.tags.link(rel="icon", href="favicon.ico"),
-        ui.tags.script("""
-                        document.addEventListener('click', (event) => {
-                            const dropdowns = document.querySelectorAll('details.dropdown');
-                            dropdowns.forEach((dropdown) => {
-                                if (!dropdown.contains(event.target)) {
-                                    dropdown.removeAttribute('open');
-                                }
-                            });
-                        });
-
-                        // Sidebar drag and drop functionality
-                        const uploadDragArea = document.getElementById('upload-drag-area');
-                        const sidebarFileInput = document.querySelector('input[name="upload_files_sidebar"]');
-                        
-                        if (uploadDragArea && sidebarFileInput) {
-                            uploadDragArea.addEventListener('click', () => {
-                                sidebarFileInput.click();
-                            });
-
-                            uploadDragArea.addEventListener('dragover', (e) => {
-                                e.preventDefault();
-                                uploadDragArea.style.borderColor = 'var(--upload-button)';
-                                uploadDragArea.style.background = 'rgba(93, 185, 116, 0.15)';
-                            });
-
-                            uploadDragArea.addEventListener('dragleave', () => {
-                                uploadDragArea.style.borderColor = '';
-                                uploadDragArea.style.background = '';
-                            });
-
-                            uploadDragArea.addEventListener('drop', (e) => {
-                                e.preventDefault();
-                                uploadDragArea.style.borderColor = '';
-                                uploadDragArea.style.background = '';
-                                if (e.dataTransfer.files && sidebarFileInput) {
-                                    sidebarFileInput.files = e.dataTransfer.files;
-                                    const event = new Event('change', { bubbles: true });
-                                    sidebarFileInput.dispatchEvent(event);
-                                }
-                            });
-                        }
-
-                        // Sidebar button click handlers
-                        const driveBtnSidebar = document.querySelector('button[id*="upload_source_drive_sidebar"]');
-                        const localBtnSidebar = document.querySelector('button[id*="upload_source_local_sidebar"]');
-                        
-                        if (driveBtnSidebar && sidebarFileInput) {
-                            driveBtnSidebar.addEventListener('click', () => {
-                                sidebarFileInput.click();
-                            });
-                        }
-                        
-                        if (localBtnSidebar && sidebarFileInput) {
-                            localBtnSidebar.addEventListener('click', () => {
-                                sidebarFileInput.click();
-                            });
-                        }
-
-                        // Modal button click handlers
-                        const driveBtnModal = document.querySelector('button[id*="upload_source_drive"]:not([id*="sidebar"])');
-                        const localBtnModal = document.querySelector('button[id*="upload_source_local"]:not([id*="sidebar"])');
-                        const modalFileInput = document.querySelector('input[name="upload_files"]');
-                        
-                        if (driveBtnModal && modalFileInput) {
-                            driveBtnModal.addEventListener('click', () => {
-                                modalFileInput.click();
-                            });
-                        }
-                        
-                        if (localBtnModal && modalFileInput) {
-                            localBtnModal.addEventListener('click', () => {
-                                modalFileInput.click();
-                            });
-                        }
-                        """),
+        ui.tags.script(
+            f"window.GOOGLE_PICKER_CONFIG = {json.dumps(GOOGLE_PICKER_CONFIG)};"
+        ),
+        ui.tags.script(src="js/upload/google-picker.js"),
+        ui.tags.script(src="https://apis.google.com/js/api.js?onload=onGoogleApiLoad"),
+        ui.tags.script(src="https://accounts.google.com/gsi/client"),
+        ui.tags.script(src="js/dropdown-close.js"),
+        ui.tags.script(src="js/upload/sidebar-upload.js"),
+        ui.tags.script(src="js/upload/modal-upload.js"),
     ),
     ui.tags.div(
         ui.tags.div(class_="bg-orb orb-1"),
@@ -126,7 +49,7 @@ app_ui = ui.page_fluid(
         ),
         ui.tags.div(
             ui.tags.aside(left_sidebar_ui(), class_="sidebar left"),
-            ui.tags.main(box_chat_ui(DEFAULT_MODELS), class_="main"),
+            ui.tags.main(box_chat_ui(LIST_MODELS), class_="main"),
             ui.tags.aside(right_sidebar_ui(), class_="sidebar right"),
             class_="layout",
         ),
@@ -164,16 +87,16 @@ def server(input: Any, output: Any, session: Any) -> None:
     ) -> Dict[str, Any]:
         data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
         doc_id = (
-            data.get("id")
-            or data.get("document_id")
-            or data.get("uuid")
+            data.get("id")  # type: ignore
+            or data.get("document_id")  # type: ignore
+            or data.get("uuid")  # type: ignore
             or f"local-{int(time.time())}"
         )
-        title = data.get("title") or file_info.get("name") or "Untitled"
+        title = data.get("title") or file_info.get("name") or "Untitled"  # type: ignore
         return {
             "id": str(doc_id),
             "title": title,
-            "status": data.get("status") or data.get("processing_status") or "uploaded",
+            "status": data.get("status") or data.get("processing_status") or "uploaded",  # type: ignore
             "source": source,
         }
 
@@ -476,6 +399,38 @@ def server(input: Any, output: Any, session: Any) -> None:
                 ]
                 set_status("Upload failed", str(exc), "error")
         docs.set(current_docs)
+
+    @reactive.effect
+    @reactive.event(input.drive_upload_complete)
+    def _handle_drive_upload_complete() -> None:
+        payload = input.drive_upload_complete() or {}
+        if not isinstance(payload, dict):
+            return
+        response = payload.get("response") or {}
+        file_name = payload.get("name") or "Drive file"
+        current_docs = docs.get()
+        try:
+            doc = normalize_doc(response, {"name": file_name}, "drive")
+            current_docs = current_docs + [doc]
+            set_status("Upload complete", doc["title"], "success")
+            try:
+                index_response = client().index_document(doc["id"])
+                doc["status"] = index_response.get("status", "processing")
+            except ApiError:
+                pass
+        except Exception as exc:
+            set_status("Upload failed", str(exc), "error")
+        docs.set(current_docs)
+
+    @reactive.effect
+    @reactive.event(input.drive_upload_error)
+    def _handle_drive_upload_error() -> None:
+        payload = input.drive_upload_error() or {}
+        if isinstance(payload, dict):
+            message = payload.get("message", "Drive upload failed")
+        else:
+            message = str(payload)
+        set_status("Drive upload failed", message, "error")
 
     @reactive.effect
     @reactive.event(input.refresh_status)
