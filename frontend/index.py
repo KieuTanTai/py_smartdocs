@@ -36,6 +36,7 @@ app_ui = ui.page_fluid(
         ui.tags.script(src="js/dropdown-close.js"),
         ui.tags.script(src="js/upload/sidebar-upload.js"),
         ui.tags.script(src="js/upload/modal-upload.js"),
+        ui.tags.script(src="js/model_settings.js")
     ),
     ui.tags.div(
         ui.tags.div(class_="bg-orb orb-1"),
