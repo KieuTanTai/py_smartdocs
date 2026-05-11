@@ -21,11 +21,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     mode_select_arrow.addEventListener('click', function () {
         showPicker(mode_select);
-        console.log('Mode select arrow clicked');
     });
 
     model_select_arrow.addEventListener('click', function () {
         showPicker(model_select);
-        console.log('Model select arrow clicked');
     });
 });

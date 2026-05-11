@@ -1,6 +1,5 @@
 Django==5.2.7
 djangorestframework==3.16.1
-mariadb
 celery==5.5.3
 redis==6.4.0
 qdrant-client==1.15.1
@@ -10,3 +9,5 @@ langchain-qdrant==0.2.1
 pypdf==5.4.0
 httpx==0.28.1
 python-dotenv==1.1.1
+mariadb
+mistralai

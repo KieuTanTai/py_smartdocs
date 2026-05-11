@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional
-
 import httpx
-
-DEFAULT_BASE_URL = "http://localhost:8000"
-
+from typing import Any, Dict, Optional
+from services.system_dirs import DEFAULT_BASE_URL
 
 class ApiError(RuntimeError):
     pass
@@ -80,6 +77,9 @@ class ApiClient:
 
     def upload_document(self, file_info: dict, source: str) -> Dict[str, Any]:
         file_type = file_info.get("type") or "application/octet-stream"
+        print(f"Uploading document with file type: {file_type}")
+        print(f"File info: {file_info}")
+        print(f"Source: {source}")
         with open(file_info["datapath"], "rb") as handle:
             files = {"file": (file_info["name"], handle, file_type)}
             data = {"source": source}
@@ -103,18 +103,4 @@ class ApiClient:
             "GET",
             f"/api/documents/{document_id}/status/",
             f"/api/documents/{document_id}/",
-        )
-
-    def login(self, email: str, password: str) -> Dict[str, Any]:
-        payload = {"email": email, "password": password}
-        return self._request_with_fallback(
-            "POST", "/api/auth/login/", "/api/login/", json=payload
-        )
-
-    def signup(
-        self, email: str, password: str, name: Optional[str] = None
-    ) -> Dict[str, Any]:
-        payload = {"email": email, "password": password, "name": name}
-        return self._request_with_fallback(
-            "POST", "/api/auth/signup/", "/api/signup/", json=payload
         )

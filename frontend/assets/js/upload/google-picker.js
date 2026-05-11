@@ -14,14 +14,6 @@ let tokenClient = null;
 let accessToken = null;
 let pickerReady = false;
 
-console.log("Google Picker config:", {
-  googleClientId,
-  googleApiKey,
-  googleAppId,
-  googleScopes,
-  uploadUrl,
-});
-
 window.onGoogleApiLoad = () => {
   if (!window.gapi) {
     return;

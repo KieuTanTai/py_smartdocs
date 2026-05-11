@@ -609,50 +609,6 @@ summary.avatar-btn::-webkit-details-marker {
   border: none;
 }
 
-.btn-login {
-  width: 100%;
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid #000000;
-  background: var(--form-button) !important;
-  color: #ffffff !important;
-  cursor: pointer;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.btn-signup {
-  width: 100%;
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid #000000;
-  background: #f0b429 !important;
-  color: #000000 !important;
-  cursor: pointer;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.btn-logout {
-  width: 100%;
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid #000000;
-  background: #b3261e !important;
-  color: #fff !important;
-  cursor: pointer;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-#login_submit,
-#signup_submit {
-  background-color: var(--form-button) !important;
-}
-
 #refresh_status {
   background-color: var(--function-button) !important;
 }
@@ -799,6 +755,69 @@ summary.avatar-btn::-webkit-details-marker {
   font-size: 12px;
 }
 
+.doc-selector .shiny-options-group {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.doc-selector .control-label {
+  display: none;
+}
+
+.doc-selector .checkbox {
+  margin: 0;
+}
+
+.doc-selector .checkbox label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.doc-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(51, 55, 59, 0.65) !important;
+  color: var(--ink) !important;
+  gap: 8px;
+}
+
+.doc-title {
+  font-size: 12px;
+  color: var(--ink) !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-status {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(239, 107, 79, 0.2) !important;
+  border: 1px solid rgba(239, 107, 79, 0.45);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink) !important;
+  white-space: nowrap;
+}
+
+.doc-status.processing,
+.doc-status.indexing,
+.doc-status.uploaded,
+.doc-status.queued,
+.doc-status.uploading {
+  background: rgba(93, 185, 116, 0.2) !important;
+  border-color: rgba(93, 185, 116, 0.45);
+}
+
 .upload-row {
   display: flex;
   align-items: center;
@@ -939,6 +958,18 @@ summary.avatar-btn::-webkit-details-marker {
 .shiny-input-container.file-input label:hover {
   background: rgba(51, 55, 59, 0.98) !important;
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+.shiny-input-container.file-input .progress,
+.shiny-input-container.file-input .progress-bar,
+.shiny-file-input-progress,
+.shiny-file-input-progress-bar,
+.shiny-file-input-progress .progress,
+.shiny-file-input-progress .progress-bar,
+.shiny-file-input-progress-container {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
 }
 
 .shiny-input-container.file-input input[type="file"] {

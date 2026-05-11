@@ -4,11 +4,9 @@ import json
 import time
 from typing import Any, Dict, List, Optional
 from shiny import App, reactive, render, ui
-from components.account.login import login_modal
-from components.account.signup import signup_modal
 from components.chat.box_chat import box_chat_ui
 from components.chat.message import build_message, send_message
-from components.header import account_dropdown_ui, header_ui
+from components.header import header_ui
 from components.history import history_ui
 from components.settings.system_settings import system_settings_modal
 from components.sidebars.left import left_sidebar_ui
@@ -18,10 +16,6 @@ from services.api_client import ApiClient, ApiError
 from services.read_google_config import GOOGLE_PICKER_CONFIG, INITIAL_API_BASE_URL
 from services.system_dirs import BASE_DIR
 from services.read_models import LIST_MODELS
-
-
-
-print("Google Picker configuration loaded:", GOOGLE_PICKER_CONFIG)
 
 app_ui = ui.page_fluid(
     ui.tags.head(
@@ -36,7 +30,7 @@ app_ui = ui.page_fluid(
         ui.tags.script(src="js/dropdown-close.js"),
         ui.tags.script(src="js/upload/sidebar-upload.js"),
         ui.tags.script(src="js/upload/modal-upload.js"),
-        ui.tags.script(src="js/model_settings.js")
+        ui.tags.script(src="js/model_settings.js"),
     ),
     ui.tags.div(
         ui.tags.div(class_="bg-orb orb-1"),
@@ -74,7 +68,6 @@ def server(input: Any, output: Any, session: Any) -> None:
     current_mode = reactive.Value("normal")
     system_prompt = reactive.Value("")
     mock_on_fail = reactive.Value(True)
-    current_user = reactive.Value(None)
     upload_source = reactive.Value("local")
 
     def set_status(label: str, detail: str, kind: str = "info") -> None:
@@ -150,14 +143,37 @@ def server(input: Any, output: Any, session: Any) -> None:
         items = docs.get()
         if not items:
             return ui.tags.div("No documents yet.", class_="empty-state")
-        choices = {item["id"]: item["title"] for item in items}
+        choices = {}
+        for item in items:
+            status = str(item.get("status") or "").strip().lower()
+            show_status = status and status not in {
+                "ready",
+                "done",
+                "completed",
+                "indexed",
+            }
+            status_badge = (
+                ui.tags.span(
+                    status.replace("_", " "),
+                    class_=f"doc-status {status}",
+                )
+                if show_status
+                else None
+            )
+            choices[item["id"]] = ui.tags.div(
+                ui.tags.span(item["title"], class_="doc-title"),
+                status_badge,
+                class_="doc-card",
+            )
         selected = input.selected_docs() or list(choices.keys())[:1]
-        return ui.input_select(
-            "selected_docs",
-            "Selected documents",
-            choices=choices,
-            selected=selected,
-            multiple=True,
+        return ui.tags.div(
+            ui.input_checkbox_group(
+                "selected_docs",
+                "",
+                choices=choices,
+                selected=selected,
+            ),
+            class_="doc-selector",
         )
 
     @render.ui
@@ -228,15 +244,6 @@ def server(input: Any, output: Any, session: Any) -> None:
             class_="badge",
         )
 
-    @render.ui
-    def user_badge() -> ui.Tag:
-        user = current_user.get() or "Guest"
-        return ui.tags.div(user, class_="badge subtle")
-
-    @render.ui
-    def account_menu() -> ui.Tag:
-        return account_dropdown_ui(current_user.get() is not None)
-
     @reactive.effect
     @reactive.event(input.open_settings)
     def _show_settings() -> None:
@@ -270,48 +277,6 @@ def server(input: Any, output: Any, session: Any) -> None:
     def _model_changed() -> None:
         current_model.set(input.model_select())
         set_status("Model updated", f"Model set to {input.model_select()}", "success")
-
-    @reactive.effect
-    @reactive.event(input.open_login)
-    def _show_login() -> None:
-        ui.modal_show(login_modal())
-
-    @reactive.effect
-    @reactive.event(input.open_signup)
-    def _show_signup() -> None:
-        ui.modal_show(signup_modal())
-
-    @reactive.effect
-    @reactive.event(input.login_submit)
-    def _login() -> None:
-        try:
-            client().login(input.login_email(), input.login_password())
-            current_user.set(input.login_email())
-            set_status("Login ok", "Authenticated", "success")
-        except ApiError as exc:
-            set_status("Login failed", str(exc), "error")
-        ui.modal_remove()
-
-    @reactive.effect
-    @reactive.event(input.signup_submit)
-    def _signup() -> None:
-        try:
-            client().signup(
-                input.signup_email(),
-                input.signup_password(),
-                name=input.signup_name(),
-            )
-            current_user.set(input.signup_email())
-            set_status("Account created", "Signed in", "success")
-        except ApiError as exc:
-            set_status("Signup failed", str(exc), "error")
-        ui.modal_remove()
-
-    @reactive.effect
-    @reactive.event(input.logout_submit)
-    def _logout() -> None:
-        current_user.set(None)
-        set_status("Logged out", "Signed out", "info")
 
     @reactive.effect
     @reactive.event(input.open_upload)
@@ -351,7 +316,6 @@ def server(input: Any, output: Any, session: Any) -> None:
                 response = client().upload_document(info, source)
                 doc = normalize_doc(response, info, source)
                 current_docs = current_docs + [doc]
-                set_status("Upload complete", doc["title"], "success")
                 try:
                     index_response = client().index_document(doc["id"])
                     doc["status"] = index_response.get("status", "processing")
@@ -383,10 +347,14 @@ def server(input: Any, output: Any, session: Any) -> None:
                 response = client().upload_document(info, source)
                 doc = normalize_doc(response, info, source)
                 current_docs = current_docs + [doc]
-                set_status("Upload complete", doc["title"], "success")
+                print("Response from upload:", response)
+                print("Document after normalization:", doc)
+                print("Current documents before indexing:", current_docs)
                 try:
                     index_response = client().index_document(doc["id"])
                     doc["status"] = index_response.get("status", "processing")
+                    print("Indexing response:", index_response)
+                    print("Document after indexing attempt:", doc)
                 except ApiError:
                     pass
             except ApiError as exc:
@@ -413,7 +381,6 @@ def server(input: Any, output: Any, session: Any) -> None:
         try:
             doc = normalize_doc(response, {"name": file_name}, "drive")
             current_docs = current_docs + [doc]
-            set_status("Upload complete", doc["title"], "success")
             try:
                 index_response = client().index_document(doc["id"])
                 doc["status"] = index_response.get("status", "processing")
