@@ -10,9 +10,12 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 if __name__ == "__main__":
-    pdf_path = "docs/pdfs_test/Báo cáo tài chính Kiểm toán năm 2025.pdf"
+    root_dir = Path(__file__).resolve().parents[2]
+    pdf_path = root_dir / "docs" / "pdfs_test" / "Báo cáo tài chính Kiểm toán năm 2025.pdf"
     extracted_text = extract_text_from_pdf(pdf_path)
     file_name = Path(pdf_path).stem
     print("is empty:", not extracted_text.strip())
-with open(Path(__file__).parent / "output" / f"output_{file_name}.md", "w") as f:  # type: ignore
-    f.write(extracted_text)
+    output_dir = Path(__file__).parent / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with open(output_dir / f"output_{file_name}.md", "w") as f:
+        f.write(extracted_text)

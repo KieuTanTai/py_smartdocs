@@ -1,24 +1,17 @@
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-
 import json
 import time
 from typing import Any, Dict, List, Optional
 from shiny import App, reactive, render, ui
-from components.chat.box_chat import box_chat_ui
-from components.chat.message import build_message, send_message
-from components.header import header_ui
-from components.history import history_ui
-from components.settings.system_settings import system_settings_modal
-from components.sidebars.left import left_sidebar_ui
-from components.sidebars.right import right_sidebar_ui
-from components.upload_files import upload_modal
+from frontend.components.chat.box_chat import box_chat_ui
+from frontend.components.chat.message import build_message, send_message
+from frontend.components.header import header_ui
+from frontend.components.history import history_ui
+from frontend.components.settings.system_settings import system_settings_modal
+from frontend.components.sidebars.left import left_sidebar_ui
+from frontend.components.sidebars.right import right_sidebar_ui
+from frontend.components.upload_files import upload_modal
 from sys_services.api_client import ApiClient, ApiError
 from sys_services.read_config.read_google_config import GOOGLE_PICKER_CONFIG, INITIAL_API_BASE_URL
 from sys_services.system_dirs import BASE_DIR

@@ -1,4 +1,3 @@
-import sys
 import datetime
 from pathlib import Path
 from sys_services.system_dirs import ROOT_DIR
@@ -19,8 +18,6 @@ class Logger:
         key = folder_name
         if key in cls._log_dirs:
             return cls._log_dirs[key]
-        if str(ROOT_DIR) not in sys.path:
-            sys.path.insert(0, str(ROOT_DIR))
         logging_out_dir = ROOT_DIR / "docs" / "logs" / folder_name
         logging_out_dir.mkdir(parents=True, exist_ok=True)
         cls._log_dirs[key] = logging_out_dir
@@ -53,7 +50,7 @@ class Logger:
                 if source_log.strip():
                     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
                     log_file.write(
-                        f"--- End of log message from {source_log} at {timestamp} ---\n"
+                        f"--- End of log message from `{source_log}` at {timestamp} ---\n"
                     )
         except Exception as exc:
             print(f"Error writing log message to file: {exc}")

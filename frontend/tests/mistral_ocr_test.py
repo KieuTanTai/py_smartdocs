@@ -1,23 +1,18 @@
-import os
-import sys
 from pathlib import Path
-
-CURRENT_DIR = Path(__file__).resolve()
-ROOT_DIR = CURRENT_DIR.parents[2]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.logging import Logger
 from sys_services.enums.type_message import TypeMessage
 from mistralai.client import Mistral
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+PDF_PATH = ROOT_DIR / "docs" / "pdfs_test" / "Báo cáo tài chính Kiểm toán năm 2025.pdf"
 
 client = Mistral(api_key=MISTRAL_CONFIG["apiKey"])
 uploaded_pdf = client.files.upload(
     file={
         "file_name": "SmartDocsAI.pdf",
         "content": open(
-            os.path.join("docs/pdfs_test", "Báo cáo tài chính Kiểm toán năm 2025.pdf"),
+            PDF_PATH,
             "rb",
         ),
     },
@@ -58,4 +53,4 @@ except Exception as e:
         source_log=Path(__file__).name
     )
 
-client.files.delete(file_id=uploaded_pdf.id)  # type: ignore
+# client.files.delete(file_id=uploaded_pdf.id)  # type: ignore

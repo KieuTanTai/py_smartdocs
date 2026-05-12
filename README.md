@@ -3,7 +3,7 @@
 ## Installation
 
 1. Create virtual environment using python/python3:
-    python3 --m venv ./.venv
+    python3 -m venv ./.venv
 
 2. Using Virtual environment:
     - `Window`: ./.venv/Scripts/active
@@ -15,11 +15,11 @@
 
 ## Run code
 
-    - `frontend` : shiny run frontend/index.py --reload
-    - `test file`: python3 frontend/tests/{file name}.py
+    - `frontend` : python3 -m shiny run --app-dir  frontend --reload
+    - `test file`: python3 -m frontend.tests.{file name}
 
 ### NOTE
-
+    
     - Replace path on files test to real path on your device
     - read file .env.example and create your own file !
     
