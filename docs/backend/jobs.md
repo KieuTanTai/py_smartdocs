@@ -37,7 +37,7 @@ Responsibilities:
 
 - depends on `documents`
 - depends on `chat`
-- depends on `retrieval`
+- depends on `core`
 - runs under Celery/Redis
 
 ## Operational Notes

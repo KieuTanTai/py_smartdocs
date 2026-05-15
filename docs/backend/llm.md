@@ -27,7 +27,6 @@ The rest of the codebase should call this module, not provider SDKs directly.
 
 - if Gemini is requested and `GEMINI_API_KEY` exists, use `GeminiClient`
 - if Ollama is requested and `OLLAMA_BASE_URL` exists, use `OllamaClient`
-- otherwise fall back to `MockClient`
 
 ## Request Shape
 

@@ -81,7 +81,7 @@ Stores:
 ## Dependencies
 
 - depends on `documents` for attached file scope
-- depends on `retrieval` for search context
+- depends on `core` for search context
 - depends on `llm` for completion generation
 - depends on `jobs` for async preparation
 

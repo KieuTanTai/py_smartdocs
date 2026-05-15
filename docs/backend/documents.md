@@ -70,7 +70,7 @@ Stores index metadata only:
 ## Dependencies
 
 - depends on `jobs` for async processing
-- feeds `retrieval` via the background pipeline
+- feeds `core` via the background pipeline
 - is referenced by `chat` through many-to-many attachment
 
 ## What To Extend Next

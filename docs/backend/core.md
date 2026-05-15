@@ -2,48 +2,73 @@
 
 ## Purpose
 
-`core` holds shared backend primitives used by the rest of the project:
+`core` is the preprocessing and search layer between uploaded documents and chat completion.
 
-- health and provider readiness endpoints
-- JSON response wrappers
-- DRF exception formatting
-- light environment access helpers
+Its job is:
 
-It is the thin entry layer for cross-cutting concerns, not a business domain.
+`document content -> normalization -> chunking -> vector indexing -> search -> context for llm`
 
 ## Main Files
 
-- `backend/apps/core/api/views.py`
-  - `HealthView`, `ProviderListView`, `ProviderTestView`
-- `backend/apps/core/api/urls.py`
-  - routes mounted under `/api/`
-- `backend/apps/core/responses/builders.py`
-  - `api_success()` and `api_error()`
-- `backend/apps/core/exceptions/handlers.py`
-  - DRF exception handler override
-- `backend/apps/core/config/env.py`
-  - small env helper
-
-## Endpoints
-
-- `GET /api/health/`
-- `GET /api/providers/`
-- `POST /api/providers/test/`
+- `backend/apps/core/services/normalization_service.py`
+  - cleans raw text into a stable normalized form
+- `backend/apps/core/services/chunking_service.py`
+  - splits normalized text into chunks using LangChain text splitters
+- `backend/apps/core/services/indexing_service.py`
+  - updates `DocumentIndex` metadata after vector upsert
+- `backend/apps/core/services/search_service.py`
+  - used by chat to search relevant chunks
+- `backend/apps/core/services/summarization_service.py`
+  - creates a short summary after indexing
+- `backend/apps/core/vectorstores/qdrant_store.py`
+  - adapter boundary for vector storage/search
+- `backend/apps/core/langchain/pipelines.py`
+  - orchestration glue for normalization, chunking, indexing, and summary
 
 ## Current Behavior
 
-- `health` reports basic service availability flags from current settings
-- `providers` reports whether Gemini and Ollama are configured
-- `providers/test` resolves a provider and shows whether runtime will use live mode or mock fallback
+### Normalization
+
+- collapses repeated whitespace
+- reduces excessive blank lines
+- preserves paragraph-ish separation
+- returns a `NormalizedDocument` payload
+
+### Chunking
+
+- uses `RecursiveCharacterTextSplitter`
+- produces chunk payloads with metadata
+
+### Vector Store
+
+- current `QdrantStore` is a scaffold adapter
+- it returns index metadata and mockable search results
+- the adapter boundary exists so real Qdrant operations can replace the stub later
+
+### Summarization
+
+- currently generates a short summary from the first chunk
+
+## Endpoint
+
+- `GET /api/core/search/?query=...&document_ids=1&document_ids=2`
+
+Useful for:
+
+- manual retrieval checks
+- FE/backend debugging
+- validating search shape independently of chat
 
 ## Dependencies
 
-- depends on Django settings
-- depends on `llm.services.provider_factory.ProviderFactory`
-- does not depend on domain models
+- depends on `documents` for index metadata
+- depends on LangChain splitter utilities
+- is used by `jobs` during background processing
+- is used by `chat` during message handling
 
 ## What To Extend Next
 
-- add richer health checks for live Redis/Qdrant/MySQL connectivity
-- add global request/response tracing IDs
-- add API versioning if the surface grows
+- replace stub vector adapter with real Qdrant collection operations
+- add real embedding generation
+- add metadata filters per document or conversation
+- improve summaries beyond first-chunk truncation
