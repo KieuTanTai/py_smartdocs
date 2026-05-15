@@ -34,7 +34,7 @@
 
 - Mistral ai: `https://docs.mistral.ai/studio-api/knowledge-rag/libraries`
 
-- Self host: ``
+- Self host - ollama qwen2.5:3b: `https://ollama.com/`, `https://ollama.com/library/qwen2.5:3b`
 
 ### LOCATING
 
