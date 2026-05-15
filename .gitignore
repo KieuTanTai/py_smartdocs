@@ -38,4 +38,4 @@ dist/
 Thumbs.db
 **/__init__.py
 docs/pdfs_test/
-frontend/tests/outputs/
+frontend/tests/output/

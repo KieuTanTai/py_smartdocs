@@ -6,4 +6,4 @@
 
 ### Flows
 
-- Scan -> Normalize -> Chunking -> Indexing -> embedding -> save to vector store
+- Scan -> Normalize -> Chunking -> embedding -> Indexing -> save to vector store

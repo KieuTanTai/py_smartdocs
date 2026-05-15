@@ -5,6 +5,8 @@ from sys_services.system_dirs import ROOT_DIR
 
 load_dotenv(ROOT_DIR / ".env")
 
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "gemini")
+
 DEFAULT_MODELS = [
     "auto",
     "gemini-1.5-pro",

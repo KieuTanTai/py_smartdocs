@@ -19,7 +19,8 @@
     - `test file`: python3 -m frontend.tests.{file name}
 
 ### NOTE
-    
+
+    - You also need to install conda + faiss-gpu for vectordb (read: `https://faiss.ai/index.html` for details)
     - Replace path on files test to real path on your device
     - read file .env.example and create your own file !
     

@@ -11,6 +11,7 @@ INITIAL_API_BASE_URL = os.getenv("SMARTDOCS_API_BASE_URL", "http://localhost:800
 MISTRAL_CONFIG = {
     "apiKey": os.getenv("MISTRAL_API_KEY", ""),
     "model": os.getenv("MISTRAL_MODEL", "mistral-ocr-latest"),
+    "embeddingModel": os.getenv("MISTRAL_EMBEDDING_MODEL", "mistral-embed"),
     "confidenceScoresGranularity": os.getenv(
         "MISTRAL_CONFIDENCE_SCORES_GRANULARITY", "word"
     ),
