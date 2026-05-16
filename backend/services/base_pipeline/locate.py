@@ -1,1 +1,0 @@
-from core.locate import faiss, qdrant

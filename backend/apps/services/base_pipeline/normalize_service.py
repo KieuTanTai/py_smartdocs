@@ -3,7 +3,7 @@ from pathlib import Path
 
 from sys_services.logging import Logger
 from sys_services.enums.type_message import TypeMessage
-from backend.utils.is_content_empty import check_empty_content
+from backend.apps.utils.is_content_empty import check_empty_content
 
 class Normalize:
     @staticmethod

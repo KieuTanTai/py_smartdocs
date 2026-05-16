@@ -2,7 +2,7 @@ from pathlib import Path
 import nltk
 from langchain_text_splitters import NLTKTextSplitter
 
-from backend.utils.is_content_empty import check_empty_contents
+from backend.apps.utils.is_content_empty import check_empty_contents
 from sys_services.logging import Logger
 from sys_services.enums.type_message import TypeMessage
 

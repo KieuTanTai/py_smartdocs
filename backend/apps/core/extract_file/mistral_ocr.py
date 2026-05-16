@@ -5,7 +5,7 @@ from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.logging import Logger
 from sys_services.enums.type_message import TypeMessage
 from mistralai.client import Mistral
-from backend.utils.is_content_empty import check_empty_content
+from backend.apps.utils.is_content_empty import check_empty_content
 
 class MistralOCRExtractor:
 

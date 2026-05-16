@@ -1,7 +1,7 @@
 from pathlib import Path
-from backend.core.extract_file.mistral_ocr import MistralOCRExtractor
-from backend.services.base_pipeline.normalize import Normalize
-from backend.services.base_pipeline.chunking import Chunking
+from backend.apps.core.extract_file.mistral_ocr import MistralOCRExtractor
+from backend.apps.services.base_pipeline.normalize_service import Normalize
+from backend.apps.services.base_pipeline.chunking_service import Chunking
 
 
 def run_pipeline(pdf_path: str) -> None:
