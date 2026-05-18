@@ -7,12 +7,4 @@ load_dotenv(ROOT_DIR / ".env")
 
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "gemini")
 
-DEFAULT_MODELS = [
-    "auto",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
-    "ollama:llama3",
-    "ollama:mistral",
-]
-
-LIST_MODELS = os.getenv("MODEL_LIST", ",".join(DEFAULT_MODELS)).split(",")
+LIST_MODELS = os.getenv("MODEL_LIST", "gemini, mistral, ollama").split(", ")

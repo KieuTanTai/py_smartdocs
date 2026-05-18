@@ -22,9 +22,9 @@ def test_get_chunks() -> list[str]:
 
 
 def test_mistral_embedding(chunk: str) -> list[float]:
-    client = Mistral(api_key=MISTRAL_CONFIG["apiKey"])
+    client = Mistral(api_key=MISTRAL_CONFIG["api_key"])
     result = client.embeddings.create(
-        model=MISTRAL_CONFIG["embeddingModel"],
+        model=MISTRAL_CONFIG["embedding_model"],
         inputs=chunk,
     )
     if result.data is not None and result.data[0].embedding is not None:

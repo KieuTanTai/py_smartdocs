@@ -5,6 +5,8 @@ Abstract interface for LLM provider selection and instantiation.
 
 from abc import ABC, abstractmethod
 
+from backend.apps.interfaces.llm_client_interface import LLMClientInterface
+
 
 class LLMProviderFactoryInterface(ABC):
     """
@@ -13,7 +15,7 @@ class LLMProviderFactoryInterface(ABC):
     """
 
     @abstractmethod
-    def get_provider(self, provider_name):
+    def get_provider(self) -> LLMClientInterface:
         """
         Get LLM provider client.
 
@@ -28,25 +30,25 @@ class LLMProviderFactoryInterface(ABC):
         """
         pass
 
-    @abstractmethod
-    def is_provider_available(self, provider_name):
-        """
-        Check if provider is available and configured.
+    # @abstractmethod
+    # def is_provider_available(self) -> bool:
+    #     """
+    #     Check if provider is available and configured.
 
-        Args:
-            provider_name: Provider name
+    #     Args:
+    #         provider_name: Provider name
 
-        Returns:
-            Boolean availability status
-        """
-        pass
+    #     Returns:
+    #         Boolean availability status
+    #     """
+    #     pass
 
-    @abstractmethod
-    def get_available_providers(self):
-        """
-        Get list of available providers.
+    # @abstractmethod
+    # def get_available_providers(self) -> list[str]:
+    #     """
+    #     Get list of available providers.
 
-        Returns:
-            List of provider names that are configured and available
-        """
-        pass
+    #     Returns:
+    #         List of provider names that are configured and available
+    #     """
+    #     pass

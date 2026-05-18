@@ -13,7 +13,7 @@ class MistralOCRExtractor:
     def extract_text_from_pdf_with_mistral_ocr(pdf_path: str) -> tuple[str, str]:
         source_log = f"{Path(__file__).parent.absolute()}/{Path(__file__).name}"
         try:
-            client = Mistral(api_key=MISTRAL_CONFIG["apiKey"])
+            client = Mistral(api_key=MISTRAL_CONFIG["api_key"])
             uploaded_pdf = client.files.upload(
                 file={
                     "file_name": os.path.basename(pdf_path),
@@ -25,7 +25,7 @@ class MistralOCRExtractor:
             signed_url = client.files.get_signed_url(file_id=uploaded_pdf.id)  # type: ignore
 
             ocr_response = client.ocr.process(
-                model=MISTRAL_CONFIG["model"],
+                model=MISTRAL_CONFIG["ocr_model"],
                 document={
                     "type": "document_url",
                     "document_url": signed_url.url,

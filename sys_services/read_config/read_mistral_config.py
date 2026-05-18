@@ -9,13 +9,14 @@ load_dotenv(ROOT_DIR / ".env")
 INITIAL_API_BASE_URL = os.getenv("SMARTDOCS_API_BASE_URL", "http://localhost:8000")
 
 MISTRAL_CONFIG = {
-    "apiKey": os.getenv("MISTRAL_API_KEY", ""),
-    "model": os.getenv("MISTRAL_MODEL", "mistral-ocr-latest"),
-    "embeddingModel": os.getenv("MISTRAL_EMBEDDING_MODEL", "mistral-embed"),
-    "confidenceScoresGranularity": os.getenv(
+    "api_key": os.getenv("MISTRAL_API_KEY", ""),
+    "ocr_model": os.getenv("MISTRAL_OCR_MODEL", "mistral-ocr-latest"),
+    "embedding_model": os.getenv("MISTRAL_EMBEDDING_MODEL", "mistral-embed"),
+    "model": os.getenv("MISTRAL_MODEL", "mistral-large-latest"),
+    "confidence_scores_granularity": os.getenv(
         "MISTRAL_CONFIDENCE_SCORES_GRANULARITY", "word"
     ),
-    "timeoutSeconds": int(os.getenv("MISTRAL_TIMEOUT_SECONDS", "60")),
-    "documentType": os.getenv("MISTRAL_DOCUMENT_TYPE", "UPLOAD_FILES"),
-    "apiBaseUrl": INITIAL_API_BASE_URL,
+    "timeout_seconds": int(os.getenv("MISTRAL_TIMEOUT_SECONDS", "60")),
+    "document_type": os.getenv("MISTRAL_DOCUMENT_TYPE", "UPLOAD_FILES"),
+    "api_base_url": INITIAL_API_BASE_URL,
 }

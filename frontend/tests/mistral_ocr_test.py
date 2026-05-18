@@ -7,7 +7,7 @@ from mistralai.client import Mistral
 ROOT_DIR = Path(__file__).resolve().parents[2]
 PDF_PATH = ROOT_DIR / "docs" / "pdfs_test" / "Báo cáo tài chính Kiểm toán năm 2025.pdf"
 
-client = Mistral(api_key=MISTRAL_CONFIG["apiKey"])
+client = Mistral(api_key=MISTRAL_CONFIG["api_key"])
 uploaded_pdf = client.files.upload(
     file={
         "file_name": "SmartDocsAI.pdf",
@@ -27,7 +27,7 @@ signed_url = client.files.get_signed_url(file_id=uploaded_pdf.id)  # type: ignor
 print("Signed URL response:", signed_url)
 
 ocr_response = client.ocr.process(
-    model=MISTRAL_CONFIG["model"],
+    model=MISTRAL_CONFIG["ocr_model"],
     document={
         "type": "document_url",
         "document_url": signed_url.url,

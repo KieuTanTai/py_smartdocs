@@ -21,9 +21,9 @@ def test_get_chunks() -> list[str]:
 
 
 def test_gemini_embedding(chunk: str) -> list[genai.types.ContentEmbedding]:
-    client = genai.Client(api_key=GEMINI_EMBEDDING_CONFIG["apiKey"])
+    client = genai.Client(api_key=GEMINI_EMBEDDING_CONFIG["api_key"])
     result = client.models.embed_content(
-        model=GEMINI_EMBEDDING_CONFIG["model"],
+        model=GEMINI_EMBEDDING_CONFIG["embedding_model"],
         contents=chunk,
     )
     if result.embeddings is not None:

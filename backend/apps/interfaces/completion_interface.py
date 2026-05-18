@@ -1,78 +1,31 @@
-"""
-Completion request and response interface module.
-Abstract interfaces for LLM completion operations.
-"""
-
-from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Protocol
 
 
-class CompletionRequestInterface(ABC):
-    """
-    Abstract interface for LLM completion requests.
-    Standardizes request format across different LLM providers.
-    """
-
-    @abstractmethod
-    def to_provider_format(self, provider_name):
-        """
-        Convert request to provider-specific format.
-
-        Args:
-            provider_name: Target provider name
-
-        Returns:
-            Provider-specific request object or dict
-        """
-        pass
-
-    @abstractmethod
-    def get_prompt(self):
-        """Get the complete prompt text."""
-        pass
-
-    @abstractmethod
-    def get_context(self):
-        """Get retrieval context."""
-        pass
-
-    @abstractmethod
-    def get_parameters(self):
-        """Get generation parameters (temperature, max_tokens, etc.)."""
-        pass
+@dataclass
+class CompletionRequestInterface:
+    provider: str
+    model: str
+    prompt: str
+    context_hits: list[dict] = field(default_factory=list)
 
 
-class CompletionResponseInterface(ABC):
-    """
-    Abstract interface for LLM completion responses.
-    Standardizes response format across different LLM providers.
-    """
+@dataclass
+class CompletionResponseInterface:
+    provider: str
+    model: str
+    content: str
+    tokens_input: int = 0
+    tokens_output: int = 0
+    latency_ms: float = 0
 
-    @abstractmethod
-    def get_text(self):
-        """
-        Get generated text content.
+@dataclass
+class CompletionInfoInterface:
+    provider: str
+    model: str
+    capabilities: list[str]
 
-        Returns:
-            Generated text string
-        """
-        pass
+class LLMClient(Protocol):
+    provider_name: str
 
-    @abstractmethod
-    def get_tokens(self):
-        """
-        Get token usage info.
-
-        Returns:
-            Dict with input_tokens and output_tokens
-        """
-        pass
-
-    @abstractmethod
-    def get_metadata(self):
-        """
-        Get response metadata.
-
-        Returns:
-            Dict with provider, model, latency_ms, finish_reason, etc.
-        """
-        pass
+    async def generate(self, request: CompletionRequestInterface) -> CompletionResponseInterface: ...
