@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class TypeMessage(str, Enum):
+class ETypeMessage(str, Enum):
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"

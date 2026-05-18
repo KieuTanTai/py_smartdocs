@@ -14,7 +14,6 @@ from backend.apps.interfaces.conversation.i_completion import (
 
 
 class ILLMClient(ABC):
-    provider_name: str
     """
     Abstract interface for LLM providers.
     Provider-agnostic interface for language model completions.

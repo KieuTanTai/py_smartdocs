@@ -11,18 +11,19 @@ from sys_services.logging import DEFAULT_LOGGER
 
 
 class OllamaClient(ILLMClient):
-    provider_name = "ollama"
 
     def __init__(
         self,
         base_url: str,
         model: str,
+        provider_name: str,
         timeout: float = 60.0,
         logger: ILogger | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
+        self.provider_name = provider_name
         self.logger = logger or DEFAULT_LOGGER
 
     async def generate(self, request: ICompletionRequest) -> ICompletionResponse:

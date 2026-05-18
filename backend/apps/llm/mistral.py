@@ -11,17 +11,18 @@ from sys_services.logging import DEFAULT_LOGGER
 
 
 class MistralClient(ILLMClient):
-    provider_name = "mistral"
 
     def __init__(
         self,
         api_key: str,
         model: str,
+        provider_name: str,
         timeout: float = 60.0,
         logger: ILogger | None = None,
     ):
         self.api_key = api_key
         self.model = model
+        self.provider_name = provider_name
         self.timeout = timeout
         self.logger = logger or DEFAULT_LOGGER
 

@@ -8,6 +8,7 @@ from pathlib import Path
 from backend.apps.interfaces.files_storage.i_create_file_response import (
     ICreateFileResponse,
 )
+from sys_services.enums.e_mime_type import EMimeType
 
 
 class IFileStorage(ABC):
@@ -17,12 +18,13 @@ class IFileStorage(ABC):
     """
 
     @abstractmethod
-    async def save_file(self, file_path: Path) -> ICreateFileResponse:
+    async def save_file(self, mime_type: EMimeType, file_path: Path) -> ICreateFileResponse:
         """
         Save uploaded file to storage.
 
         Args:
-            file_obj: File object from upload
+            mime_type: MIME type of the file
+            file_path: Path to the file to save
             document_name: Name of the document
 
         Returns:
@@ -31,11 +33,12 @@ class IFileStorage(ABC):
         pass
 
     @abstractmethod
-    async def load_file(self, file_path: Path):
+    async def load_file(self, mime_type: EMimeType, file_path: Path):
         """
         Load file content from storage.
 
         Args:
+            mime_type: MIME type of the file
             file_path: Path to file in storage
 
         Returns:
@@ -44,11 +47,12 @@ class IFileStorage(ABC):
         pass
 
     @abstractmethod
-    async def delete_file(self, file_path: Path):
+    async def delete_file(self, mime_type: EMimeType, file_path: Path):
         """
         Delete file from storage.
 
         Args:
+            mime_type: MIME type of the file
             file_path: Path to file in storage
 
         Returns:
@@ -57,7 +61,7 @@ class IFileStorage(ABC):
         pass
 
     @abstractmethod
-    def get_file_size(self, file_path: Path) -> float:
+    def get_file_size(self, mime_type: EMimeType, file_path: Path) -> float:
         """
         Get file size in bytes.
 

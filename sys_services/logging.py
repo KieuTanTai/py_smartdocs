@@ -1,7 +1,7 @@
 import datetime
 from pathlib import Path
 from sys_services.system_dirs import ROOT_DIR
-from sys_services.enums import TypeMessage
+from sys_services.enums.e_type_message import ETypeMessage
 from sys_services.interfaces.i_logging import ILogger
 
 
@@ -11,23 +11,23 @@ class Logger(ILogger):
 
     def info(self, message: str, source: str = "") -> None:
         """Log info message"""
-        self._log_message(TypeMessage.INFO, message, source)
+        self._log_message(ETypeMessage.INFO, message, source)
 
     def warning(self, message: str, source: str = "") -> None:
         """Log warning message"""
-        self._log_message(TypeMessage.WARNING, message, source)
+        self._log_message(ETypeMessage.WARNING, message, source)
 
     def error(self, message: str, source: str = "") -> None:
         """Log error message"""
-        self._log_message(TypeMessage.ERROR, message, source)
+        self._log_message(ETypeMessage.ERROR, message, source)
 
     def debug(self, message: str, source: str = "") -> None:
         """Log debug message"""
-        self._log_message(TypeMessage.DEBUG, message, source)
+        self._log_message(ETypeMessage.DEBUG, message, source)
 
     def _log_message(
         self,
-        type_message: TypeMessage,
+        type_message: ETypeMessage,
         message: str,
         source: str,
     ) -> None:

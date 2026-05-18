@@ -38,7 +38,7 @@ def left_sidebar_ui() -> ui.Tag:
                 "upload_files_sidebar",
                 "",
                 multiple=True,
-                accept="image/*,text/plain,application/pdf",
+                accept="image/jpg, image/png, image/tiff, text/plain, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ),
             class_="card",
         ),
