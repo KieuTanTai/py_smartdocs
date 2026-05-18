@@ -4,11 +4,13 @@ Abstract interface for language model providers.
 """
 
 from abc import ABC, abstractmethod
+from typing import Protocol
 
-from backend.apps.interfaces.completion_interface import CompletionInfoInterface, CompletionRequestInterface, CompletionResponseInterface
+from backend.apps.interfaces.conversation.completion_interface import CompletionInfoInterface, CompletionRequestInterface, CompletionResponseInterface
 
 
 class LLMClientInterface(ABC):
+    provider_name: str
     """
     Abstract interface for LLM providers.
     Provider-agnostic interface for language model completions.

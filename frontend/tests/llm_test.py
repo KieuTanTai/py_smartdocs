@@ -9,30 +9,23 @@ from pathlib import Path
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from sys_services.read_config.read_gemini_config import GEMINI_EMBEDDING_CONFIG
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
-from sys_services.read_config.read_models import EMBEDDING_PROVIDER
-from backend.apps.interfaces.completion_interface import CompletionRequestInterface, CompletionResponseInterface
-from backend.apps.llm.gemini import GeminiClient
-from backend.apps.llm.mistral import MistralClient
-from backend.apps.llm.ollama import OllamaClient
+from sys_services.read_config.read_ollama_config import OLLAMA_CONFIG
+from backend.apps.interfaces.conversation.completion_interface import CompletionRequestInterface, CompletionResponseInterface
 
 # Test prompt
 TEST_PROMPT = "What is the capital of France? Answer in one sentence."
-
-# Ollama configuration
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama2")
 
 # Track results
 results = {
     "gemini": CompletionResponseInterface,
     "mistral": CompletionResponseInterface,
-    # "ollama": CompletionResponseInterface,
+    "ollama": CompletionResponseInterface,
 }
 
 errors = {
     "gemini": str,
     "mistral": str,
-    # "ollama": CompletionResponse,
+    "ollama": str,
 }
 
 
@@ -125,12 +118,12 @@ async def test_ollama() -> int:
 
         request = CompletionRequestInterface(
             provider="ollama",
-            model=OLLAMA_MODEL,
+            model=OLLAMA_CONFIG["model"],
             prompt=TEST_PROMPT,
         )
 
         print(f"Model: {request.model}")
-        print(f"Base URL: {OLLAMA_BASE_URL}")
+        print(f"Base URL: {OLLAMA_CONFIG['base_url']}")
         print(f"Prompt: {request.prompt}")
         print("\nSending request...")
 

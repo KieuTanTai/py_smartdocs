@@ -5,7 +5,7 @@ Abstract interface for LLM provider selection and instantiation.
 
 from abc import ABC, abstractmethod
 
-from backend.apps.interfaces.llm_client_interface import LLMClientInterface
+from backend.apps.interfaces.llm.llm_client_interface import LLMClientInterface
 
 
 class LLMProviderFactoryInterface(ABC):

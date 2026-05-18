@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Protocol
 
 
 @dataclass
@@ -24,8 +23,3 @@ class CompletionInfoInterface:
     provider: str
     model: str
     capabilities: list[str]
-
-class LLMClient(Protocol):
-    provider_name: str
-
-    async def generate(self, request: CompletionRequestInterface) -> CompletionResponseInterface: ...

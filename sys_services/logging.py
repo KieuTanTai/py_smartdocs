@@ -2,55 +2,84 @@ import datetime
 from pathlib import Path
 from sys_services.system_dirs import ROOT_DIR
 from sys_services.enums import TypeMessage
+from sys_services.interfaces.logging_interface import ILogger
 
 
-class Logger:
+class Logger(ILogger):
     _log_dirs: dict[str, Path] = {}
+    _separator = "─" * 80
 
-    @classmethod
-    def log(
-        cls, type_message: TypeMessage, log_message: str, source_log: str = ""
+    def info(self, message: str, source: str = "") -> None:
+        """Log info message"""
+        self._log_message(TypeMessage.INFO, message, source)
+
+    def warning(self, message: str, source: str = "") -> None:
+        """Log warning message"""
+        self._log_message(TypeMessage.WARNING, message, source)
+
+    def error(self, message: str, source: str = "") -> None:
+        """Log error message"""
+        self._log_message(TypeMessage.ERROR, message, source)
+
+    def debug(self, message: str, source: str = "") -> None:
+        """Log debug message"""
+        self._log_message(TypeMessage.DEBUG, message, source)
+
+    def _log_message(
+        self,
+        type_message: TypeMessage,
+        message: str,
+        source: str,
     ) -> None:
-        cls._add_log_message_to_file(type_message, log_message, source_log)
+        """Internal method to handle logging to file"""
+        try:
+            folder_name = datetime.date.today().strftime("%Y-%m-%d")
+            log_dir = self._ensure_log_dir(folder_name=folder_name)
+            log_file_path = self._execute_log_file_path(log_dir, folder_name)
 
-    @classmethod
-    def _ensure_log_dir(cls, folder_name: str) -> Path:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            type_str = type_message.value.upper()
+
+            with open(log_file_path, "a") as log_file:
+                # Write separator for readability
+                log_file.write(f"\n{self._separator}\n")
+
+                # Write header with timestamp and type
+                log_file.write(f"[{timestamp}] [{type_str}]\n")
+
+                # Write source if provided
+                if source.strip():
+                    log_file.write(f"Source: {source}\n")
+
+                # Write message with proper indentation
+                log_file.write(f"Message:\n  {message}\n")
+
+                # Write end marker
+                log_file.write(f"{self._separator}\n")
+
+        except Exception as exc:
+            print(f"Error writing log message to file: {exc}")
+
+    def _ensure_log_dir(self, folder_name: str) -> Path:
+        """Ensure log directory exists"""
         key = folder_name
-        if key in cls._log_dirs:
-            return cls._log_dirs[key]
+        if key in self._log_dirs:
+            return self._log_dirs[key]
         logging_out_dir = ROOT_DIR / "docs" / "logs" / folder_name
         logging_out_dir.mkdir(parents=True, exist_ok=True)
-        cls._log_dirs[key] = logging_out_dir
+        self._log_dirs[key] = logging_out_dir
         return logging_out_dir
 
-    @classmethod
-    def _execute_log_file_name(cls, folder_name: str) -> str:
+    def _execute_log_file_name(self, folder_name: str) -> str:
+        """Generate log file name"""
         return f"{folder_name}.log"
 
-    @classmethod
-    def _execute_log_file_path(cls, log_dir: Path, folder_name: str) -> Path:
-        file_name = cls._execute_log_file_name(folder_name)
+    def _execute_log_file_path(self, log_dir: Path, folder_name: str) -> Path:
+        """Get or create log file path"""
+        file_name = self._execute_log_file_name(folder_name)
         log_file_path = log_dir / file_name
         log_file_path.touch(exist_ok=True)
         return log_file_path
 
-    @classmethod
-    def _add_log_message_to_file(
-        cls,
-        type_message: TypeMessage,
-        log_message: str,
-        source_log: str,
-    ) -> None:
-        try:
-            folder_name = datetime.date.today().strftime("%Y-%m-%d")
-            log_dir = cls._ensure_log_dir(folder_name=folder_name)
-            log_file_path = cls._execute_log_file_path(log_dir, folder_name)
-            with open(log_file_path, "a") as log_file:
-                log_file.write(f"[{type_message.value.upper()}] {log_message}\n")
-                if source_log.strip():
-                    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-                    log_file.write(
-                        f"--- End of log message from `{source_log}` at {timestamp} ---\n"
-                    )
-        except Exception as exc:
-            print(f"Error writing log message to file: {exc}")
+
+DEFAULT_LOGGER = Logger()

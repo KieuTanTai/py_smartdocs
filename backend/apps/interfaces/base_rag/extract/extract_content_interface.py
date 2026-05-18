@@ -6,7 +6,7 @@ Abstract interface for file content extraction orchestration.
 from abc import ABC, abstractmethod
 
 
-class ExtractContentServiceInterface(ABC):
+class ExtractContentInterface(ABC):
     """
     Abstract interface for content extraction.
     Orchestrates file extraction and content preparation.

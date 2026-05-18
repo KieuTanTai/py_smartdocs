@@ -1,13 +1,13 @@
 from pathlib import Path
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
-from sys_services.logging import Logger
-from sys_services.enums.type_message import TypeMessage
+from sys_services.logging import DEFAULT_LOGGER
 from mistralai.client import Mistral
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 PDF_PATH = ROOT_DIR / "docs" / "pdfs_test" / "Báo cáo tài chính Kiểm toán năm 2025.pdf"
 
 client = Mistral(api_key=MISTRAL_CONFIG["api_key"])
+logger = DEFAULT_LOGGER
 uploaded_pdf = client.files.upload(
     file={
         "file_name": "SmartDocsAI.pdf",
@@ -41,16 +41,14 @@ try:
     with open(Path(__file__).parent / "output" / f"output_{uploaded_pdf.id}.md", "w") as f:  # type: ignore
         for page in ocr_response.pages:
             f.write(page.markdown)
-    Logger.log(
-        TypeMessage.INFO,
+    logger.info(
         f"OCR output successfully written to file: output_{uploaded_pdf.id}.md",
-        source_log=Path(__file__).name
+        source=Path(__file__).name,
     )
 except Exception as e:
-    Logger.log(
-        TypeMessage.ERROR,
+    logger.error(
         f"An error occurred while writing OCR output to file: {e}",
-        source_log=Path(__file__).name
+        source=Path(__file__).name,
     )
 
 # client.files.delete(file_id=uploaded_pdf.id)  # type: ignore
