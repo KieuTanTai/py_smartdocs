@@ -2,7 +2,7 @@ import datetime
 from pathlib import Path
 from sys_services.system_dirs import ROOT_DIR
 from sys_services.enums import TypeMessage
-from sys_services.interfaces.logging_interface import ILogger
+from sys_services.interfaces.i_logging import ILogger
 
 
 class Logger(ILogger):

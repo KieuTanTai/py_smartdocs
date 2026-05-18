@@ -8,67 +8,59 @@ and flexible backend switching.
 """
 
 # Core extraction and embedding interfaces
-from backend.apps.interfaces.base_rag.extract.extractor_interface import ExtractorInterface
-from backend.apps.interfaces.base_rag.embed.embedder_interface import EmbedderInterface
-from backend.apps.interfaces.base_rag.locate.vector_store_interface import VectorStoreInterface
+from backend.apps.interfaces.base_rag.extract.i_extractor import IExtractor
+from backend.apps.interfaces.base_rag.embed.i_embedder import IEmbedder
+from backend.apps.interfaces.base_rag.locate.i_vector_store import IVectorStore
 
 # LLM provider interfaces
-from backend.apps.interfaces.llm.llm_client_interface import LLMClientInterface
-from backend.apps.interfaces.llm.llm_provider_factory_interface import (
-    LLMProviderFactoryInterface,
-)
-from backend.apps.interfaces.conversation.completion_interface import (
-    CompletionRequestInterface,
-    CompletionResponseInterface,
+from backend.apps.interfaces.llm.i_llm_client import ILLMClient
+from backend.apps.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
+from backend.apps.interfaces.conversation.i_completion import (
+    ICompletionRequest,
+    ICompletionResponse,
 )
 
 # Pipeline service interfaces
-from backend.apps.interfaces.base_rag.extract.normalization_interface import (
-    NormalizationInterface,
-)
-from backend.apps.interfaces.base_rag.chunk.chunking_interface import ChunkingInterface
-from backend.apps.interfaces.base_rag.indexing_interface import IndexingInterface
-from backend.apps.interfaces.base_rag.extract.extract_content_interface import (
-    ExtractContentInterface,
-)
-from backend.apps.interfaces.conversation.search_interface import SearchServiceInterface
-from backend.apps.interfaces.conversation.summarization_interface import (
-    SummarizationServiceInterface,
-)
-from backend.apps.interfaces.base_rag.locate.locate_interface import LocateServiceInterface
+from backend.apps.interfaces.base_rag.extract.i_normalization import INormalization
+from backend.apps.interfaces.base_rag.chunk.i_chunking import IChunking
+from backend.apps.interfaces.base_rag.i_indexing import IIndexing
+from backend.apps.interfaces.base_rag.extract.i_extract_content import IExtractContent
+from backend.apps.interfaces.conversation.i_search import ISearchService
+from backend.apps.interfaces.conversation.i_summarization import ISummarizationService
+from backend.apps.interfaces.base_rag.locate.i_locate import ILocateService
 
 # Application service interfaces
-from backend.apps.interfaces.conversation.conversation_interface import ConversationServiceInterface
-from backend.apps.interfaces.conversation.message_interface import MessageServiceInterface
-from backend.apps.interfaces.document.document_storage_interface import DocumentStorageInterface
+from backend.apps.interfaces.conversation.i_conversation import IConversationService
+from backend.apps.interfaces.conversation.i_message import IMessageService
+from backend.apps.interfaces.files_storage.i_storage import IFileStorage
 
 # Graph and background job interfaces
-from backend.apps.interfaces.graph_rag.graph_interface import GraphServiceInterface
-from backend.apps.interfaces.job.job_management_interface import JobManagementInterface
+from backend.apps.interfaces.graph_rag.i_graph import IGraphService
+from backend.apps.interfaces.job.i_job_management import IJobManagement
 
 __all__ = [
     # Core interfaces
-    "ExtractorInterface",
-    "EmbedderInterface",
-    "VectorStoreInterface",
+    "IExtractor",
+    "IEmbedder",
+    "IVectorStore",
     # LLM interfaces
-    "LLMClientInterface",
-    "LLMProviderFactoryInterface",
-    "CompletionRequestInterface",
-    "CompletionResponseInterface",
+    "ILLMClient",
+    "ILLMProviderFactory",
+    "ICompletionRequest",
+    "ICompletionResponse",
     # Pipeline interfaces
-    "NormalizationInterface",
-    "ChunkingInterface",
-    "IndexingInterface",
-    "ExtractContentInterface",
-    "SearchServiceInterface",
-    "SummarizationServiceInterface",
-    "LocateServiceInterface",
+    "INormalization",
+    "IChunking",
+    "IIndexing",
+    "IExtractContent",
+    "ISearchService",
+    "ISummarizationService",
+    "ILocateService",
     # Application interfaces
-    "ConversationServiceInterface",
-    "MessageServiceInterface",
-    "DocumentStorageInterface",
+    "IConversationService",
+    "IMessageService",
+    "IFileStorage",
     # Graph and job interfaces
-    "GraphServiceInterface",
-    "JobManagementInterface",
+    "IGraphService",
+    "IJobManagement",
 ]

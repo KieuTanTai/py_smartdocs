@@ -6,7 +6,7 @@ Abstract interface for document text normalization.
 from abc import ABC, abstractmethod
 
 
-class NormalizationInterface(ABC):
+class INormalization(ABC):
     """
     Abstract interface for text normalization.
     Preprocessing stage before chunking and indexing.

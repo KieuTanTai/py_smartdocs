@@ -6,7 +6,7 @@ Abstract interface for document search and retrieval.
 from abc import ABC, abstractmethod
 
 
-class SearchServiceInterface(ABC):
+class ISearchService(ABC):
     """
     Abstract interface for document search.
     Performs similarity search across document corpus using vector embeddings.

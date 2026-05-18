@@ -6,7 +6,7 @@ Abstract interface for text embedding generation.
 from abc import ABC, abstractmethod
 
 
-class EmbedderInterface(ABC):
+class IEmbedder(ABC):
     """
     Abstract interface for text embedding.
     Generates vector embeddings for text using various models.

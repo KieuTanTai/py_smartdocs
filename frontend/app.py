@@ -14,7 +14,7 @@ from frontend.components.sidebars.right import right_sidebar_ui
 from frontend.components.upload_files import upload_modal
 from sys_services.api_client import ApiClient, ApiError
 from sys_services.read_config.read_google_config import GOOGLE_PICKER_CONFIG, INITIAL_API_BASE_URL
-from sys_services.system_dirs import BASE_DIR
+from sys_services.system_dirs import BASE_FE_DIR
 from sys_services.read_config.read_models import LIST_MODELS
 
 app_ui = ui.page_fluid(
@@ -476,4 +476,4 @@ def server(input: Any, output: Any, session: Any) -> None:
         set_status("Chat cleared", "Ready for a new session", "info")
 
 
-app = App(app_ui, server, static_assets=BASE_DIR / "assets")
+app = App(app_ui, server, static_assets=BASE_FE_DIR / "assets")

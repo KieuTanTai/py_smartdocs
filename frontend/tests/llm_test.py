@@ -3,23 +3,24 @@ Test requests to all 3 LLM providers: Gemini, Mistral, and Ollama
 """
 
 import asyncio
-import os
-from pathlib import Path
 
+from backend.apps.interfaces.conversation.i_completion import (
+    ICompletionRequest,
+    ICompletionResponse,
+)
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from sys_services.read_config.read_gemini_config import GEMINI_EMBEDDING_CONFIG
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.read_config.read_ollama_config import OLLAMA_CONFIG
-from backend.apps.interfaces.conversation.completion_interface import CompletionRequestInterface, CompletionResponseInterface
 
 # Test prompt
 TEST_PROMPT = "What is the capital of France? Answer in one sentence."
 
 # Track results
 results = {
-    "gemini": CompletionResponseInterface,
-    "mistral": CompletionResponseInterface,
-    "ollama": CompletionResponseInterface,
+    "gemini": ICompletionResponse,
+    "mistral": ICompletionResponse,
+    "ollama": ICompletionResponse,
 }
 
 errors = {
@@ -37,7 +38,7 @@ async def test_gemini() -> int:
     try:
         client = LLMProviderFactory("gemini").get_provider()
 
-        request = CompletionRequestInterface(
+        request = ICompletionRequest(
             provider="gemini",
             model=GEMINI_EMBEDDING_CONFIG["model"],
             prompt=TEST_PROMPT,
@@ -64,7 +65,6 @@ async def test_gemini() -> int:
     except Exception as e:
         error_msg = f"Error: {str(e)}"
         print(f"\n✗ {error_msg}")
-        errors["gemini"] = error_msg  # type: ignore
         return 0
 
 
@@ -76,7 +76,7 @@ async def test_mistral() -> int:
     try:
         client = LLMProviderFactory("mistral").get_provider()
 
-        request = CompletionRequestInterface(
+        request = ICompletionRequest(
             provider="mistral",
             model=MISTRAL_CONFIG["model"],
             prompt=TEST_PROMPT,
@@ -104,7 +104,6 @@ async def test_mistral() -> int:
     except Exception as e:
         error_msg = f"Error: {str(e)}"
         print(f"\n✗ {error_msg}")
-        errors["mistral"] = error_msg  # type: ignore
         return 0
 
 
@@ -116,7 +115,7 @@ async def test_ollama() -> int:
     try:
         client = LLMProviderFactory("ollama").get_provider()
 
-        request = CompletionRequestInterface(
+        request = ICompletionRequest(
             provider="ollama",
             model=OLLAMA_CONFIG["model"],
             prompt=TEST_PROMPT,
@@ -171,8 +170,6 @@ async def run_all_tests():
     print("\n" + "=" * 60)
     print("Test Summary")
     print("=" * 60)
-
-
 
     print(f"\nSuccessful: {successful}/3")
     print(f"Failed: {failed}/3")

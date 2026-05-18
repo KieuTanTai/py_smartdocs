@@ -6,7 +6,7 @@ Abstract interface for conversation operations.
 from abc import ABC, abstractmethod
 
 
-class ConversationServiceInterface(ABC):
+class IConversationService(ABC):
     """
     Abstract interface for conversation operations.
     Manages conversation lifecycle and state.

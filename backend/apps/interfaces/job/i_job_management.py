@@ -6,7 +6,7 @@ Abstract interface for background job orchestration.
 from abc import ABC, abstractmethod
 
 
-class JobManagementInterface(ABC):
+class IJobManagement(ABC):
     """
     Abstract interface for background job management.
     Orchestrates Celery task scheduling and monitoring.

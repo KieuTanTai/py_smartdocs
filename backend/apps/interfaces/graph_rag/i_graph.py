@@ -6,7 +6,7 @@ Abstract interface for graph-based document processing.
 from abc import ABC, abstractmethod
 
 
-class GraphServiceInterface(ABC):
+class IGraphService(ABC):
     """
     Abstract interface for graph-based document processing.
     Builds and queries knowledge graphs from documents.

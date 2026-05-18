@@ -1,10 +1,10 @@
 from langchain_text_splitters import NLTKTextSplitter
-from backend.apps.interfaces.base_rag.chunk.chunking_interface import ChunkingInterface
-from sys_services.interfaces.logging_interface import ILogger
+from backend.apps.interfaces.base_rag.chunk.i_chunking import IChunking
+from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 
 
-class Chunker(ChunkingInterface):
+class Chunker(IChunking):
     def __init__(
         self,
         chunk_size: int = 1000,

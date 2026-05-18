@@ -6,7 +6,7 @@ Abstract interface for text segmentation.
 from abc import ABC, abstractmethod
 
 
-class ChunkingInterface(ABC):
+class IChunking(ABC):
     """
     Abstract interface for text chunking.
     Segments normalized text into manageable chunks.

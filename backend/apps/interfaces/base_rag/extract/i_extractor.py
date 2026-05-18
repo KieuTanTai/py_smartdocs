@@ -6,7 +6,7 @@ Abstract interface for file content extraction.
 from abc import ABC, abstractmethod
 
 
-class ExtractorInterface(ABC):
+class IExtractor(ABC):
     """
     Abstract interface for file extraction.
     Handles extracting content from various file formats.

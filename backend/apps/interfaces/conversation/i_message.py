@@ -6,7 +6,7 @@ Abstract interface for message operations.
 from abc import ABC, abstractmethod
 
 
-class MessageServiceInterface(ABC):
+class IMessageService(ABC):
     """
     Abstract interface for message operations.
     Manages chat history and message persistence.

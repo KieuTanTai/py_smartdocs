@@ -4,30 +4,34 @@ Abstract interface for file storage operations.
 """
 
 from abc import ABC, abstractmethod
+from pathlib import Path
+from backend.apps.interfaces.files_storage.i_create_file_response import (
+    ICreateFileResponse,
+)
 
 
-class DocumentStorageInterface(ABC):
+class IFileStorage(ABC):
     """
     Abstract interface for file storage.
     Handles file persistence (local filesystem or cloud).
     """
 
     @abstractmethod
-    async def save_file(self, file_obj, document_id):
+    async def save_file(self, file_path: Path) -> ICreateFileResponse:
         """
         Save uploaded file to storage.
 
         Args:
             file_obj: File object from upload
-            document_id: Associated document ID
+            document_name: Name of the document
 
         Returns:
-            File path or storage identifier
+            ICreateFileResponse: Response object with file information
         """
         pass
 
     @abstractmethod
-    async def load_file(self, file_path):
+    async def load_file(self, file_path: Path):
         """
         Load file content from storage.
 
@@ -35,12 +39,12 @@ class DocumentStorageInterface(ABC):
             file_path: Path to file in storage
 
         Returns:
-            File content as bytes
+            ICreateFileResponse: Response object with file content
         """
         pass
 
     @abstractmethod
-    async def delete_file(self, file_path):
+    async def delete_file(self, file_path: Path):
         """
         Delete file from storage.
 
@@ -48,12 +52,12 @@ class DocumentStorageInterface(ABC):
             file_path: Path to file in storage
 
         Returns:
-            Boolean success status
+            ICreateFileResponse: Response object with deletion information
         """
         pass
 
     @abstractmethod
-    def get_file_size(self, file_path):
+    def get_file_size(self, file_path: Path) -> float:
         """
         Get file size in bytes.
 

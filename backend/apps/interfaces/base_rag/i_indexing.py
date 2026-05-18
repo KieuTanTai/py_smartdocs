@@ -6,7 +6,7 @@ Abstract interface for vector indexing operations.
 from abc import ABC, abstractmethod
 
 
-class IndexingInterface(ABC):
+class IIndexing(ABC):
     """
     Abstract interface for vector indexing.
     Indexes chunks with embeddings to vector store.

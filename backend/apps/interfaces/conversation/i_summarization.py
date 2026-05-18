@@ -6,7 +6,7 @@ Abstract interface for document summarization.
 from abc import ABC, abstractmethod
 
 
-class SummarizationServiceInterface(ABC):
+class ISummarizationService(ABC):
     """
     Abstract interface for document summarization.
     Generates summaries using LLM.

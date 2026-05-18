@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class CompletionRequestInterface:
+class ICompletionRequest:
     provider: str
     model: str
     prompt: str
@@ -10,7 +10,7 @@ class CompletionRequestInterface:
 
 
 @dataclass
-class CompletionResponseInterface:
+class ICompletionResponse:
     provider: str
     model: str
     content: str
@@ -18,8 +18,9 @@ class CompletionResponseInterface:
     tokens_output: int = 0
     latency_ms: float = 0
 
+
 @dataclass
-class CompletionInfoInterface:
+class ICompletionInfo:
     provider: str
     model: str
     capabilities: list[str]

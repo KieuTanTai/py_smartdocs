@@ -1,16 +1,16 @@
 import httpx
 from sys_services.time_counter import TimeCounter
-from backend.apps.interfaces.conversation.completion_interface import (
-    CompletionInfoInterface,
-    CompletionRequestInterface,
-    CompletionResponseInterface,
+from backend.apps.interfaces.conversation.i_completion import (
+    ICompletionInfo,
+    ICompletionRequest,
+    ICompletionResponse,
 )
-from backend.apps.interfaces.llm.llm_client_interface import LLMClientInterface
-from sys_services.interfaces.logging_interface import ILogger
+from backend.apps.interfaces.llm.i_llm_client import ILLMClient
+from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 
 
-class MistralClient(LLMClientInterface):
+class MistralClient(ILLMClient):
     provider_name = "mistral"
 
     def __init__(
@@ -25,9 +25,7 @@ class MistralClient(LLMClientInterface):
         self.timeout = timeout
         self.logger = logger or DEFAULT_LOGGER
 
-    async def generate(
-        self, request: CompletionRequestInterface
-    ) -> CompletionResponseInterface:
+    async def generate(self, request: ICompletionRequest) -> ICompletionResponse:
         self.logger.info("Sending request to Mistral API.", source=str(self.__class__))
 
         started_at = TimeCounter.start()
@@ -52,7 +50,7 @@ class MistralClient(LLMClientInterface):
             source=str(self.__class__),
         )
 
-        return CompletionResponseInterface(
+        return ICompletionResponse(
             provider=self.provider_name,
             model=request.model or self.model,
             content=data["choices"][0]["message"]["content"],
@@ -81,9 +79,9 @@ class MistralClient(LLMClientInterface):
             )
             return False
 
-    def get_model_info(self) -> CompletionInfoInterface:
+    def get_model_info(self) -> ICompletionInfo:
         self.logger.info("Retrieving Mistral model info.", source=str(self.__class__))
-        return CompletionInfoInterface(
+        return ICompletionInfo(
             provider=self.provider_name,
             model=self.model,
             capabilities=["chat", "completion"],

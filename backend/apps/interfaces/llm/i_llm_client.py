@@ -6,10 +6,14 @@ Abstract interface for language model providers.
 from abc import ABC, abstractmethod
 from typing import Protocol
 
-from backend.apps.interfaces.conversation.completion_interface import CompletionInfoInterface, CompletionRequestInterface, CompletionResponseInterface
+from backend.apps.interfaces.conversation.i_completion import (
+    ICompletionInfo,
+    ICompletionRequest,
+    ICompletionResponse,
+)
 
 
-class LLMClientInterface(ABC):
+class ILLMClient(ABC):
     provider_name: str
     """
     Abstract interface for LLM providers.
@@ -17,7 +21,7 @@ class LLMClientInterface(ABC):
     """
 
     @abstractmethod
-    async def generate(self, request: CompletionRequestInterface) -> CompletionResponseInterface:
+    async def generate(self, request: ICompletionRequest) -> ICompletionResponse:
         """
         Generate text completion.
 
@@ -40,11 +44,11 @@ class LLMClientInterface(ABC):
         pass
 
     @abstractmethod
-    def get_model_info(self) -> CompletionInfoInterface:
+    def get_model_info(self) -> ICompletionInfo:
         """
         Get provider and model information.
 
         Returns:
-            CompletionInfoInterface with provider name, model, capabilities
+            ICompletionInfo with provider name, model, capabilities
         """
         pass

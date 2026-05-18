@@ -1,16 +1,16 @@
 import httpx
 from sys_services.time_counter import TimeCounter
-from backend.apps.interfaces.conversation.completion_interface import (
-    CompletionInfoInterface,
-    CompletionRequestInterface,
-    CompletionResponseInterface,
+from backend.apps.interfaces.conversation.i_completion import (
+    ICompletionInfo,
+    ICompletionRequest,
+    ICompletionResponse,
 )
-from backend.apps.interfaces.llm.llm_client_interface import LLMClientInterface
-from sys_services.interfaces.logging_interface import ILogger
+from backend.apps.interfaces.llm.i_llm_client import ILLMClient
+from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 
 
-class OllamaClient(LLMClientInterface):
+class OllamaClient(ILLMClient):
     provider_name = "ollama"
 
     def __init__(
@@ -25,9 +25,7 @@ class OllamaClient(LLMClientInterface):
         self.timeout = timeout
         self.logger = logger or DEFAULT_LOGGER
 
-    async def generate(
-        self, request: CompletionRequestInterface
-    ) -> CompletionResponseInterface:
+    async def generate(self, request: ICompletionRequest) -> ICompletionResponse:
         self.logger.info(
             f"Sending request to Ollama: model={request.model or self.model}, prompt_length={len(request.prompt)}",
             source="OllamaClient.generate",
@@ -69,7 +67,7 @@ class OllamaClient(LLMClientInterface):
             "successfully generated content from Ollama API.",
             source="OllamaClient.generate",
         )
-        return CompletionResponseInterface(
+        return ICompletionResponse(
             provider=self.provider_name,
             model=request.model or self.model,
             content=data.get("response", ""),
@@ -93,11 +91,11 @@ class OllamaClient(LLMClientInterface):
             )
             return False
 
-    def get_model_info(self) -> CompletionInfoInterface:
+    def get_model_info(self) -> ICompletionInfo:
         self.logger.info(
             "Retrieving Ollama model info.", source="OllamaClient.get_model_info"
         )
-        return CompletionInfoInterface(
+        return ICompletionInfo(
             provider=self.provider_name,
             model=self.model,
             capabilities=["text-generation"],

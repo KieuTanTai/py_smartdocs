@@ -6,7 +6,7 @@ Abstract interface for chunk and document location tracking.
 from abc import ABC, abstractmethod
 
 
-class LocateServiceInterface(ABC):
+class ILocateService(ABC):
     """
     Abstract interface for locating documents and chunks.
     Manages relationships between chunks and source documents.
