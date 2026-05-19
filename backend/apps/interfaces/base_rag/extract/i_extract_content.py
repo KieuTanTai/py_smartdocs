@@ -5,8 +5,7 @@ Abstract interface for file content extraction orchestration.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from backend.apps.interfaces.base_rag.extract.i_ocr_response import IOCRResponse
-
+from backend.apps.interfaces.conversation.i_completion import ICompletionResponse
 
 class IExtractContent(ABC):
     """
@@ -15,7 +14,7 @@ class IExtractContent(ABC):
     """
 
     @abstractmethod
-    async def extract_from_file_text(self, file_path: Path) -> IOCRResponse:
+    async def extract_from_file_text(self, file_path: Path) -> ICompletionResponse:
         """
         Extract content from document file.
 
@@ -23,12 +22,12 @@ class IExtractContent(ABC):
             file_path: Path to document file
 
         Returns:
-            IOCRResponse: Response object with extracted text and metadata
+            ICompletionResponse: Response object with extracted text and metadata
         """
         pass
 
     @abstractmethod
-    async def extract_from_file_image(self, file_path: Path) -> IOCRResponse:
+    async def extract_from_file_image(self, file_path: Path) -> ICompletionResponse:
         """
         Extract image content.
 
@@ -36,6 +35,6 @@ class IExtractContent(ABC):
             file_path: Path to image file
 
         Returns:
-            IOCRResponse: Response object with extracted text and metadata
+            ICompletionResponse: Response object with extracted text and metadata
         """
         pass

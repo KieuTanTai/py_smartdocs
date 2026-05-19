@@ -18,13 +18,13 @@ class Normalize:
     @staticmethod
     def normalize_markdown_file(content: str, index: str) -> tuple[str, str]:
         source_log = f"{Path(__file__).parent.absolute()}/{Path(__file__).name}"
-        if not check_empty_content(content, source_log):
+        if check_empty_content(content, source_log, logger) is False:
             raise ValueError(
                 f"Input content is empty for index {index}. Cannot normalize empty content."
             )
         normalized_content = Normalize.normalize_markdown(content)
         try:
-            if not check_empty_content(normalized_content, source_log):
+            if check_empty_content(normalized_content, source_log, logger) is False:
                 raise ValueError(
                     f"Normalized content is empty for index {index}. Cannot write empty content to file."
                 )

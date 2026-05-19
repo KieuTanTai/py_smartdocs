@@ -19,7 +19,7 @@ class Chunking:
                 chunk_size=chunk_size, chunk_overlap=chunk_overlap
             )
             result = text_splitter.split_text(text)
-            if not check_empty_contents(result, source_log):
+            if not check_empty_contents(result, source_log, logger):
                 raise ValueError(
                     "Chunking resulted in empty content. This may indicate an issue with the chunking process."
                 )

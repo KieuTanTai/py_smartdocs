@@ -1,5 +1,7 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
+from backend.apps.interfaces.conversation.i_completion import ICompletionResponse
+from backend.apps.interfaces.files_storage.i_create_file_response import ICreateFileResponse
 
 class ILLMOCR(ABC):
     """
@@ -8,27 +10,6 @@ class ILLMOCR(ABC):
     """
     
     @abstractmethod
-    async def extract_text_from_image(self, image_path: Path) -> str:
-        """
-        Extract text from image using OCR.
-
-        Args:
-            image_path: Path to the image file
-
-        Returns:
-            Extracted text as a string
-        """
-        pass
-
-    @abstractmethod
-    async def extract_text_from_document(self, document_path: Path) -> str:
-        """
-        Extract text from document using OCR.
-
-        Args:
-            document_path: Path to the document file
-
-        Returns:
-            Extracted text as a string
-        """
+    async def process_ocr(self, uploaded_pdf: ICreateFileResponse) -> ICompletionResponse:
+        """Process OCR on the uploaded PDF file and return extracted text."""
         pass

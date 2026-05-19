@@ -4,7 +4,6 @@ Abstract interface for language model providers.
 """
 
 from abc import ABC, abstractmethod
-from typing import Protocol
 
 from backend.apps.interfaces.conversation.i_completion import (
     ICompletionInfo,

@@ -6,6 +6,7 @@ Abstract interface for LLM provider selection and instantiation.
 from abc import ABC, abstractmethod
 
 from backend.apps.interfaces.llm.i_llm_client import ILLMClient
+from sys_services.enums.e_provider_name import EProviderName
 
 
 class ILLMProviderFactory(ABC):
@@ -15,12 +16,12 @@ class ILLMProviderFactory(ABC):
     """
 
     @abstractmethod
-    def get_provider(self) -> ILLMClient:
+    def get_provider(self, provider: EProviderName) -> ILLMClient:
         """
         Get LLM provider client.
 
         Args:
-            provider_name: Provider name ('gemini', 'ollama', 'mistral', etc.)
+            provider: Provider name ('gemini', 'ollama', 'mistral', etc.)
 
         Returns:
             ILLMClient implementation
