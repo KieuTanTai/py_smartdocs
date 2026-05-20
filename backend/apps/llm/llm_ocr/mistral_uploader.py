@@ -1,17 +1,17 @@
 from pathlib import Path
 
-from backend.apps.interfaces.files_storage.i_create_file_response import (
+from backend.apps.interfaces.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.interfaces.files_storage.i_mistral_uploader import IMistralUploader
-from backend.apps.interfaces.files_storage.i_get_file_response import IGetFileResponse
+from backend.apps.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
+from backend.apps.interfaces.storage.i_get_file_response import IGetFileResponse
 from mistralai.client import Mistral, cast
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 
 
-class MistralUploader(IMistralUploader):
+class MistralUploader(ILLMUploader):
     def __init__(self, logger: ILogger | None = None):
         self.logger = logger or DEFAULT_LOGGER
         self.client = Mistral(api_key=MISTRAL_CONFIG["api_key"])

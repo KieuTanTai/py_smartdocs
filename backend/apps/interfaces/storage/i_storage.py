@@ -5,10 +5,10 @@ Abstract interface for file storage operations.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from backend.apps.interfaces.files_storage.i_create_file_response import (
+from backend.apps.interfaces.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.interfaces.files_storage.i_get_file_response import IGetFileResponse
+from backend.apps.interfaces.storage.i_get_file_response import IGetFileResponse
 from sys_services.enums.e_mime_type import EMimeType
 
 
@@ -19,7 +19,9 @@ class IFileStorage(ABC):
     """
 
     @abstractmethod
-    async def save_file(self, mime_type: EMimeType, file_path: Path) -> ICreateFileResponse:
+    async def save_file(
+        self, mime_type: EMimeType, file_path: Path
+    ) -> ICreateFileResponse:
         """
         Save uploaded file to storage.
 

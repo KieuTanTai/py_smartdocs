@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from backend.apps.interfaces.conversation.i_completion import ICompletionResponse
-from backend.apps.interfaces.files_storage.i_storage import IFileStorage
+from backend.apps.interfaces.storage.i_storage import IFileStorage
 from backend.apps.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
 from sys_services.enums.e_provider_name import EProviderName
 from sys_services.interfaces.i_logging import ILogger

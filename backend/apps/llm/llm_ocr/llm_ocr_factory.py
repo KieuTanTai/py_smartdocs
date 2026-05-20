@@ -1,5 +1,5 @@
 from backend.apps.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
-from backend.apps.llm.llm_ocr.mistral_llm_ocr import MistralLLMOCR
+from backend.apps.llm.llm_ocr.mistral_ocr import MistralLLMOCR
 from backend.apps.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
 from sys_services.enums.e_provider_name import EProviderName
 from sys_services.interfaces.i_logging import ILogger

@@ -6,13 +6,13 @@ Abstract interface for uploading files to Mistral.
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from backend.apps.interfaces.files_storage.i_create_file_response import (
+from backend.apps.interfaces.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.interfaces.files_storage.i_get_file_response import IGetFileResponse
+from backend.apps.interfaces.storage.i_get_file_response import IGetFileResponse
 
 
-class IMistralUploader(ABC):
+class ILLMUploader(ABC):
     """
     Abstract interface for Mistral file uploader.
     """

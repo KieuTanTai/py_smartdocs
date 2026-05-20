@@ -32,7 +32,7 @@ from backend.apps.interfaces.base_rag.locate.i_locate import ILocateService
 # Application service interfaces
 from backend.apps.interfaces.conversation.i_conversation import IConversationService
 from backend.apps.interfaces.conversation.i_message import IMessageService
-from backend.apps.interfaces.files_storage.i_storage import IFileStorage
+from backend.apps.interfaces.storage.i_storage import IFileStorage
 
 # Graph and background job interfaces
 from backend.apps.interfaces.graph_rag.i_graph import IGraphService
