@@ -8,6 +8,7 @@ from pathlib import Path
 from backend.apps.interfaces.files_storage.i_create_file_response import (
     ICreateFileResponse,
 )
+from backend.apps.interfaces.files_storage.i_get_file_response import IGetFileResponse
 from sys_services.enums.e_mime_type import EMimeType
 
 
@@ -33,40 +34,38 @@ class IFileStorage(ABC):
         pass
 
     @abstractmethod
-    async def load_file(self, mime_type: EMimeType, file_path: Path):
+    async def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
         """
         Load file content from storage.
 
         Args:
-            mime_type: MIME type of the file
-            file_path: Path to file in storage
+            file_info: File response info from Mistral
 
         Returns:
-            ICreateFileResponse: Response object with file content
+            IGetFileResponse: Response object with file content or None if not found
         """
         pass
 
     @abstractmethod
-    async def delete_file(self, mime_type: EMimeType, file_path: Path):
+    async def delete_file(self, file_id: str) -> bool:
         """
         Delete file from storage.
 
         Args:
-            mime_type: MIME type of the file
-            file_path: Path to file in storage
+            file_id: File id in Mistral
 
         Returns:
-            ICreateFileResponse: Response object with deletion information
+            bool: True if file was deleted, False otherwise
         """
         pass
 
     @abstractmethod
-    def get_file_size(self, mime_type: EMimeType, file_path: Path) -> float:
+    def get_file_size(self, file_info: ICreateFileResponse) -> float:
         """
         Get file size in bytes.
 
         Args:
-            file_path: Path to file in storage
+            file_info: File response info from Mistral
 
         Returns:
             File size in bytes

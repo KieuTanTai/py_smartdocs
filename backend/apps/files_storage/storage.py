@@ -3,6 +3,7 @@ from pathlib import Path
 from backend.apps.interfaces.files_storage.i_create_file_response import (
     ICreateFileResponse,
 )
+from backend.apps.interfaces.files_storage.i_get_file_response import IGetFileResponse
 from backend.apps.interfaces.files_storage.i_storage import IFileStorage
 from backend.apps.interfaces.files_storage.i_mistral_uploader import IMistralUploader
 from sys_services.interfaces.i_logging import ILogger
@@ -36,19 +37,15 @@ class FileStorage(IFileStorage):
         new_file_path = self.__check_all(mime_type=mime_type, file_path=file_path)
         return await self.uploader.upload_file(new_file_path)
 
-    async def load_file(self, mime_type: EMimeType, file_path: Path):
-        # Implement file loading logic (e.g., read from local filesystem or cloud storage)
-        pass
+    async def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
+        return await self.uploader.load_file(file_info)
 
-    async def delete_file(self, mime_type: EMimeType, file_path: Path):
-        # Implement file deletion logic (e.g., delete from local filesystem or cloud storage)
-        pass
+    async def delete_file(self, file_id: str) -> bool:
+        return await self.uploader.delete_file(file_id)
 
-# This method is to get file size in bytes, which can be used for logging, validation, etc.
-    def get_file_size(self, mime_type: EMimeType, file_path: Path) -> float:
-        # Implement logic to get file size in bytes
-        return 0;
-        pass
+    # This method is to get file size in bytes, which can be used for logging, validation, etc.
+    def get_file_size(self, file_info: ICreateFileResponse) -> float:
+        return float(file_info.size_bytes)
 
     def __check_and_move_file_to_storage_dir(
         self, mime_type: EMimeType, file_path: Path
