@@ -3,8 +3,8 @@ import shutil
 from pathlib import Path
 
 from backend.apps.core.extract_file.mistral_ocr import MistralOCR
-from backend.apps.files_storage.mistral_uploader import MistralUploader
-from backend.apps.files_storage.storage import FileStorage
+from backend.apps.core.files_storage.mistral_uploader import MistralUploader
+from backend.apps.core.files_storage.storage import FileStorage
 from backend.apps.llm.llm_ocr.llm_ocr_factory import LLMOCRFactory
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
