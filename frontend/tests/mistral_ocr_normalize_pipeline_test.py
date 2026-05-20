@@ -1,5 +1,5 @@
 from pathlib import Path
-from backend.apps.core.extract_file.mistral_ocr import MistralOCRExtractor
+from backend.apps.core.extract.mistral_ocr import MistralOCRExtractor
 from backend.apps.services.base_rag.normalize_service import Normalize
 from backend.apps.services.base_rag.chunking_service import Chunking
 

@@ -2,7 +2,7 @@ import asyncio
 import shutil
 from pathlib import Path
 
-from backend.apps.core.extract_file.mistral_ocr import MistralOCR
+from backend.apps.core.extract.mistral_ocr import MistralOCR
 from backend.apps.llm.llm_ocr.mistral_uploader import MistralUploader
 from backend.apps.core.storage.storage import FileStorage
 from backend.apps.llm.llm_ocr.llm_ocr_factory import LLMOCRFactory

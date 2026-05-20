@@ -6,7 +6,7 @@ from backend.apps.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
 from sys_services.enums.e_provider_name import EProviderName
 from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
-from backend.apps.interfaces.base_rag.extract.i_extract_content import IExtractContent
+from backend.apps.interfaces.rag_base.extract.i_extract_content import IExtractContent
 from backend.apps.utils.mime_type import get_mime_type_from_path
 
 

@@ -10,7 +10,7 @@ and flexible backend switching.
 # Core extraction and embedding interfaces
 from backend.apps.interfaces.base_rag.extract.i_extractor import IExtractor
 from backend.apps.interfaces.base_rag.embed.i_embedder import IEmbedder
-from backend.apps.interfaces.base_rag.locate.i_vector_store import IVectorStore
+from backend.apps.interfaces.rag_base.locate.i_vector_store import IVectorStore
 
 # LLM provider interfaces
 from backend.apps.interfaces.llm.i_llm_client import ILLMClient
@@ -21,13 +21,13 @@ from backend.apps.interfaces.conversation.i_completion import (
 )
 
 # Pipeline service interfaces
-from backend.apps.interfaces.base_rag.extract.i_normalization import INormalization
-from backend.apps.interfaces.base_rag.chunk.i_chunking import IChunking
-from backend.apps.interfaces.base_rag.i_indexing import IIndexing
-from backend.apps.interfaces.base_rag.extract.i_extract_content import IExtractContent
+from backend.apps.interfaces.rag_base.extract.i_normalization import INormalization
+from backend.apps.interfaces.rag_base.chunk.i_chunking import IChunking
+from backend.apps.interfaces.rag_base.i_indexing import IIndexing
+from backend.apps.interfaces.rag_base.extract.i_extract_content import IExtractContent
 from backend.apps.interfaces.conversation.i_search import ISearchService
 from backend.apps.interfaces.conversation.i_summarization import ISummarizationService
-from backend.apps.interfaces.base_rag.locate.i_locate import ILocateService
+from backend.apps.interfaces.rag_base.locate.i_locate import ILocateService
 
 # Application service interfaces
 from backend.apps.interfaces.conversation.i_conversation import IConversationService
