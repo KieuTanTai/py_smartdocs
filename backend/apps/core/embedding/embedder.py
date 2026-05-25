@@ -3,6 +3,8 @@ Text embedder module.
 Generates embeddings for text chunks using various models.
 """
 
+from backend.apps.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
+
 
 class Embedder:
     """
@@ -10,9 +12,8 @@ class Embedder:
     Provider-agnostic interface for embedding models.
     """
 
-    def __init__(self):
-        # TODO: Initialize embedder with model configuration
-        pass
+    def __init__(self, provider: ILLMProviderFactory):
+        self.provider = provider
 
     def embed(self, text):
         # TODO: Generate embedding for single text
@@ -26,26 +27,4 @@ class Embedder:
 
     def get_dimension(self):
         # TODO: Return embedding dimension size
-        pass
-
-
-class GeminiEmbedder(Embedder):
-    """
-    Google Gemini embedding provider.
-    Uses Gemini API for text embeddings.
-    """
-
-    def __init__(self):
-        # TODO: Initialize Gemini embedder with API key
-        pass
-
-
-class MistralEmbedder(Embedder):
-    """
-    Mistral embedding provider.
-    Uses Mistral API for text embeddings.
-    """
-
-    def __init__(self):
-        # TODO: Initialize Mistral embedder with API key
         pass

@@ -8,34 +8,36 @@ and flexible backend switching.
 """
 
 # Core extraction and embedding interfaces
-from backend.apps.interfaces.base_rag.extract.i_extractor import IExtractor
-from backend.apps.interfaces.base_rag.embed.i_embedder import IEmbedder
-from backend.apps.interfaces.rag_base.locate.i_vector_store import IVectorStore
+from backend.apps.interfaces.core.extract.i_extractor import IExtractor
+from backend.apps.interfaces.core.embedding.i_embedder import IEmbedder
+from backend.apps.interfaces.services.rag_base.locate.i_vector_store import IVectorStore
 
 # LLM provider interfaces
 from backend.apps.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
-from backend.apps.interfaces.conversation.i_completion import (
+from backend.apps.interfaces.services.chat.i_completion import (
     ICompletionRequest,
     ICompletionResponse,
 )
 
 # Pipeline service interfaces
-from backend.apps.interfaces.rag_base.extract.i_normalization import INormalization
-from backend.apps.interfaces.rag_base.chunk.i_chunking import IChunking
-from backend.apps.interfaces.rag_base.i_indexing import IIndexing
-from backend.apps.interfaces.rag_base.extract.i_extract_content import IExtractContent
-from backend.apps.interfaces.conversation.i_search import ISearchService
-from backend.apps.interfaces.conversation.i_summarization import ISummarizationService
-from backend.apps.interfaces.rag_base.locate.i_locate import ILocateService
+from backend.apps.interfaces.core.chunk.i_chunking import IChunking
+from backend.apps.interfaces.core.normalize.i_normalize import INormalize
+from backend.apps.interfaces.services.rag_base.indexing.i_indexing import IIndexing
+from backend.apps.interfaces.services.rag_base.extract.i_extract_content import (
+    IExtractContent,
+)
+from backend.apps.interfaces.services.chat.i_search import ISearchService
+from backend.apps.interfaces.services.chat.i_summarization import ISummarizationService
+from backend.apps.interfaces.services.rag_base.locate.i_locate import ILocateService
 
 # Application service interfaces
-from backend.apps.interfaces.conversation.i_conversation import IConversationService
-from backend.apps.interfaces.conversation.i_message import IMessageService
-from backend.apps.interfaces.storage.i_storage import IFileStorage
+from backend.apps.interfaces.services.chat.i_conversation import IConversationService
+from backend.apps.interfaces.services.chat.i_message import IMessageService
+from backend.apps.interfaces.core.storage.i_storage import IFileStorage
 
 # Graph and background job interfaces
-from backend.apps.interfaces.graph_rag.i_graph import IGraphService
+from backend.apps.interfaces.services.graph_rag.i_graph import IGraphService
 from backend.apps.interfaces.job.i_job_management import IJobManagement
 
 __all__ = [
@@ -49,7 +51,7 @@ __all__ = [
     "ICompletionRequest",
     "ICompletionResponse",
     # Pipeline interfaces
-    "INormalization",
+    "INormalize",
     "IChunking",
     "IIndexing",
     "IExtractContent",

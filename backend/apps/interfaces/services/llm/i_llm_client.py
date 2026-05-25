@@ -5,7 +5,7 @@ Abstract interface for language model providers.
 
 from abc import ABC, abstractmethod
 
-from backend.apps.interfaces.services.chat.i_completion import (
+from backend.apps.interfaces.services.conversation.i_completion import (
     ICompletionInfo,
     ICompletionRequest,
     ICompletionResponse,

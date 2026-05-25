@@ -4,7 +4,7 @@ Test requests to all 3 LLM providers: Gemini, Mistral, and Ollama
 
 import asyncio
 
-from backend.apps.interfaces.conversation.i_completion import (
+from backend.apps.interfaces.services.chat.i_completion import (
     ICompletionRequest,
     ICompletionResponse,
 )

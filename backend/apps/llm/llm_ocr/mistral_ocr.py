@@ -1,7 +1,7 @@
 from pathlib import Path
 from mistralai.client import Mistral, models
-from backend.apps.interfaces.conversation.i_completion import ICompletionResponse
-from backend.apps.interfaces.storage.i_create_file_response import (
+from backend.apps.interfaces.services.chat.i_completion import ICompletionResponse
+from backend.apps.interfaces.core.storage.i_create_file_response import (
     ICreateFileResponse,
 )
 from backend.apps.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR

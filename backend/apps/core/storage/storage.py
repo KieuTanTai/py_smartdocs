@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from backend.apps.interfaces.storage.i_create_file_response import (
+from backend.apps.interfaces.core.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.interfaces.storage.i_get_file_response import IGetFileResponse
-from backend.apps.interfaces.storage.i_storage import IFileStorage
+from backend.apps.interfaces.core.storage.i_get_file_response import IGetFileResponse
+from backend.apps.interfaces.core.storage.i_storage import IFileStorage
 from backend.apps.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
 from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER

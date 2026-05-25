@@ -1,7 +1,7 @@
 
 import re
 
-from backend.apps.interfaces.rag_base.normalize.i_normalize import INormalize
+from backend.apps.interfaces.core.normalize.i_normalize import INormalize
 from frontend.tests.normalize_test import TEST_DATA_DIR
 from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER

@@ -11,6 +11,7 @@ from .gemini import GeminiClient
 from .mistral import MistralClient
 from .ollama import OllamaClient
 
+
 class LLMProviderFactory(ILLMProviderFactory):
     def __init__(self, config_provider: IConfigProvider, logger: ILogger | None = None):
         self.logger = logger or DEFAULT_LOGGER

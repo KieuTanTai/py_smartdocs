@@ -1,6 +1,6 @@
 import httpx
 from sys_services.time_counter import TimeCounter
-from backend.apps.interfaces.conversation.i_completion import (
+from backend.apps.interfaces.services.chat.i_completion import (
     ICompletionInfo,
     ICompletionRequest,
     ICompletionResponse,
