@@ -6,7 +6,7 @@ Abstract interface for vector storage operations.
 from abc import ABC, abstractmethod
 
 
-class IVectorStore(ABC):
+class IVectorStoreService(ABC):
     """
     Abstract interface for vector storage operations.
     Provider-agnostic interface for vector databases (Qdrant, Faiss, etc.).

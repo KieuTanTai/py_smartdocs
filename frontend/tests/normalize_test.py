@@ -3,7 +3,7 @@ from pathlib import Path
 
 CURRENT_DIR = Path(__file__).parent
 TEST_DATA_DIR = CURRENT_DIR / "output"
-TEST_FILE = TEST_DATA_DIR / "output_266a6150-f635-42f3-8977-4b1c72887e58.md"
+TEST_FILE = TEST_DATA_DIR / "output_5e166ad9-f829-4524-acb1-321adbce55de.md"
 def test_normalize():
     if not TEST_FILE.exists():
         raise FileNotFoundError(f"Test file {TEST_FILE} does not exist.")

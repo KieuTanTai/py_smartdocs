@@ -2,12 +2,14 @@ import asyncio
 import shutil
 from pathlib import Path
 
-from backend.apps.core.extract.mistral_ocr import MistralOCR
+from backend.apps.core.extract.extractor import Extractor
 from backend.apps.llm.llm_ocr.mistral_uploader import MistralUploader
 from backend.apps.core.storage.storage import FileStorage
 from backend.apps.llm.llm_ocr.llm_ocr_factory import LLMOCRFactory
+from backend.apps.services.rag_base.extract.extract_content_service import IExtractContentService
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
+from sys_services.enums.e_provider_name import EProviderName
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 PDF_SOURCE = (
@@ -35,9 +37,10 @@ async def run_text_ocr(output_dir: Path) -> None:
     uploader = MistralUploader(logger)
     storage_dir = output_dir / "storage"
     storage = FileStorage(storage_dir, factory, uploader, logger)
-    ocr = MistralOCR(factory, storage, logger)
+    extract_content = IExtractContentService(factory, storage, EProviderName.MISTRAL, logger)
+    ocr = Extractor(extract_content, logger) 
 
-    response = await ocr.extract_from_file_text(file_path)
+    response = await ocr.extract(file_path)
     output_path = output_dir / f"mistral_ocr_text_{file_path.stem}.md"
     output_path.write_text(response.content)
     logger.info(
@@ -54,9 +57,10 @@ async def run_image_ocr(output_dir: Path) -> None:
     uploader = MistralUploader(logger)
     storage_dir = output_dir / "storage"
     storage = FileStorage(storage_dir, factory, uploader, logger)
-    ocr = MistralOCR(factory, storage, logger)
+    extract_content = IExtractContentService(factory, storage, EProviderName.MISTRAL, logger)
+    ocr = Extractor(extract_content, logger)
 
-    response = await ocr.extract_from_file_image(file_path)
+    response = await ocr.extract(file_path)
     output_path = output_dir / f"mistral_ocr_image_{file_path.stem}.md"
     output_path.write_text(response.content)
     logger.info(

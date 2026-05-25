@@ -7,7 +7,7 @@ from mistralai.client import Mistral
 
 CURRENT_DIR = Path(__file__).parent.resolve()
 OUTPUT_DIR = CURRENT_DIR / "output"
-CHUNK_FILE = OUTPUT_DIR / "chunks_5e166ad9-f829-4524-acb1-321adbce55de.md"
+CHUNK_FILE = OUTPUT_DIR / "chunks_output.txt"
 
 id = "test_embedding"
 

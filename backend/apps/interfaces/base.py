@@ -10,7 +10,7 @@ and flexible backend switching.
 # Core extraction and embedding interfaces
 from backend.apps.interfaces.core.extract.i_extractor import IExtractor
 from backend.apps.interfaces.core.embedding.i_embedder import IEmbedder
-from backend.apps.interfaces.services.rag_base.locate.i_vector_store import IVectorStore
+from backend.apps.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
 
 # LLM provider interfaces
 from backend.apps.interfaces.llm.i_llm_client import ILLMClient
@@ -29,7 +29,7 @@ from backend.apps.interfaces.services.rag_base.extract.i_extract_content import 
 )
 from backend.apps.interfaces.services.chat.i_search import ISearchService
 from backend.apps.interfaces.services.chat.i_summarization import ISummarizationService
-from backend.apps.interfaces.services.rag_base.locate.i_locate import ILocateService
+from backend.apps.interfaces.services.rag_base.locate.i_locate_service import ILocateService
 
 # Application service interfaces
 from backend.apps.interfaces.services.chat.i_conversation import IConversationService
@@ -44,7 +44,7 @@ __all__ = [
     # Core interfaces
     "IExtractor",
     "IEmbedder",
-    "IVectorStore",
+    "IVectorStoreService",
     # LLM interfaces
     "ILLMClient",
     "ILLMProviderFactory",

@@ -14,10 +14,10 @@ from sys_services.enums.e_mime_type import EMimeType
 class Extractor(IExtractor):
     def __init__(
         self,
-        extractor: IExtractContent,
+        extract_content: IExtractContent,
         logger: ILogger | None = None,
     ):
-        self.extractor = extractor
+        self.extract_content = extract_content
         self.logger = logger or DEFAULT_LOGGER
 
     async def extract(self, file_path: Path) -> ICompletionResponse:
@@ -28,6 +28,6 @@ class Extractor(IExtractor):
             EMimeType.JPG.value,
             EMimeType.TIFF.value,
         }:
-            return await self.extractor.extract_from_file_image(file_path)
+            return await self.extract_content.extract_from_file_image(file_path)
 
-        return await self.extractor.extract_from_file_text(file_path)
+        return await self.extract_content.extract_from_file_text(file_path)

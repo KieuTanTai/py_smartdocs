@@ -3,7 +3,7 @@ import nltk
 
 CURRENT_DIR = Path(__file__).parent.resolve()
 TEST_DATA_DIR = CURRENT_DIR / "output"
-TEST_FILE = TEST_DATA_DIR / "normalized_ece34920-8637-4706-9d52-4deb5e064976.md"
+TEST_FILE = TEST_DATA_DIR / "normalized_test.md"
 from langchain_text_splitters import NLTKTextSplitter
 
 def test_nltk_text_splitter():
