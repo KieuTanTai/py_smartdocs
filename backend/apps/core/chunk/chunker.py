@@ -1,5 +1,5 @@
 from langchain_text_splitters import NLTKTextSplitter
-from backend.apps.interfaces.core.chunk.i_chunking import IChunking
+from backend.apps.core.interfaces.core.chunk.i_chunking import IChunking
 from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 

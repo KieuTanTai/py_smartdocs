@@ -5,30 +5,31 @@ Abstract interface for vector storage operations.
 
 from abc import ABC, abstractmethod
 
+import numpy as np
 
 class IVectorStoreService(ABC):
     """
     Abstract interface for vector storage operations.
-    Provider-agnostic interface for vector databases (Qdrant, Faiss, etc.).
+    Provider-agnostic interface for vector databases (Faiss, etc.).
     """
 
     @abstractmethod
-    async def upsert(self, vector_id, vector, metadata):
+    async def upsert(self, vector_id: str, vector: np.ndarray):
         """
         Insert or update vector in store.
 
         Args:
             vector_id: Unique identifier for vector
             vector: Vector embedding (list of floats)
-            metadata: Dict with chunk content, document_id, position, etc.
 
         Returns:
             UpsertResult with success status
         """
         pass
 
+
     @abstractmethod
-    async def search(self, query_vector, limit=5, filters=None):
+    async def search(self, query_vector: np.ndarray , limit=5, filters=None):
         """
         Perform similarity search.
 
@@ -41,6 +42,9 @@ class IVectorStoreService(ABC):
             List of SearchHit objects with vectors, scores, metadata
         """
         pass
+
+    @abstractmethod
+
 
     @abstractmethod
     async def delete(self, vector_id):

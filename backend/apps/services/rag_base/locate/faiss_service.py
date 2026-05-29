@@ -1,33 +1,43 @@
 from pathlib import Path
-import re
-from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
+
 import numpy as np
 import faiss
-from mistralai.client import Mistral
+
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import (
+    IVectorStoreService,
+)
+from backend.apps.services.rag_base.locate.vector_store_base import (
+    EmbeddingInput,
+    EmbeddingStorageResult,
+    VectorStoreBase,
+)
+from sys_services.interfaces.i_logging import ILogger
 
 
-class FaissService:
-    def __init__(self):
-        pass
+class FaissService(VectorStoreBase, IVectorStoreService):
+    """
+        singleton service for FAISS vector store operations. 
+        This class provides methods to upsert, search, delete, cache vectors and get collection info using FAISS library. 
+        It is designed to be used as a vector store backend in the LocateService.
+    """
+    def __init__(
+        self,
+        metadata_dir: Path | None = None,
+        logger: ILogger | None = None,
+    ):
+        super().__init__(
+            metadata_dir=metadata_dir,
+            logger=logger,
+        )
 
-    def save_embedding(self, id: str, responses: np.ndarray) -> None:
-        output_dir = Path("output")
-        output_dir.mkdir(exist_ok=True)
-        with open(output_dir / f"{id}.csv", "a") as f:
-            for vec in responses:
-                f.writelines(f"{vec}")
+    async def upsert(self, vector_id, vector, metadata):
+        raise NotImplementedError("Faiss upsert is not implemented yet")
 
-    def load_to_faiss_index(
-        self, dimension: int, np_vectors: np.ndarray
-    ) -> faiss.IndexFlatL2:
-        index = faiss.IndexFlatL2(dimension)
-        index.add(np_vectors) # type: ignore
-        print("FAISS index: " + str(index.ntotal))
-        print("Data after adding to FAISS index: " + str(index.reconstruct_n(0, index.ntotal)))  # type: ignore
-        print("FAISS index created and vectors added successfully.")
-        return index
+    async def search(self, query_vector, limit=5, filters=None):
+        raise NotImplementedError("Faiss search is not implemented yet")
 
-    def save_faiss_to_local_file(
-        self, index: faiss.IndexFlatL2, file_path: Path
-    ) -> None:
-        faiss.write_index(index, str(file_path))
+    async def delete(self, vector_id):
+        raise NotImplementedError("Faiss delete is not implemented yet")
+
+    async def get_collection_info(self):
+        raise NotImplementedError("Faiss collection info is not implemented yet")

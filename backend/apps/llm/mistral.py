@@ -5,7 +5,7 @@ from backend.apps.interfaces.services.chat.i_completion import (
     ICompletionRequest,
     ICompletionResponse,
 )
-from backend.apps.interfaces.llm.i_llm_client import ILLMClient
+from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 

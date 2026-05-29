@@ -145,6 +145,7 @@ Reason:
 Persistence:
 
 - Mariadb stores transactional data and history
+- Chat history, messages, and conversation-document mappings are persisted in Mariadb
 - Faiss/Qdrant stores vectors and searchable chunk metadata
 - Files are stored in Django media storage for now (on mistral cloud if using mistral api branch)
 
@@ -246,6 +247,7 @@ Conversation:
 ConversationDocument:
 
 Many-to-many join table between conversations and documents.
+Stored in Mariadb to preserve chat-to-file mapping.
 
 - Suggested fields:
   - `id`
@@ -254,6 +256,8 @@ Many-to-many join table between conversations and documents.
   - `created_at`
 
 Message:
+
+Stored in Mariadb as the canonical chat history record.
 
 - Suggested fields:
   - `id`

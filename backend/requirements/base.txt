@@ -13,3 +13,4 @@ mariadb
 mistralai
 NLTK
 google-genai
+dependency-injector

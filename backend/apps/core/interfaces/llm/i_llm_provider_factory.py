@@ -5,7 +5,7 @@ Abstract interface for LLM provider selection and instantiation.
 
 from abc import ABC, abstractmethod
 
-from backend.apps.interfaces.llm.i_llm_client import ILLMClient
+from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from sys_services.enums.e_provider_name import EProviderName
 
 

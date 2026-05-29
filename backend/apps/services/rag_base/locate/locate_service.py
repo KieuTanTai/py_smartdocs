@@ -1,5 +1,42 @@
-from backend.apps.services.rag_base.locate import faiss_service
-from backend.apps.services.rag_base.locate import qdrant_service
+from pathlib import Path
 
-class LocateService:
-    pass
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import (
+    IVectorStoreService,
+)
+from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service import (
+    ILocateService,
+)
+from backend.apps.services.rag_base.locate.faiss_service import FaissService
+from sys_services.enums.e_backend_storage_name import EBackendStorageName
+from sys_services.interfaces.i_logging import ILogger
+from sys_services.logging import DEFAULT_LOGGER
+
+
+class LocateService(ILocateService):
+    def __init__(
+        self,
+        metadata_dir: Path | None = None,
+        faiss_service: FaissService | None = None,
+        logger: ILogger | None = None,
+    ):
+        self.metadata_dir = metadata_dir
+        self.faiss_service = faiss_service
+        self.logger = logger or DEFAULT_LOGGER
+
+    def get_vector_store(self, backend: EBackendStorageName) -> IVectorStoreService:
+        """Get vector store service instance based on backend name.
+        Args:
+            backend: Name of vector store backend (e.g., "faiss")
+        Returns:
+            IVectorStoreService instance for specified backend
+        """
+        if backend == EBackendStorageName.FAISS:
+            faiss_service = self.faiss_service or FaissService(
+                metadata_dir=self.metadata_dir,
+                logger=self.logger,
+            )
+            self.logger.info("Using FAISS vector store")
+            self.logger.info(f"FAISS metadata directory: {self.metadata_dir}")
+            return faiss_service
+        self.logger.error(f"Unsupported vector store backend: {backend}")
+        raise ValueError(f"Unsupported vector store backend: {backend}")

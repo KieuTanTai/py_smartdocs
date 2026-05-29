@@ -11,11 +11,10 @@ CHUNK_FILE = OUTPUT_DIR / "chunks_output.txt"
 
 id = "test_embedding"
 
-
 def test_get_chunks() -> list[str]:
     with open(CHUNK_FILE, "r") as f:
         content = f.read()
-    chunks = re.split(r"--- Chunk \d+ ---", content)
+    chunks = re.split(r"Chunk \d+:", content)
     chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
     print(f"Total chunks found: {len(chunks)}")
     return chunks[:5]
@@ -51,7 +50,6 @@ def test_load_to_faiss_index(
     index = faiss.IndexFlatL2(dimension)
     index.add(np_vectors)  # type: ignore
     print("FAISS index: " + str(index.ntotal))
-    print("Data after adding to FAISS index: " + str(index.reconstruct_n(0, index.ntotal)))  # type: ignore
     print("FAISS index created and vectors added successfully.")
     return index
 
@@ -60,6 +58,10 @@ def test_save_faiss_to_local_file(index: faiss.IndexFlatL2, file_path: Path) -> 
     faiss.write_index(index, str(file_path))
     print(f"FAISS index saved to {file_path} successfully.")
 
+def test_load_faiss_from_local_file(file_path: Path) -> faiss.IndexFlatL2:
+    index = faiss.read_index(str(file_path))
+    print(f"FAISS index loaded from {file_path} successfully.")
+    return index
 
 if __name__ == "__main__":
     chunks = test_get_chunks()
@@ -68,4 +70,9 @@ if __name__ == "__main__":
     test_save_embedding(id, responses)
     test_check_output_file(id)
     faiss_index = test_load_to_faiss_index(dimension=responses.shape[1], np_vectors=responses)
+    print(faiss_index)  # Print the index object to verify its creation
+    print("FAISS index created with the given embeddings." + str(faiss_index.ntotal))
     test_save_faiss_to_local_file(faiss_index, OUTPUT_DIR / f"{id}.faiss")
+    loaded_index = test_load_faiss_from_local_file(OUTPUT_DIR / f"{id}.faiss")
+    print(loaded_index)
+    print("All tests completed successfully.")

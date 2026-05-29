@@ -1,10 +1,10 @@
 from pathlib import Path
 from mistralai.client import Mistral, models
 from backend.apps.interfaces.services.chat.i_completion import ICompletionResponse
-from backend.apps.interfaces.core.storage.i_create_file_response import (
+from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
+from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
 from sys_services.enums.e_provider_name import EProviderName
 from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER

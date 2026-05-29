@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from backend.apps.interfaces.core.storage.i_create_file_response import (
+from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
-from backend.apps.interfaces.core.storage.i_get_file_response import IGetFileResponse
+from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
+from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response import IGetFileResponse
 from mistralai.client import Mistral, cast
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.interfaces.i_logging import ILogger

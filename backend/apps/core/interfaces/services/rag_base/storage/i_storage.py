@@ -5,10 +5,10 @@ Abstract interface for file storage operations.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from backend.apps.interfaces.core.storage.i_create_file_response import (
+from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.interfaces.core.storage.i_get_file_response import IGetFileResponse
+from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response import IGetFileResponse
 from sys_services.enums.e_mime_type import EMimeType
 
 

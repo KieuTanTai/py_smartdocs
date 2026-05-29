@@ -1,15 +1,14 @@
 from pathlib import Path
 
-from backend.apps.interfaces.core.storage.i_create_file_response import (
+from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.interfaces.core.storage.i_get_file_response import IGetFileResponse
-from backend.apps.interfaces.core.storage.i_storage import IFileStorage
-from backend.apps.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
+from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response import IGetFileResponse
+from backend.apps.core.interfaces.services.rag_base.storage.i_storage import IFileStorage
+from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
 from sys_services.interfaces.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.enums.e_mime_type import EMimeType
-from backend.apps.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
 from backend.apps.utils.is_path_valiable import (
     check_file_path,
     check_storage_dir_exists_and_accessible,
@@ -17,17 +16,15 @@ from backend.apps.utils.is_path_valiable import (
 from backend.apps.utils.mime_type import get_dir_by_mime_type
 
 
-class FileStorage(IFileStorage):
+class FileStorageService(IFileStorage):
     def __init__(
         self,
         storage_dir: Path,
-        factory: ILLMOCRFactory,
         uploader: ILLMUploader,
         logger: ILogger | None,
     ):
         self.logger = logger or DEFAULT_LOGGER
         self.storage_dir = storage_dir
-        self.factory = factory
         self.uploader = uploader
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 

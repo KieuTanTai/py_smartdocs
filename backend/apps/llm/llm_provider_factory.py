@@ -1,5 +1,5 @@
-from backend.apps.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
-from backend.apps.interfaces.llm.i_llm_client import ILLMClient
+from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
+from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from sys_services.enums.e_provider_name import EProviderName
 from sys_services.read_config.config_provider import (
     DEFAULT_CONFIG_PROVIDER,
