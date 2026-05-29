@@ -15,7 +15,7 @@ class MistralClient(ILLMClient):
         self,
         api_key: str,
         logger: ILogger,
-        timeout: float = 60.0,
+        timeout: float
     ):
         if (api_key is None) or (api_key.strip() == ""):
             raise ValueError("API key must be provided for MistralClient.")

@@ -11,7 +11,7 @@ class OllamaClient(ILLMClient):
         self,
         base_url: str,
         logger: ILogger,
-        timeout: float = 60.0,
+        timeout: float
     ):
         if not base_url or base_url.strip() == "":
             raise ValueError("Base URL must be provided for OllamaClient.")

@@ -1,15 +1,12 @@
 from pathlib import Path
 from mistralai.client import Mistral, models
-from backend.apps.interfaces.services.chat.i_completion import ICompletionResponse
 from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
 from sys_services.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 from backend.apps.utils.is_content_empty import check_empty_content
-from sys_services.time_counter import TimeCounter
 
 
 class MistralLLMOCR(ILLMOCR):
@@ -20,8 +17,8 @@ class MistralLLMOCR(ILLMOCR):
         api_key: str,
         model: str,
         provider_name: str,
-        timeout_seconds: float = 60.0,
-        logger: ILogger | None = None,
+        timeout_seconds: float,
+        logger: ILogger,
     ):
         if not api_key:
             raise ValueError("API key is required for Mistral OCR Extractor.")
@@ -29,7 +26,7 @@ class MistralLLMOCR(ILLMOCR):
         self.model = model
         self.provider_name = provider_name
         self.timeout_seconds = timeout_seconds
-        self.logger = logger or DEFAULT_LOGGER
+        self.logger = logger
         self.client = Mistral(api_key=self.api_key)
 
     # region - Public Methods
