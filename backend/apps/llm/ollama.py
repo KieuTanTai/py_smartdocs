@@ -1,13 +1,8 @@
-import httpx
-from sys_services.time_counter import TimeCounter
-from backend.apps.interfaces.services.chat.i_completion import (
-    ICompletionInfo,
-    ICompletionRequest,
-    ICompletionResponse,
-)
+import numpy as np
+from ollama import Client
+from backend.apps.interfaces.services.chat.i_completion import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
-from sys_services.interfaces.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
+from backend.apps.core.interfaces.system.i_logging import ILogger
 
 
 class OllamaClient(ILLMClient):
@@ -15,89 +10,76 @@ class OllamaClient(ILLMClient):
     def __init__(
         self,
         base_url: str,
-        model: str,
-        provider_name: str,
+        logger: ILogger,
         timeout: float = 60.0,
-        logger: ILogger | None = None,
     ):
-        self.base_url = base_url.rstrip("/")
-        self.model = model
+        if not base_url or base_url.strip() == "":
+            raise ValueError("Base URL must be provided for OllamaClient.")
+        self.client = Client(host=base_url, timeout=timeout)
         self.timeout = timeout
-        self.provider_name = provider_name
-        self.logger = logger or DEFAULT_LOGGER
+        self.logger = logger
 
-    async def generate(self, request: ICompletionRequest) -> ICompletionResponse:
+    def generate(self, request: ICompletionRequest) -> str:
         self.logger.info(
-            f"Sending request to Ollama: model={request.model or self.model}, prompt_length={len(request.prompt)}",
-            source="OllamaClient.generate",
+            f"Sending request to Ollama: model={request.model}, prompt_length={len(request.prompt)}",
+            source=str(self.__class__),
         )
+        response = self.client.generate(
+            model=request.model,
+            prompt=request.prompt
+        )
+        values = response.response
+        if values is None:
+            self.logger.error("No response received from Ollama API.", source=str(self.__class__))
+            raise ValueError("No response received from Ollama API.")
+        self.logger.info(
+            "Successfully generated content using Ollama API.",
+            source=str(self.__class__),
+        )
+        return response.response if response.response is not None else ""
 
-        started_at = TimeCounter.start()
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.base_url}/api/generate",
-                json={
-                    "model": request.model or self.model,
-                    "prompt": request.prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.1,
-                        "num_ctx": 8192,
-                        "num_predict": 256,
-                    },
-                },
-            )
-            response.raise_for_status()
-            data = (
-                response.json()
-                if response.headers.get("content-type", "").startswith(
-                    "application/json"
-                )
-                else {}
-            )
-        elapsed_ms = TimeCounter.elapsed_ms(started_at)
 
+    def embedding(self, request: ICompletionRequest) -> IEmbeddingResponse:
         self.logger.info(
-            f"Generated content in {elapsed_ms} ms", source="OllamaClient.generate"
+            "Generating embedding from Ollama API.", source=str(self.__class__)
         )
-        self.logger.info(
-            f"Ollama response content length: {len(data.get('response', ''))}",
-            source="OllamaClient.generate",
+        response = self.client.embed(
+            model=request.model,
+            input=request.prompt
         )
-        self.logger.info(
-            "successfully generated content from Ollama API.",
-            source="OllamaClient.generate",
-        )
-        return ICompletionResponse(
-            provider=self.provider_name,
-            model=request.model or self.model,
-            content=data.get("response", ""),
-            latency_ms=elapsed_ms,
-        )
+        if not response['embeddings']:
+            self.logger.error("Response from Ollama API does not contain embeddings.", source=str(self.__class__))
+            raise ValueError("Response from Ollama API does not contain embeddings.")
+        self.logger.info("Successfully generated embedding using Ollama API.", source=str(self.__class__))
+        values = response['embeddings'][0]
+        if values is None:
+            self.logger.error("Embedding response from Ollama API does not contain values.", source=str(self.__class__))
+            raise ValueError("Embedding response from Ollama API does not contain values.")
+        return IEmbeddingResponse(embedding=np.array(values), dimensions=len(values))
 
-    async def is_available(self) -> bool:
-        self.logger.info(
-            "Checking Ollama API availability.", source="OllamaClient.is_available"
-        )
 
+    def is_available(self, model: str) -> bool:
+        self.logger.info(
+            "Checking Ollama API availability.", source=str(self.__class__)
+        )
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/version")
-                response.raise_for_status()
-            return True
-        except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            response = self.client.generate(
+                model=model,
+                prompt="Hello"
+            )
+            if response.response is not None:
+                self.logger.info(
+                    "Ollama API is available.", source=str(self.__class__)
+                )
+                return True
+            else:
+                self.logger.error(
+                    "Ollama API is not available: No response received.", source=str(self.__class__)
+                )
+                return False
+        except Exception as e:
             self.logger.error(
-                f"Ollama API is not available: {str(e)}",
-                source="OllamaClient.is_available",
+                f"Ollama API availability check failed: {str(e)}", source=str(self.__class__)
             )
             return False
 
-    def get_model_info(self) -> ICompletionInfo:
-        self.logger.info(
-            "Retrieving Ollama model info.", source="OllamaClient.get_model_info"
-        )
-        return ICompletionInfo(
-            provider=self.provider_name,
-            model=self.model,
-            capabilities=["text-generation"],
-        )

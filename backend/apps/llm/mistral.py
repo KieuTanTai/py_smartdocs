@@ -1,13 +1,12 @@
 import httpx
-from sys_services.time_counter import TimeCounter
+import numpy as np
+from mistralai.client import Mistral
 from backend.apps.interfaces.services.chat.i_completion import (
-    ICompletionInfo,
     ICompletionRequest,
-    ICompletionResponse,
+    IEmbeddingResponse,
 )
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
-from sys_services.interfaces.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
+from backend.apps.core.interfaces.system.i_logging import ILogger
 
 
 class MistralClient(ILLMClient):
@@ -15,75 +14,61 @@ class MistralClient(ILLMClient):
     def __init__(
         self,
         api_key: str,
-        model: str,
-        provider_name: str,
+        logger: ILogger,
         timeout: float = 60.0,
-        logger: ILogger | None = None,
     ):
-        self.api_key = api_key
-        self.model = model
-        self.provider_name = provider_name
+        if (api_key is None) or (api_key.strip() == ""):
+            raise ValueError("API key must be provided for MistralClient.")
+        self.client = Mistral(api_key=api_key)
         self.timeout = timeout
-        self.logger = logger or DEFAULT_LOGGER
+        self.logger = logger
 
-    async def generate(self, request: ICompletionRequest) -> ICompletionResponse:
+    def generate(self, request: ICompletionRequest) -> str:
         self.logger.info("Sending request to Mistral API.", source=str(self.__class__))
+        response = self.client.chat.complete(
+            model=request.model,
+            messages=[{"role": "user", "content": request.prompt}]
+        )
+        if response.choices[0].message is None:
+            self.logger.error("Response from Mistral API does not contain message.", source=str(self.__class__))
+            raise ValueError("Response from Mistral API does not contain message.")
+        self.logger.info("successfully generated content using Mistral API.", source=str(self.__class__))
+        return str(response.choices[0].message.content)
 
-        started_at = TimeCounter.start()
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={
-                    "model": request.model or self.model,
-                    "messages": [{"role": "user", "content": request.prompt}],
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-        elapsed_ms = TimeCounter.elapsed_ms(started_at)
 
+    def embedding(self, request: ICompletionRequest) -> IEmbeddingResponse:
         self.logger.info(
-            f"Generated content in {elapsed_ms} ms", source=str(self.__class__)
+            "Generating embedding from Mistral API.", source=str(self.__class__)
         )
-        self.logger.info(
-            "successfully generated content using Mistral API.",
-            source=str(self.__class__),
+        response = self.client.embeddings.create(
+            model=request.model,
+            inputs=[request.prompt],
         )
+        if not response.data:
+            self.logger.error("Response from Mistral API does not contain data.", source=str(self.__class__))
+            raise ValueError("Response from Mistral API does not contain data.")
+        self.logger.info("successfully generated embedding using Mistral API.", source=str(self.__class__))
+        values = response.data[0].embedding
+        if values is None:
+            self.logger.error("Embedding response from Mistral API does not contain values.", source=str(self.__class__))
+            raise ValueError("Embedding response from Mistral API does not contain values.")
+        return IEmbeddingResponse(embedding=np.array(values), dimensions=len(values))
 
-        return ICompletionResponse(
-            provider=self.provider_name,
-            model=request.model or self.model,
-            content=data["choices"][0]["message"]["content"],
-            latency_ms=elapsed_ms,
-        )
 
-    async def is_available(self) -> bool:
+    def is_available(self, model: str) -> bool:
         self.logger.info(
             "Checking Mistral API availability.", source=str(self.__class__)
         )
-
+        
         try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                response = await client.get(
-                    "https://api.mistral.ai/v1/models",
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                )
-                self.logger.info(
-                    "Mistral API is available.", source=str(self.__class__)
-                )
-                return response.status_code == 200
+            # Perform a simple API call to check availability
+            response = self.client.chat.complete(
+                model=model,
+                messages=[{"role": "user", "content": "Hello"}]
+            )
+            return response.choices[0].message is not None
         except Exception as e:
             self.logger.error(
-                f"Error occurred while checking Mistral API availability: {e}",
-                source=str(self.__class__),
+                f"Mistral API is not available: {str(e)}", source=str(self.__class__)
             )
             return False
-
-    def get_model_info(self) -> ICompletionInfo:
-        self.logger.info("Retrieving Mistral model info.", source=str(self.__class__))
-        return ICompletionInfo(
-            provider=self.provider_name,
-            model=self.model,
-            capabilities=["chat", "completion"],
-        )

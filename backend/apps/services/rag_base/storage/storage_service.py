@@ -6,7 +6,7 @@ from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_respon
 from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response import IGetFileResponse
 from backend.apps.core.interfaces.services.rag_base.storage.i_storage import IFileStorage
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
-from sys_services.interfaces.i_logging import ILogger
+from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.enums.e_mime_type import EMimeType
 from backend.apps.utils.is_path_valiable import (

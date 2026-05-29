@@ -8,7 +8,7 @@ import numpy as np
 from backend.apps.utils.is_path_valiable import (
     check_storage_dir_exists_and_accessible,
 )
-from sys_services.interfaces.i_logging import ILogger
+from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 
 EmbeddingInput = Sequence[float] | Sequence[Sequence[float]] | np.ndarray

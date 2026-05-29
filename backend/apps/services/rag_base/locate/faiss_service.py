@@ -11,7 +11,7 @@ from backend.apps.services.rag_base.locate.vector_store_base import (
     EmbeddingStorageResult,
     VectorStoreBase,
 )
-from sys_services.interfaces.i_logging import ILogger
+from backend.apps.core.interfaces.system.i_logging import ILogger
 
 
 class FaissService(VectorStoreBase, IVectorStoreService):

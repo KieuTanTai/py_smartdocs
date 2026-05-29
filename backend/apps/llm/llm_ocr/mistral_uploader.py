@@ -7,7 +7,7 @@ from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
 from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response import IGetFileResponse
 from mistralai.client import Mistral, cast
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
-from sys_services.interfaces.i_logging import ILogger
+from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 
 
@@ -16,7 +16,7 @@ class MistralUploader(ILLMUploader):
         self.logger = logger or DEFAULT_LOGGER
         self.client = Mistral(api_key=MISTRAL_CONFIG["api_key"])
 
-    async def upload_file(self, file_path: Path) -> ICreateFileResponse:
+    def upload_file(self, file_path: Path) -> ICreateFileResponse:
         try:
             with open(file_path, "rb") as file_handle:
                 upload_response = self.client.files.upload(
@@ -38,7 +38,7 @@ class MistralUploader(ILLMUploader):
             )
             raise e
 
-    async def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
+    def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
         file_id = getattr(file_info, "id", None)
         if not file_id:
             message = "File id is missing for load_file."
@@ -72,7 +72,7 @@ class MistralUploader(ILLMUploader):
             )
             raise e
 
-    async def delete_file(self, file_id: str) -> bool:
+    def delete_file(self, file_id: str) -> bool:
         if not file_id:
             message = "File id is missing for delete_file."
             self.logger.error(message, source=str(self.__class__))

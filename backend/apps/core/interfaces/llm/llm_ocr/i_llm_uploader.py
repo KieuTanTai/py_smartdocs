@@ -18,21 +18,21 @@ class ILLMUploader(ABC):
     """
 
     @abstractmethod
-    async def upload_file(self, file_path: Path) -> ICreateFileResponse:
+    def upload_file(self, file_path: Path) -> ICreateFileResponse:
         """
         Upload a file to Mistral and return the upload response.
         """
         pass
 
     @abstractmethod
-    async def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
+    def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
         """
         Load file content metadata from Mistral.
         """
         pass
 
     @abstractmethod
-    async def delete_file(self, file_id: str) -> bool:
+    def delete_file(self, file_id: str) -> bool:
         """
         Delete file in Mistral.
         """

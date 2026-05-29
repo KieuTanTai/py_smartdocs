@@ -2,28 +2,22 @@
 
 ## Purpose
 
-`core` is the preprocessing and search layer between uploaded documents and chat completion.
+`core` main focus of project, just implements chunking, normalize for pipeline rag, and define interfaces for external modules.
 
 Its job is:
 
-`document content -> normalization -> chunking -> vector indexing -> search -> context for llm`
+- normalize content
+- chunking
+- define interfaces for external services (using on `extract`, `embedding`, `indexing`, `storage`)
 
 ## Main Files
 
-- `backend/apps/core/services/normalization_service.py`
+- `backend/apps/core/normalize/normalize.py`
   - cleans raw text into a stable normalized form
-- `backend/apps/core/services/chunking_service.py`
+- `backend/apps/core/chunk/chunker.py`
   - splits normalized text into chunks using LangChain text splitters
-- `backend/apps/core/services/indexing_service.py`
-  - updates `DocumentIndex` metadata after vector upsert
-- `backend/apps/core/services/search_service.py`
-  - used by chat to search relevant chunks
-- `backend/apps/core/services/summarization_service.py`
-  - creates a short summary after indexing
-- `backend/apps/core/vectorstores/qdrant_store.py`
-  - adapter boundary for vector storage/search
-- `backend/apps/core/langchain/pipelines.py`
-  - orchestration glue for normalization, chunking, indexing, and summary
+- `backend/apps/core/interfaces/`
+  - define interfaces for external services, also for chunker.py and normalize.py
 
 ## Current Behavior
 
@@ -38,16 +32,6 @@ Its job is:
 
 - uses `RecursiveCharacterTextSplitter`
 - produces chunk payloads with metadata
-
-### Vector Store
-
-- current `QdrantStore` is a scaffold adapter
-- it returns index metadata and mockable search results
-- the adapter boundary exists so real Qdrant operations can replace the stub later
-
-### Summarization
-
-- currently generates a short summary from the first chunk
 
 ## Endpoint
 

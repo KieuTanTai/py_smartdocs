@@ -1,23 +1,22 @@
 from langchain_text_splitters import NLTKTextSplitter
 from backend.apps.core.interfaces.core.chunk.i_chunking import IChunking
-from sys_services.interfaces.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
+from backend.apps.core.interfaces.system.i_logging import ILogger
 
 
 class Chunker(IChunking):
     def __init__(
         self,
+        logger: ILogger,
         chunk_size: int = 1000,
         overlap: int = 200,
-        logger: ILogger | None = None,
     ):
         self.chunk_size = chunk_size
         self.overlap = overlap
-        self.logger = logger or DEFAULT_LOGGER
+        self.logger = logger
 
     async def create_chunks(self, normalized_document: str) -> list[str]:
         try:
-            text_splitter = NLTKTextSplitter(chunk_size=1000, chunk_overlap=200)
+            text_splitter = NLTKTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.overlap)
             chunks = text_splitter.split_text(normalized_document)
             if len(chunks) == 0:
                 self.logger.warning(
@@ -45,5 +44,5 @@ class Chunker(IChunking):
         while start < len(text):
             end = min(start + self.chunk_size, len(text))
             chunks.append(text[start:end])
-            start += chunk_size - overlap
+            start += self.chunk_size - self.overlap
         return chunks

@@ -13,8 +13,8 @@ class ILLMOCR(ABC):
     """
 
     @abstractmethod
-    async def process_ocr(
+    def process_ocr(
         self, uploaded_pdf: ICreateFileResponse
-    ) -> ICompletionResponse:
+    ) -> str:
         """Process OCR on the uploaded PDF file and return extracted text."""
         pass

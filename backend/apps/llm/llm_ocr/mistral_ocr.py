@@ -6,7 +6,7 @@ from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_respon
 )
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
 from sys_services.enums.e_provider_name import EProviderName
-from sys_services.interfaces.i_logging import ILogger
+from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 from backend.apps.utils.is_content_empty import check_empty_content
 from sys_services.time_counter import TimeCounter
@@ -33,16 +33,15 @@ class MistralLLMOCR(ILLMOCR):
         self.client = Mistral(api_key=self.api_key)
 
     # region - Public Methods
-    async def process_ocr(
+    def process_ocr(
         self, uploaded_pdf: ICreateFileResponse
-    ) -> ICompletionResponse:
+    ) -> str:
         # Implementation for processing OCR on the uploaded PDF
         self.logger.info(
             f"Starting OCR process for file ID: {uploaded_pdf.id}",
             source=str(self.__class__),
         )
         try:
-            started_at = TimeCounter.start()
             source_log = f"{Path(__file__).parent.absolute()}/{Path(__file__).name}"
             signed_url = self.client.files.get_signed_url(file_id=uploaded_pdf.id)
             mime_type = self.__get_mime_type(uploaded_pdf)
@@ -50,7 +49,7 @@ class MistralLLMOCR(ILLMOCR):
                 mime_type, signed_url.url
             )  # This will raise ValueError if MIME type is unsupported, otherwise it will return the appropriate document object for Mistral OCR processing
 
-            ocr_response = await self.client.ocr.process_async(
+            ocr_response = self.client.ocr.process(
                 model=self.model,
                 document=document,
                 timeout_ms=int(self.timeout_seconds * 1000),
@@ -58,18 +57,12 @@ class MistralLLMOCR(ILLMOCR):
                 include_image_base64=True,
                 confidence_scores_granularity="page",
             )
-            elapsed_ms = TimeCounter.elapsed_ms(started_at)
 
             extracted_text = "\n".join([page.markdown for page in ocr_response.pages])
             if self.__validate_response_text(extracted_text, source_log) is False:
                 raise ValueError("Extracted text is empty or contains only whitespace.")
-
-            self.logger.info(
-                f"OCR process completed successfully for file ID: {uploaded_pdf.id} in {elapsed_ms} ms",
-                source=str(self.__class__),
-            )
-            return self.__map_to_completion_response(elapsed_ms, extracted_text)
-
+            return extracted_text
+            
         except ValueError as ve:
             self.logger.error(
                 f"Value error during OCR processing for file ID: {uploaded_pdf.id} - {ve}",
@@ -83,17 +76,6 @@ class MistralLLMOCR(ILLMOCR):
             )
             raise e
 
-    # region - Private Helper Methods
-    def __map_to_completion_response(
-        self, elapsed_ms: float, extracted_text: str
-    ) -> ICompletionResponse:
-        # Map the extracted text to a completion response format
-        return ICompletionResponse(
-            provider=self.provider_name,
-            model=self.model,
-            content=extracted_text,
-            latency_ms=elapsed_ms,
-        )
 
     def __validate_response_text(self, text: str, source_log: str) -> bool:
         if check_empty_content(text, source_log, self.logger) is False:

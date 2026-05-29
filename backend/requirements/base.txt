@@ -13,4 +13,5 @@ mariadb
 mistralai
 NLTK
 google-genai
+ollama
 dependency-injector

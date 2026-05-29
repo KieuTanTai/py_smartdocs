@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from sys_services.interfaces.i_logging import ILogger
+from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 
 

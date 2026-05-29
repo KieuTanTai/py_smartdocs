@@ -1,13 +1,8 @@
-import httpx
-from sys_services.time_counter import TimeCounter
-from backend.apps.interfaces.services.chat.i_completion import (
-    ICompletionInfo,
-    ICompletionRequest,
-    ICompletionResponse,
-)
+from google import genai
+import numpy as np
+from backend.apps.interfaces.services.chat.i_completion import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
-from sys_services.interfaces.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
+from backend.apps.core.interfaces.system.i_logging import ILogger
 
 
 class GeminiClient(ILLMClient):
@@ -15,79 +10,71 @@ class GeminiClient(ILLMClient):
     def __init__(
         self,
         api_key: str,
-        model: str,
-        provider_name: str,
-        timeout: float = 60.0,
-        logger: ILogger | None = None,
+        logger: ILogger,
+        timeout: float = 60.0
     ):
-        self.api_key = api_key
-        self.model = model
-        self.provider_name = provider_name
+        if (api_key is None) or (api_key.strip() == ""):
+            raise ValueError("API key must be provided for GeminiClient.")
+        self.client = genai.Client(api_key=api_key)
         self.timeout = timeout
-        self.logger = logger or DEFAULT_LOGGER
+        self.logger = logger
 
-    async def generate(self, request: ICompletionRequest) -> ICompletionResponse:
+    def generate(self, request: ICompletionRequest) -> str:
         self.logger.info("Sending request to Gemini API.", source=str(self.__class__))
 
-        started_at = TimeCounter.start()
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{request.model or self.model}:generateContent?key={self.api_key}"
-        payload = {"contents": [{"parts": [{"text": request.prompt}]}]}
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(url, json=payload)
-            response.raise_for_status()
-            data = (
-                response.json()
-                if response.headers.get("content-type", "").startswith(
-                    "application/json"
-                )
-                else {}
-            )
-        content = ""
-        candidates = data.get("candidates", [])
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            content = "".join(part.get("text", "") for part in parts)
-        elapsed_ms = TimeCounter.elapsed_ms(started_at)
+        response = self.client.models.generate_content(
+            model=request.model,
+            contents=[{"parts": [{"text": request.prompt}]}],
+        )
+        if response.text is None:
+            self.logger.error("Response from Gemini API does not contain text.", source=str(self.__class__))
+            raise ValueError("Response from Gemini API does not contain text.")
+        self.logger.info("successfully generated content using Gemini API.", source=str(self.__class__))
+        return response.text
 
+
+    def embedding(self, request: ICompletionRequest) -> IEmbeddingResponse:
         self.logger.info(
-            f"Generated content in {elapsed_ms} ms", source=str(self.__class__)
+            "Generating embedding from Gemini API.", source=str(self.__class__)
         )
-        self.logger.info(
-            "successfully generated content using Gemini API.",
-            source=str(self.__class__),
+        response = self.client.models.embed_content(
+            model=request.model,
+            contents=request.prompt,
         )
+        if not response.embeddings:
+            self.logger.error("Response from Gemini API does not contain embeddings.", source=str(self.__class__))
+            raise ValueError("Response from Gemini API does not contain embeddings.")
+        self.logger.info("successfully generated embedding using Gemini API.", source=str(self.__class__))
+        values = response.embeddings[0].values
+        if values is None:
+            self.logger.error("Embedding response from Gemini API does not contain values.", source=str(self.__class__))
+            raise ValueError("Embedding response from Gemini API does not contain values.")
+        return IEmbeddingResponse(embedding=np.array(values), dimensions=len(values))
 
-        return ICompletionResponse(
-            provider=self.provider_name,
-            model=request.model or self.model,
-            content=content,
-            latency_ms=elapsed_ms,
-        )
-
-    async def is_available(self) -> bool:
+    def is_available(self, model: str) -> bool:
         self.logger.info(
             "Checking Gemini API availability.", source=str(self.__class__)
         )
 
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.post(
-                    url, json={"contents": [{"parts": [{"text": "ping"}]}]}
+            # Perform a simple API call to check availability
+            response = self.client.models.generate_content(
+                model=model,
+                contents=[{"parts": [{"text": "Hello"}]}],
+            )
+            if response.text is not None:
+                self.logger.info(
+                    "Gemini API is available.", source=str(self.__class__)
                 )
-                self.logger.info("Gemini API is available.", source=str(self.__class__))
-                return response.status_code == 200
+                return True
+            else:
+                self.logger.error(
+                    "Gemini API is not available: No text in response.", source=str(self.__class__)
+                )
+                return False
         except Exception as e:
             self.logger.error(
                 f"Error occurred while checking Gemini API availability: {e}",
                 source=str(self.__class__),
             )
             return False
-
-    def get_model_info(self) -> ICompletionInfo:
-        self.logger.info("Retrieving Gemini model info.", source=str(self.__class__))
-        return ICompletionInfo(
-            provider=self.provider_name,
-            model=self.model,
-            capabilities=["text-generation"],
-        )

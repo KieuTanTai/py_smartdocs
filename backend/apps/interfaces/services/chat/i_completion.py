@@ -1,17 +1,26 @@
 from dataclasses import dataclass, field
 
+import numpy as np
+
+from sys_services.enums.e_provider_name import EProviderName
+
 
 @dataclass
 class ICompletionRequest:
-    provider: str
+    provider: EProviderName
     model: str
     prompt: str
     context_hits: list[dict] = field(default_factory=list)
 
 
 @dataclass
+class IEmbeddingResponse:
+    embedding: np.ndarray
+    dimensions: int
+
+@dataclass
 class ICompletionResponse:
-    provider: str
+    provider: EProviderName
     model: str
     content: str
     latency_ms: float = 0
@@ -19,6 +28,6 @@ class ICompletionResponse:
 
 @dataclass
 class ICompletionInfo:
-    provider: str
+    provider: EProviderName
     model: str
     capabilities: list[str]

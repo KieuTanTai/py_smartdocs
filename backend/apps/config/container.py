@@ -17,8 +17,8 @@ from backend.apps.services.rag_base.extract.extract_content_service import (
 )
 from backend.apps.services.rag_base.locate.faiss_service import FaissService
 from backend.apps.services.rag_base.locate.locate_service import LocateService
-from sys_services.interfaces.i_config import IConfigProvider
-from sys_services.interfaces.i_logging import ILogger
+from backend.apps.core.interfaces.system.i_config import IConfigProvider
+from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from sys_services.system_dirs import METADATA_DIR

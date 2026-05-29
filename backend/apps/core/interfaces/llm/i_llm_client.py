@@ -5,12 +5,7 @@ Abstract interface for language model providers.
 
 from abc import ABC, abstractmethod
 
-from backend.apps.interfaces.services.chat.i_completion import (
-    ICompletionInfo,
-    ICompletionRequest,
-    ICompletionResponse,
-)
-
+from backend.apps.interfaces.services.chat.i_completion import ICompletionRequest, IEmbeddingResponse
 
 class ILLMClient(ABC):
     """
@@ -18,8 +13,9 @@ class ILLMClient(ABC):
     Provider-agnostic interface for language model completions.
     """
 
+
     @abstractmethod
-    async def generate(self, request: ICompletionRequest) -> ICompletionResponse:
+    def generate(self, request: ICompletionRequest) -> str:
         """
         Generate text completion.
 
@@ -32,21 +28,23 @@ class ILLMClient(ABC):
         pass
 
     @abstractmethod
-    async def is_available(self) -> bool:
+    def embedding(self, request: ICompletionRequest) -> IEmbeddingResponse:
+        """
+        Generate embedding vector for given input.
+
+        Args:
+            request: CompletionRequest object with input text
+        Returns:
+            IEmbeddingResponse object with embedding vector and dimensions
+        """
+        pass
+
+    @abstractmethod
+    def is_available(self, model: str) -> bool:
         """
         Check if provider is available and configured.
 
         Returns:
             Boolean availability status
-        """
-        pass
-
-    @abstractmethod
-    def get_model_info(self) -> ICompletionInfo:
-        """
-        Get provider and model information.
-
-        Returns:
-            ICompletionInfo with provider name, model, capabilities
         """
         pass
