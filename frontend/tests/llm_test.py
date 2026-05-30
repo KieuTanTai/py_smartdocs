@@ -21,7 +21,45 @@ from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.read_config.read_ollama_config import OLLAMA_CONFIG
 
 # Test prompt
-TEST_PROMPT = "What is the capital of France? Answer in one sentence."
+RETRIEVED_CHUNKS = [
+    """
+Trách nhiệm của Ban Giám đốc
+Ban Giám đốc Công ty chịu trách nhiệm về việc lập và trình bày trung thực và hợp lý Báo cáo tài chính của Công ty theo các chuẩn mực kế toán Việt Nam, Chế độ Kế toán doanh nghiệp Việt Nam và các quy định pháp lý có liên quan đến việc lập và trình bày Báo cáo tài chính và chịu trách nhiệm về kiểm soát nội bộ mà Ban Giám đốc xác định là cần thiết để đảm bảo cho việc lập và trình bày Báo cáo tài chính không có sai sót trong yếu do gian lận hoặc nhầm lẫn.
+
+## Trách nhiệm của Kiểm toán viên
+Trách nhiệm của chúng tôi là đưa ra ý kiến về Báo cáo tài chính dựa trên kết quả của cuộc kiểm toán.
+
+Chúng tôi đã tiến hành kiểm toán theo các chuẩn mực kiểm toán Việt Nam.
+
+Các chuẩn mực này yêu cầu chúng tôi tuân thủ chuẩn mực và các quy định về đạo đức nghề nghiệp, lập kế hoạch và thực hiện cuộc kiểm toán để đạt được sự đảm bảo hợp lý về việc liệu Báo cáo tài chính của Công ty có còn sai sót trong yếu hay không.
+
+""",
+    """
+Công việc kiểm toán bao gồm thực hiện các thủ tục nhằm thu thập các bằng chứng kiểm toán về các số liệu và thuyết minh trên Báo cáo tài chính.
+
+Các thủ tục kiểm toán được lựa chọn dựa trên xét đoán của kiểm toán viên, bao gồm đánh giá rủi ro có sai sót trong yếu trong Báo cáo tài chính do gian lận hoặc nhầm lẫn.
+
+Khi thực hiện đánh giá các rủi ro này, kiểm toán viên đã xem xét kiểm soát nội bộ của Công ty liên quan đến việc lập và trình bày Báo cáo tài chính trung thực, hợp lý nhằm thiết kế các thủ tục kiểm toán phù hợp với tình hình thực tế, tuy nhiên không nhằm mục đích đưa ra ý kiến về hiệu quả của kiểm soát nội bộ của Công ty.
+
+Công việc kiểm toán cũng bao gồm đánh giá tính thích hợp của các chính sách kế toán được áp dụng và tính hợp lý của các ước tính kế toán của Ban Giám đốc cũng như đánh giá việc trình bày tổng thể Báo cáo tài chính.
+""",
+]
+
+
+USER_INPUT = "công việc bao gồm những gì"
+TEST_PROMPT = f"""
+        You are an assistant that helps answer questions based on the following retrieved information:
+        
+        ---------------------
+        {RETRIEVED_CHUNKS}
+        ---------------------
+
+        User question: {USER_INPUT}
+
+        Please provide a comprehensive answer based on the above information. 
+        If the information is insufficient to answer the question, please indicate that you do not have enough information to provide an answer.
+        NOT ALLOWED TO MAKE UP ANSWERS. ONLY USE THE INFORMATION PROVIDED ABOVE.
+        """
 FACTORY = LLMProviderFactory(config_provider=DEFAULT_CONFIG_PROVIDER, logger=DEFAULT_LOGGER)
 CURRENT_DIR = Path(__file__).parent.resolve()
 OUTPUT_DIR = CURRENT_DIR / "output"
