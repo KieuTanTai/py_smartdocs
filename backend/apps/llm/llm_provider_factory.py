@@ -1,10 +1,7 @@
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from sys_services.enums.e_provider_name import EProviderName
-from sys_services.read_config.config_provider import (
-    DEFAULT_CONFIG_PROVIDER,
-    IConfigProvider,
-)
+from sys_services.read_config.config_provider import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from .gemini import GeminiClient
 from .mistral import MistralClient
@@ -14,7 +11,7 @@ from .ollama import OllamaClient
 class LLMProviderFactory(ILLMProviderFactory):
     def __init__(self, config_provider: IConfigProvider, logger: ILogger):
         self.logger = logger
-        self.config_provider = config_provider or DEFAULT_CONFIG_PROVIDER
+        self.config_provider = config_provider
 
     def get_provider(self, provider: EProviderName) -> ILLMClient:
         self.logger.info(

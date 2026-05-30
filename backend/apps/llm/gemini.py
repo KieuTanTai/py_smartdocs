@@ -49,7 +49,7 @@ class GeminiClient(ILLMClient):
         if values is None:
             self.logger.error("Embedding response from Gemini API does not contain values.", source=str(self.__class__))
             raise ValueError("Embedding response from Gemini API does not contain values.")
-        return IEmbeddingResponse(embedding=np.array(values), dimensions=len(values))
+        return IEmbeddingResponse(embedding=np.array(values), dimensions=len(values), shape=(len(values),))
 
     def is_available(self, model: str) -> bool:
         self.logger.info(

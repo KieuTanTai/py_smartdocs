@@ -16,6 +16,7 @@ class ICompletionRequest:
 @dataclass
 class IEmbeddingResponse:
     embedding: np.ndarray
+    shape: tuple
     dimensions: int
 
 @dataclass
