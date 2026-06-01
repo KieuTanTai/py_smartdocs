@@ -5,7 +5,7 @@ Abstract interface for language model providers.
 
 from abc import ABC, abstractmethod
 
-from backend.apps.interfaces.services.chat.i_completion import ICompletionRequest, IEmbeddingResponse
+from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 
 class ILLMClient(ABC):
     """

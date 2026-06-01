@@ -1,6 +1,6 @@
 from google import genai
 import numpy as np
-from backend.apps.interfaces.services.chat.i_completion import ICompletionRequest, IEmbeddingResponse
+from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.system.i_logging import ILogger
 

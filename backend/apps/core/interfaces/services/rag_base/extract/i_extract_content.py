@@ -5,7 +5,7 @@ Abstract interface for file content extraction orchestration.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from backend.apps.interfaces.services.chat.i_completion import ICompletionResponse
+from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionResponse
 from sys_services.enums.e_provider_name import EProviderName
 
 

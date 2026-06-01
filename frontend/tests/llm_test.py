@@ -7,7 +7,7 @@ import datetime
 from pathlib import Path
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.interfaces.services.chat.i_completion import (
+from backend.apps.core.interfaces.core.i_dataclass_transaction import (
     ICompletionRequest,
     ICompletionResponse,
     IEmbeddingResponse,

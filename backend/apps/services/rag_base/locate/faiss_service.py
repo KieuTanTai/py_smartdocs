@@ -3,14 +3,8 @@ from pathlib import Path
 import numpy as np
 import faiss
 
-from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import (
-    IVectorStoreService,
-)
-from backend.apps.services.rag_base.locate.vector_store_base import (
-    EmbeddingInput,
-    EmbeddingStorageResult,
-    VectorStoreBase,
-)
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
+from backend.apps.services.rag_base.locate.vector_store_base import VectorStoreBase
 from backend.apps.core.interfaces.system.i_logging import ILogger
 
 

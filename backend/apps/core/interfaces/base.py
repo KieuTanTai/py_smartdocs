@@ -13,7 +13,7 @@ from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_servic
 # LLM provider interfaces
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
-from backend.apps.interfaces.services.chat.i_completion import (
+from backend.apps.core.interfaces.core.i_dataclass_transaction import (
     ICompletionRequest,
     ICompletionResponse,
 )

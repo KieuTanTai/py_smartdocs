@@ -1,6 +1,6 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
-from backend.apps.interfaces.services.chat.i_completion import ICompletionResponse
+from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionResponse
 from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )

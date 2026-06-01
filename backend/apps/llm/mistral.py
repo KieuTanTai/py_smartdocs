@@ -1,7 +1,7 @@
 import httpx
 import numpy as np
 from mistralai.client import Mistral
-from backend.apps.interfaces.services.chat.i_completion import (
+from backend.apps.core.interfaces.core.i_dataclass_transaction import (
     ICompletionRequest,
     IEmbeddingResponse,
 )

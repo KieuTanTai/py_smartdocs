@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from backend.apps.interfaces.services.chat.i_completion import ICompletionResponse
+from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionResponse
 from backend.apps.core.interfaces.services.rag_base.storage.i_storage import IFileStorage
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
 from sys_services.enums.e_provider_name import EProviderName

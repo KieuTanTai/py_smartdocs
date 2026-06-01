@@ -1,10 +1,10 @@
-from dataclasses import dataclass
 import json
 from pathlib import Path
 from typing import Sequence
 
 import numpy as np
 
+from backend.apps.core.interfaces.services.rag_base.locate.i_embed_storage_result import IEmbeddingStorageResult
 from backend.apps.utils.is_path_valiable import (
     check_storage_dir_exists_and_accessible,
 )
@@ -13,13 +13,6 @@ from sys_services.logging import DEFAULT_LOGGER
 
 EmbeddingInput = Sequence[float] | Sequence[Sequence[float]] | np.ndarray
 
-
-@dataclass(frozen=True)
-class EmbeddingStorageResult:
-    embedding_path: Path
-    metadata_path: Path
-    vector_count: int
-    dimension: int
 
 
 class VectorStoreBase:
@@ -38,7 +31,7 @@ class VectorStoreBase:
         backend_name: str,
         embed_id: str,
         embeddings: EmbeddingInput,
-    ) -> EmbeddingStorageResult:
+    ) -> IEmbeddingStorageResult:
         if not embed_id:
             raise ValueError("embed_id is required")
 
@@ -73,7 +66,7 @@ class VectorStoreBase:
             source=str(self.__class__),
         )
 
-        return EmbeddingStorageResult(
+        return IEmbeddingStorageResult(
             embedding_path=embedding_path,
             metadata_path=metadata_path,
             vector_count=int(embedding_matrix.shape[0]),
