@@ -13,7 +13,7 @@ class IMessageService(ABC):
     """
 
     @abstractmethod
-    async def create_message(self, conversation_id, role, content, metadata=None):
+    def create_message(self, conversation_id, role, content, metadata=None):
         """
         Create and save a message.
 
@@ -29,7 +29,7 @@ class IMessageService(ABC):
         pass
 
     @abstractmethod
-    async def get_conversation_history(self, conversation_id, limit=None):
+    def get_conversation_history(self, conversation_id, limit=None):
         """
         Retrieve conversation message history.
 
@@ -43,7 +43,7 @@ class IMessageService(ABC):
         pass
 
     @abstractmethod
-    async def update_message(self, message_id, **fields):
+    def update_message(self, message_id, **fields):
         """
         Update message fields.
 

@@ -5,7 +5,9 @@ Abstract interface for file content extraction orchestration.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionResponse
+from backend.apps.core.interfaces.core.i_dataclass_transaction import (
+    ICompletionResponse,
+)
 from sys_services.enums.e_provider_name import EProviderName
 
 
@@ -16,7 +18,7 @@ class IExtractContent(ABC):
     """
 
     @abstractmethod
-    async def extract_from_file_text(
+    def extract_from_file_text(
         self,
         file_path: Path,
         provider: EProviderName,
@@ -34,7 +36,7 @@ class IExtractContent(ABC):
         pass
 
     @abstractmethod
-    async def extract_from_file_image(
+    def extract_from_file_image(
         self,
         file_path: Path,
         provider: EProviderName,

@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+
 class IVectorStoreService(ABC):
     """
     Abstract interface for vector storage operations.
@@ -14,7 +15,7 @@ class IVectorStoreService(ABC):
     """
 
     @abstractmethod
-    async def upsert(self, vector_id: str, vector: np.ndarray):
+    def upsert(self, vector_id: str, vector: np.ndarray):
         """
         Insert or update vector in store.
 
@@ -27,9 +28,8 @@ class IVectorStoreService(ABC):
         """
         pass
 
-
     @abstractmethod
-    async def search(self, query_vector: np.ndarray , limit=5, filters=None):
+    def search(self, query_vector: np.ndarray, limit=5, filters=None):
         """
         Perform similarity search.
 
@@ -44,10 +44,7 @@ class IVectorStoreService(ABC):
         pass
 
     @abstractmethod
-
-
-    @abstractmethod
-    async def delete(self, vector_id):
+    def delete(self, vector_id):
         """
         Delete vector from store.
 
@@ -60,7 +57,7 @@ class IVectorStoreService(ABC):
         pass
 
     @abstractmethod
-    async def get_collection_info(self):
+    def get_collection_info(self):
         """
         Get collection statistics and info.
 

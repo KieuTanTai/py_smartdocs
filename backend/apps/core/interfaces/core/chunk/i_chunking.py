@@ -13,7 +13,7 @@ class IChunking(ABC):
     """
 
     @abstractmethod
-    async def create_chunks(self, normalized_document: str) -> list[str]:
+    def create_chunks(self, normalized_document: str) -> list[str]:
         """
         Create chunks from normalized text.
 

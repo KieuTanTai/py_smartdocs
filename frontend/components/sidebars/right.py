@@ -18,5 +18,10 @@ def right_sidebar_ui() -> ui.Tag:
             ui.output_ui("timing_panel"),
             class_="card",
         ),
+        ui.tags.div(
+            ui.tags.h3("Sessions"),
+            ui.output_ui("history_list"),
+            class_="card",
+        ),
         class_="sidebar-content",
     )

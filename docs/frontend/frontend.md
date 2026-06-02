@@ -14,7 +14,7 @@ frontend ui for web design by shiny package, handle request and give it for back
 - `frontend/components/settings/system_settings.py` for handle settings popup, send request settings to backend
 - `frontend/components/settings/model_settings.py` for handle model settings horizontal block (flex like, left button will showing form choose mode chat when clicked, right is show model list when clicked), send model name, mode chat (normal chat, cli termux chat mode) - default is normal, choose mode before start session and can't change mode on this session.
 - `frontend/components/upload_files.py` for handle popup form upload files (upload form drive, local storage), exit form after upload file (not need upload buttons, just choose file to upload) and auto process after uploaded.
-- `frontend/components/sidebars/left.py` for handle left sidebar blocks, includes history block, upload files block, process button, status, block processed docs, clear chat buttons.
+- `frontend/components/sidebars/left.py` for handle left sidebar blocks, includes history block, upload files block, process button, status, block processed docs, remove conversation buttons.
 - `frontend/components/sidbars/right.py` for handle show status and info after any chat request and response, showing retrieval score (sorted), hits, chunks, documents on chunks, process time, embedded time, query time, response time, total times (ms)
 - `frontend/components/header.py` for handle header of website, flex layout, have web icon, web name on left side, button setting for calling `frontend/components/settings/system_settings.py` when clicked, circle button with account avatar (default using on `frontend/assets/`).
 

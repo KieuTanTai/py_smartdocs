@@ -13,7 +13,7 @@ class ISummarizationService(ABC):
     """
 
     @abstractmethod
-    async def summarize_document(self, document, max_length=None):
+    def summarize_document(self, document, max_length=None):
         """
         Generate summary for document.
 
@@ -27,7 +27,7 @@ class ISummarizationService(ABC):
         pass
 
     @abstractmethod
-    async def create_bootstrap_message(self, conversation):
+    def create_bootstrap_message(self, conversation):
         """
         Create initial assistant message summarizing conversation documents.
 

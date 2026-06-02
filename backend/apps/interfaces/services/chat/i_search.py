@@ -13,7 +13,7 @@ class ISearchService(ABC):
     """
 
     @abstractmethod
-    async def search(self, query, document_ids, limit=5, filters=None):
+    def search(self, query, document_ids, limit=5, filters=None):
         """
         Search for relevant chunks.
 

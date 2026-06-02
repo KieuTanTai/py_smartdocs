@@ -4,11 +4,6 @@ from shiny import ui
 def left_sidebar_ui() -> ui.Tag:
     return ui.tags.div(
         ui.tags.div(
-            ui.tags.h3("Sessions"),
-            ui.output_ui("history_list"),
-            class_="card",
-        ),
-        ui.tags.div(
             ui.tags.h3("Upload"),
             ui.tags.div(
                 ui.tags.div(
@@ -58,7 +53,9 @@ def left_sidebar_ui() -> ui.Tag:
         ),
         ui.tags.div(
             ui.input_action_button(
-                "clear_chat", "Clear chat", class_="btn-ghost full-width"
+                "remove_conversation",
+                "Remove conversation",
+                class_="btn-ghost full-width",
             ),
             class_="card",
         ),

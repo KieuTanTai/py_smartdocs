@@ -13,7 +13,7 @@ class IGraphService(ABC):
     """
 
     @abstractmethod
-    async def build_document_graph(self, document):
+    def build_document_graph(self, document):
         """
         Build knowledge graph from document.
 
@@ -26,7 +26,7 @@ class IGraphService(ABC):
         pass
 
     @abstractmethod
-    async def extract_entities(self, text):
+    def extract_entities(self, text):
         """
         Extract entities and relationships from text.
 
@@ -39,7 +39,7 @@ class IGraphService(ABC):
         pass
 
     @abstractmethod
-    async def graph_search(self, query, document_ids):
+    def graph_search(self, query, document_ids):
         """
         Search using graph traversal.
 

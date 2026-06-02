@@ -19,14 +19,14 @@ class GraphService:
         # TODO: Initialize graph service
         pass
 
-    async def build_document_graph(self, document):
+    def build_document_graph(self, document):
         # TODO: Create knowledge graph from document
         pass
 
-    async def extract_entities(self, text):
+    def extract_entities(self, text):
         # TODO: Extract entities and relationships
         pass
 
-    async def graph_search(self, query, document_ids):
+    def graph_search(self, query, document_ids):
         # TODO: Search using graph traversal
         pass

@@ -13,7 +13,7 @@ class IConversationService(ABC):
     """
 
     @abstractmethod
-    async def create_conversation(
+    def create_conversation(
         self, title, document_ids, provider, model, system_prompt=None
     ):
         """
@@ -32,7 +32,7 @@ class IConversationService(ABC):
         pass
 
     @abstractmethod
-    async def get_conversation(self, conversation_id):
+    def get_conversation(self, conversation_id):
         """
         Retrieve conversation details.
 
@@ -45,7 +45,7 @@ class IConversationService(ABC):
         pass
 
     @abstractmethod
-    async def update_conversation_status(self, conversation_id, status):
+    def update_conversation_status(self, conversation_id, status):
         """
         Update conversation status.
 
@@ -59,7 +59,7 @@ class IConversationService(ABC):
         pass
 
     @abstractmethod
-    async def add_document_to_conversation(self, conversation_id, document_id):
+    def add_document_to_conversation(self, conversation_id, document_id):
         """
         Add document to conversation.
 

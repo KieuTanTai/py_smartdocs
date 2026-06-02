@@ -13,7 +13,10 @@ from frontend.components.sidebars.left import left_sidebar_ui
 from frontend.components.sidebars.right import right_sidebar_ui
 from frontend.components.upload_files import upload_modal
 from sys_services.api_client import ApiClient, ApiError
-from sys_services.read_config.read_google_config import GOOGLE_PICKER_CONFIG, INITIAL_API_BASE_URL
+from sys_services.read_config.read_google_config import (
+    GOOGLE_PICKER_CONFIG,
+    INITIAL_API_BASE_URL,
+)
 from sys_services.system_dirs import BASE_FE_DIR
 from sys_services.read_config.read_models import LIST_MODELS
 
@@ -136,7 +139,7 @@ def server(input: Any, output: Any, session: Any) -> None:
 
     @render.ui
     def history_list() -> ui.Tag:
-        return history_ui(history.get())
+        return history_ui(history.get(), conversation_id.get())
 
     @render.ui
     def doc_selector() -> ui.Tag:
@@ -474,6 +477,22 @@ def server(input: Any, output: Any, session: Any) -> None:
         metrics.set({})
         conversation_id.set(None)
         set_status("Chat cleared", "Ready for a new session", "info")
+
+    @reactive.effect
+    @reactive.event(input.remove_conversation)
+    def _remove_conversation() -> None:
+        active_id = conversation_id.get()
+        if not active_id:
+            set_status("No active session", "Nothing to remove.", "warning")
+            return
+        current_history = [
+            item for item in history.get() if str(item.get("id")) != str(active_id)
+        ]
+        history.set(current_history)
+        messages.set([])
+        metrics.set({})
+        conversation_id.set(None)
+        set_status("Session removed", "Conversation removed from list.", "success")
 
 
 app = App(app_ui, server, static_assets=BASE_FE_DIR / "assets")

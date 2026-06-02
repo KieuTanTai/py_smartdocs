@@ -3,8 +3,12 @@ from pathlib import Path
 from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response import IGetFileResponse
-from backend.apps.core.interfaces.services.rag_base.storage.i_storage import IFileStorage
+from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response import (
+    IGetFileResponse,
+)
+from backend.apps.core.interfaces.services.rag_base.storage.i_storage import (
+    IFileStorage,
+)
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
@@ -13,7 +17,7 @@ from backend.apps.utils.is_path_valiable import (
     check_file_path,
     check_storage_dir_exists_and_accessible,
 )
-from backend.apps.utils.mime_type import get_dir_by_mime_type
+from backend.apps.utils.mime_type import get_dir_by_mime_type, get_mime_type_from_path
 
 
 class FileStorageService(IFileStorage):
@@ -28,17 +32,15 @@ class FileStorageService(IFileStorage):
         self.uploader = uploader
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
-    async def save_file(
-        self, mime_type: EMimeType, file_path: Path
-    ) -> ICreateFileResponse:
-        new_file_path = self.__check_all(mime_type=mime_type, file_path=file_path)
-        return await self.uploader.upload_file(new_file_path)
+    def save_file(self, file_path: Path) -> ICreateFileResponse:
+        new_file_path = self.__check_all(file_path=file_path)
+        return self.uploader.upload_file(new_file_path)
 
-    async def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
-        return await self.uploader.load_file(file_info)
+    def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
+        return self.uploader.load_file(file_info)
 
-    async def delete_file(self, file_id: str) -> bool:
-        return await self.uploader.delete_file(file_id)
+    def delete_file(self, file_id: str) -> bool:
+        return self.uploader.delete_file(file_id)
 
     # This method is to get file size in bytes, which can be used for logging, validation, etc.
     def get_file_size(self, file_info: ICreateFileResponse) -> float:
@@ -94,7 +96,8 @@ class FileStorageService(IFileStorage):
         )
         return destination_path
 
-    def __check_all(self, mime_type: EMimeType, file_path: Path) -> Path:
+    def __check_all(self, file_path: Path) -> Path:
         check_file_path(file_path, self.logger)
         check_storage_dir_exists_and_accessible(self.storage_dir, self.logger)
+        mime_type = get_mime_type_from_path(file_path)
         return self.__check_and_move_file_to_storage_dir(mime_type, file_path)

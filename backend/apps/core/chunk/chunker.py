@@ -14,9 +14,11 @@ class Chunker(IChunking):
         self.overlap = overlap
         self.logger = logger
 
-    async def create_chunks(self, normalized_document: str) -> list[str]:
+    def create_chunks(self, normalized_document: str) -> list[str]:
         try:
-            text_splitter = NLTKTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.overlap)
+            text_splitter = NLTKTextSplitter(
+                chunk_size=self.chunk_size, chunk_overlap=self.overlap
+            )
             chunks = text_splitter.split_text(normalized_document)
             if len(chunks) == 0:
                 self.logger.warning(

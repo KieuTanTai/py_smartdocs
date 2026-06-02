@@ -736,6 +736,19 @@ summary.avatar-btn::-webkit-details-marker {
   gap: 10px;
 }
 
+.history-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(28, 32, 36, 0.6);
+}
+
+.history-item.active {
+  border-color: rgba(239, 107, 79, 0.45);
+  background: rgba(239, 107, 79, 0.12);
+  box-shadow: 0 0 0 1px rgba(239, 107, 79, 0.2);
+}
+
 .history-title {
   font-weight: 500;
   display: block;
