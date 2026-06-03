@@ -22,6 +22,8 @@ def header_ui(
             class_="header-badges",
         ),
         ui.tags.div(
+            ui.output_ui("user_badge"),
+            ui.output_ui("account_menu"),
             settings_button_ui(),
             class_="header-actions",
         ),
@@ -35,5 +37,32 @@ def settings_button_ui() -> ui.Tag:
         ui.tags.img(src="settings.png", class_="icon"),
         class_="icon-btn",
     )
+
+
+def account_dropdown_ui(logged_in: bool) -> ui.Tag:
+    if logged_in:
+        return ui.tags.details(
+            ui.tags.summary(
+                ui.tags.img(src="user-avatar.png", class_="avatar-icon"),
+                class_="avatar-summary",
+            ),
+            ui.tags.div(
+                ui.input_action_button("logout_submit", "Log Out", class_="btn-danger"),
+                class_="dropdown-menu",
+            ),
+            class_="dropdown",
+        )
+    else:
+        return ui.tags.details(
+            ui.tags.summary(
+                ui.tags.img(src="user-avatar.png", class_="avatar-icon"),
+                class_="avatar-summary",
+            ),
+            ui.tags.div(
+                ui.input_action_button("open_signup", "Sign Up", class_="btn-primary"),
+                class_="dropdown-menu",
+            ),
+            class_="dropdown",
+        )
 
 

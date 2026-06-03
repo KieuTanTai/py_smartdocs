@@ -43,10 +43,10 @@ class BackendContainer(containers.DeclarativeContainer):
     logger = providers.Singleton(ILogger, DEFAULT_LOGGER)
 
     # Storage
-    llm_ocr_factory = providers.Factory(ILLMOCRFactory)
-    llm_uploader = providers.Factory(ILLMUploader, logger=logger)
+    llm_ocr_factory = providers.Factory(LLMOCRFactory)
+    llm_uploader = providers.Factory(MistralUploader, logger=logger)
     file_storage = providers.Factory(
-        IFileStorage,
+        FileStorageService,
         storage_dir=METADATA_DIR,
         uploader=llm_uploader,
         logger=logger,
@@ -54,7 +54,7 @@ class BackendContainer(containers.DeclarativeContainer):
 
     # Extract
     extract_content_service = providers.Factory(
-        IExtractContent,
+        ExtractContentService,
         factory=llm_ocr_factory,
         storage=file_storage,
         logger=logger,
@@ -62,7 +62,7 @@ class BackendContainer(containers.DeclarativeContainer):
 
     # Locate
     locate_service = providers.Factory(
-        ILocateService,
+        LocateService,
         metadata_dir=config_provider.provided.get("faiss_metadata_dir"),
         faiss_service=providers.Factory(FaissService, logger=logger),
         logger=logger,

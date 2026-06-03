@@ -1,37 +1,17 @@
-"""
-Chat serializers.
-DRF serializers for conversation and message endpoints.
-"""
+from rest_framework import serializers
+from .models import ConversationModel, MessageModel, DocumentModel
 
+class ConversationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConversationModel
+        fields = '__all__'
 
-class ConversationSerializer:
-    """
-    Serializer for Conversation model.
-    Converts to/from JSON for API endpoints.
-    """
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageModel
+        fields = '__all__'
 
-    def __init__(self):
-        # TODO: Initialize conversation serializer
-        pass
-
-
-class MessageSerializer:
-    """
-    Serializer for Message model.
-    Converts to/from JSON for API endpoints.
-    """
-
-    def __init__(self):
-        # TODO: Initialize message serializer
-        pass
-
-
-class ChatResponseSerializer:
-    """
-    Serializer for chat API responses.
-    Includes messages, retrieval context, and metadata.
-    """
-
-    def __init__(self):
-        # TODO: Initialize chat response serializer
-        pass
+class DocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentModel
+        fields = '__all__'

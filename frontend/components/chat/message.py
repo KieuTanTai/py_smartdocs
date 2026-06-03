@@ -77,6 +77,9 @@ def send_message(
         if not conversation_id:
             raise ApiError("Conversation id missing from create response")
 
+        if not new_conversation:
+            api.update_conversation_documents(conversation_id, selected_docs)
+
         response = api.send_message(conversation_id, content)
         assistant = _extract_text(response) or "No response text returned."
         metrics = _extract_metrics(response)
