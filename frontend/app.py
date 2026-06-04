@@ -4,9 +4,10 @@ import json
 import time
 from typing import Any, Dict, List, Optional
 from shiny import App, reactive, render, ui
+from frontend.components.account.signup import signup_modal
 from frontend.components.chat.box_chat import box_chat_ui
 from frontend.components.chat.message import build_message, send_message
-from frontend.components.header import header_ui
+from frontend.components.header import account_dropdown_ui, header_ui
 from frontend.components.history import history_ui
 from frontend.components.settings.system_settings import system_settings_modal
 from frontend.components.sidebars.left import left_sidebar_ui
@@ -72,6 +73,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     system_prompt = reactive.Value("")
     mock_on_fail = reactive.Value(True)
     upload_source = reactive.Value("local")
+    current_user = reactive.Value(None)
 
     def set_status(label: str, detail: str, kind: str = "info") -> None:
         status.set({"label": label, "detail": detail, "kind": kind})
@@ -143,41 +145,50 @@ def server(input: Any, output: Any, session: Any) -> None:
 
     @render.ui
     def doc_selector() -> ui.Tag:
-        items = docs.get()
-        if not items:
-            return ui.tags.div("No documents yet.", class_="empty-state")
-        choices = {}
-        for item in items:
-            status = str(item.get("status") or "").strip().lower()
-            show_status = status and status not in {
-                "ready",
-                "done",
-                "completed",
-                "indexed",
-            }
-            status_badge = (
-                ui.tags.span(
-                    status.replace("_", " "),
-                    class_=f"doc-status {status}",
+        try:
+            items = docs.get()
+            if not items:
+                return ui.tags.div("No documents yet.", class_="empty-state")
+            choices = {}
+            for item in items:
+                status = str(item.get("status") or "").strip().lower()
+                show_status = status and status not in {
+                    "ready",
+                    "done",
+                    "completed",
+                    "indexed",
+                }
+                status_badge = (
+                    ui.tags.span(
+                        status.replace("_", " "),
+                        class_=f"doc-status {status}",
+                    )
+                    if show_status
+                    else None
                 )
-                if show_status
-                else None
+                choices[item["id"]] = ui.tags.div(
+                    ui.tags.span(item["title"], class_="doc-title"),
+                    status_badge,
+                    class_="doc-card",
+                )
+            try:
+                selected = input.selected_docs()
+            except BaseException:
+                selected = None
+            if not selected:
+                selected = list(choices.keys())[:1]
+                
+            return ui.tags.div(
+                ui.input_checkbox_group(
+                    "selected_docs",
+                    "",
+                    choices=choices,
+                    selected=selected,
+                ),
+                class_="doc-selector",
             )
-            choices[item["id"]] = ui.tags.div(
-                ui.tags.span(item["title"], class_="doc-title"),
-                status_badge,
-                class_="doc-card",
-            )
-        selected = input.selected_docs() or list(choices.keys())[:1]
-        return ui.tags.div(
-            ui.input_checkbox_group(
-                "selected_docs",
-                "",
-                choices=choices,
-                selected=selected,
-            ),
-            class_="doc-selector",
-        )
+        except Exception as exc:
+            return ui.tags.div(f"Error rendering documents: {exc}", class_="error")
 
     @render.ui
     def status_panel() -> ui.Tag:
@@ -246,6 +257,15 @@ def server(input: Any, output: Any, session: Any) -> None:
             f"{provider.get()} / {current_model.get()} / {current_mode.get()}",
             class_="badge",
         )
+
+    @render.ui
+    def user_badge() -> ui.Tag:
+        user = current_user.get() or "Guest"
+        return ui.tags.div(user, class_="badge subtle")
+
+    @render.ui
+    def account_menu() -> ui.Tag:
+        return account_dropdown_ui(current_user.get() is not None)
 
     @reactive.effect
     @reactive.event(input.open_settings)
@@ -493,6 +513,32 @@ def server(input: Any, output: Any, session: Any) -> None:
         metrics.set({})
         conversation_id.set(None)
         set_status("Session removed", "Conversation removed from list.", "success")
+
+    @reactive.effect
+    @reactive.event(input.open_signup)
+    def _show_signup() -> None:
+        ui.modal_show(signup_modal())
+
+    @reactive.effect
+    @reactive.event(input.signup_submit)
+    def _signup() -> None:
+        try:
+            client().signup(
+                input.signup_email(),
+                input.signup_password(),
+                name=input.signup_name(),
+            )
+            current_user.set(input.signup_email())
+            set_status("Account created", "Signed in", "success")
+        except ApiError as exc:
+            set_status("Signup failed", str(exc), "error")
+        ui.modal_remove()
+
+    @reactive.effect
+    @reactive.event(input.logout_submit)
+    def _logout() -> None:
+        current_user.set(None)
+        set_status("Logged out", "Signed out", "info")
 
 
 app = App(app_ui, server, static_assets=BASE_FE_DIR / "assets")
