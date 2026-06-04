@@ -1,7 +1,7 @@
 import datetime
 from pathlib import Path
 from sys_services.system_dirs import ROOT_DIR
-from sys_services.enums.e_type_message import ETypeMessage
+from backend.apps.core.enums.e_type_message import ETypeMessage
 from backend.apps.core.interfaces.system.i_logging import ILogger
 
 

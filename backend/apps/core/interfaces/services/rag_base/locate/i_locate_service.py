@@ -6,7 +6,7 @@ Abstract interface for chunk and document location tracking.
 from abc import ABC, abstractmethod
 
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
-from sys_services.enums.e_backend_storage_name import EBackendStorageName
+from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 
 
 class ILocateService(ABC):

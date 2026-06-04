@@ -1,7 +1,7 @@
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
 from backend.apps.llm.llm_ocr.mistral_ocr import MistralLLMOCR
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.read_config.config_provider import (
     DEFAULT_CONFIG_PROVIDER,

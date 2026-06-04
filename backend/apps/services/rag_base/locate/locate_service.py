@@ -7,7 +7,7 @@ from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service impo
     ILocateService,
 )
 from backend.apps.services.rag_base.locate.faiss_service import FaissService
-from sys_services.enums.e_backend_storage_name import EBackendStorageName
+from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 

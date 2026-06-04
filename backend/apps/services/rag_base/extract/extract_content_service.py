@@ -7,7 +7,7 @@ from backend.apps.core.interfaces.services.rag_base.storage.i_storage import (
     IFileStorage,
 )
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content import (

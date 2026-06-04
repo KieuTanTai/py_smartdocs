@@ -8,7 +8,7 @@ from pathlib import Path
 from backend.apps.core.interfaces.core.i_dataclass_transaction import (
     ICompletionResponse,
 )
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 
 
 class IExtractContent(ABC):

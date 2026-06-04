@@ -13,7 +13,7 @@ from backend.apps.core.interfaces.core.i_dataclass_transaction import (
     IEmbeddingResponse,
 )
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from sys_services.read_config.read_gemini_config import GEMINI_EMBEDDING_CONFIG

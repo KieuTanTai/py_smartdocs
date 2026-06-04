@@ -4,7 +4,7 @@ Mime type helpers.
 
 from pathlib import Path
 
-from sys_services.enums.e_mime_type import EMimeType
+from backend.apps.core.enums.e_mime_type import EMimeType
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
 

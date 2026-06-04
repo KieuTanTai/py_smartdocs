@@ -1,6 +1,6 @@
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 from sys_services.read_config.config_provider import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from .gemini import GeminiClient

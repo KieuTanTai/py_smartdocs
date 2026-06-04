@@ -12,7 +12,7 @@ from backend.apps.core.interfaces.services.rag_base.storage.i_storage import (
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.logging import DEFAULT_LOGGER
-from sys_services.enums.e_mime_type import EMimeType
+from backend.apps.core.enums.e_mime_type import EMimeType
 from backend.apps.utils.is_path_valiable import (
     check_file_path,
     check_storage_dir_exists_and_accessible,
