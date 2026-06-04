@@ -40,7 +40,7 @@ class Logger(ILogger):
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             type_str = type_message.value.upper()
 
-            with open(log_file_path, "a") as log_file:
+            with open(log_file_path, "a", encoding="utf-8") as log_file:
                 # Write separator for readability
                 log_file.write(f"\n{self._separator}\n")
 

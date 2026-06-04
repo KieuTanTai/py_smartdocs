@@ -187,11 +187,18 @@ class ConversationListView(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request):
+        import datetime
+        import hashlib
+        
         title = request.data.get("title", "New Conversation")
         provider = request.data.get("provider", "auto")
         model = request.data.get("model", "auto")
         system_prompt = request.data.get("system_prompt", "")
         document_ids = request.data.get("document_ids", [])
+        
+        # Append current datetime to the title
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        title = f"{title} - {now_str}"
         
         # Create conversation
         conv = ConversationModel.objects.create(
@@ -215,6 +222,15 @@ class ConversationListView(APIView):
         doc_titles = [d.faiss_index_file_name for d in docs]
         if doc_titles:
             bootstrap_text = f"I have loaded the following documents: {', '.join(doc_titles)}. Ask me anything about them!"
+            # Calculate and append SHA256 hashes of document content
+            doc_hashes = []
+            for d in docs:
+                content_text = d.content or ""
+                cleaned_content = content_text.strip()
+                h = hashlib.sha256(cleaned_content.encode("utf-8")).hexdigest()
+                doc_hashes.append(f"{d.faiss_index_file_name} (Hash: {h})")
+            if doc_hashes:
+                bootstrap_text += f"\nDocument Hash Code(s):\n" + "\n".join([f"- {dh}" for dh in doc_hashes])
         else:
             bootstrap_text = "I've started a new conversation. How can I assist you today?"
             

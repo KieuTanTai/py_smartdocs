@@ -2,9 +2,8 @@ import asyncio
 import shutil
 from pathlib import Path
 
-from backend.apps.core.extract.extractor import Extractor
 from backend.apps.llm.llm_ocr.mistral_uploader import MistralUploader
-from backend.apps.services.rag_base.storage.storage_service import FileStorage
+from backend.apps.services.rag_base.storage.storage_service import FileStorageService
 from backend.apps.llm.llm_ocr.llm_ocr_factory import LLMOCRFactory
 from backend.apps.services.rag_base.extract.extract_content_service import (
     ExtractContentService,
@@ -12,6 +11,22 @@ from backend.apps.services.rag_base.extract.extract_content_service import (
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from sys_services.enums.e_provider_name import EProviderName
+
+class Extractor:
+    """Wrapper class to match the test's expected extract API."""
+    def __init__(self, extract_content_service, logger=None):
+        self.extract_content_service = extract_content_service
+        self.logger = logger
+
+    async def extract(self, file_path: Path):
+        # Always use Mistral provider for this test
+        provider = EProviderName.MISTRAL
+        suffix = file_path.suffix.lower()
+        if suffix in [".png", ".jpg", ".jpeg", ".webp"]:
+            return self.extract_content_service.extract_from_file_image(file_path, provider)
+        else:
+            return self.extract_content_service.extract_from_file_text(file_path, provider)
+
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 PDF_SOURCE = (
@@ -38,9 +53,9 @@ async def run_text_ocr(output_dir: Path) -> None:
     factory = LLMOCRFactory(DEFAULT_CONFIG_PROVIDER, logger)
     uploader = MistralUploader(logger)
     storage_dir = output_dir / "storage"
-    storage = FileStorage(storage_dir, factory, uploader, logger)
+    storage = FileStorageService(storage_dir, uploader, logger)
     extract_content = ExtractContentService(
-        factory, storage, EProviderName.MISTRAL, logger
+        factory, storage, logger
     )
     ocr = Extractor(extract_content, logger)
 
@@ -60,9 +75,9 @@ async def run_image_ocr(output_dir: Path) -> None:
     factory = LLMOCRFactory(DEFAULT_CONFIG_PROVIDER, logger)
     uploader = MistralUploader(logger)
     storage_dir = output_dir / "storage"
-    storage = FileStorage(storage_dir, factory, uploader, logger)
+    storage = FileStorageService(storage_dir, uploader, logger)
     extract_content = ExtractContentService(
-        factory, storage, EProviderName.MISTRAL, logger
+        factory, storage, logger
     )
     ocr = Extractor(extract_content, logger)
 
