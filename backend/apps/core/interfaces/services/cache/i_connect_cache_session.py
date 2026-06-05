@@ -9,14 +9,14 @@ class IConnectCacheSession(ABC):
     It provides a method to establish a connection to the cache session and return a session object that can be used for cache operations.
     """
     
-    def connect(self):
+    def connect(self, file_caller=""):
         """
         Connect to the cache session and return a session object.
         This method should be implemented by concrete classes to establish a connection to the cache session and return an appropriate session object for performing cache operations.
         """
         raise NotImplementedError("Connect method must be implemented by subclasses")
     
-    def disconnect(self):
+    def disconnect(self, file_caller=""):
         """
         Disconnect from the cache session.
         This method should be implemented by concrete classes to disconnect from the cache session.
