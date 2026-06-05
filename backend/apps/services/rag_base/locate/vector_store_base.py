@@ -9,7 +9,6 @@ from backend.apps.utils.is_path_valiable import (
     check_storage_dir_exists_and_accessible,
 )
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 
 EmbeddingInput = Sequence[float] | Sequence[Sequence[float]] | np.ndarray
 
@@ -18,13 +17,13 @@ EmbeddingInput = Sequence[float] | Sequence[Sequence[float]] | np.ndarray
 class VectorStoreBase:
     def __init__(
         self,
-        storage_dir: Path | None = None,
-        metadata_dir: Path | None = None,
-        logger: ILogger | None = None,
+        storage_dir: Path,
+        metadata_dir: Path,
+        logger: ILogger,
     ):
         self.storage_dir = storage_dir or Path("storage")
         self.metadata_dir = metadata_dir or Path("metadata")
-        self.logger = logger or DEFAULT_LOGGER
+        self.logger = logger
 
     def save_embedding_with_metadata(
         self,

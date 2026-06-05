@@ -6,7 +6,6 @@ from pathlib import Path
 
 from backend.apps.core.enums.e_mime_type import EMimeType
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 
 
 def get_mime_type_from_path(file_path: Path) -> EMimeType:
@@ -29,9 +28,7 @@ def get_mime_type_from_path(file_path: Path) -> EMimeType:
 
 
 def get_dir_by_mime_type(
-    storage_dir: Path, mime_type: EMimeType, logger: ILogger | None = None
-) -> Path:
-    logger = logger or DEFAULT_LOGGER
+    storage_dir: Path, mime_type: EMimeType, logger: ILogger) -> Path:
     if mime_type == EMimeType.PDF:
         return storage_dir / "pdf"
     if mime_type == EMimeType.DOCX:

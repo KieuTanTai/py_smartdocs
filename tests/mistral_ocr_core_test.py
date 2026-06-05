@@ -2,7 +2,7 @@ import asyncio
 import shutil
 from pathlib import Path
 
-from backend.apps.core.extract.extractor import Extractor
+from backend.apps.services.rag_base.extract.extract_content_service import ExtractContentService
 from backend.apps.llm.llm_ocr.mistral_uploader import MistralUploader
 from backend.apps.services.rag_base.storage.storage_service import FileStorage
 from backend.apps.llm.llm_ocr.llm_ocr_factory import LLMOCRFactory

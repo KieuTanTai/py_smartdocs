@@ -11,7 +11,6 @@ from backend.apps.core.interfaces.services.rag_base.storage.i_storage import (
 )
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 from backend.apps.core.enums.e_mime_type import EMimeType
 from backend.apps.utils.is_path_valiable import (
     check_file_path,
@@ -25,9 +24,9 @@ class FileStorageService(IFileStorage):
         self,
         storage_dir: Path,
         uploader: ILLMUploader,
-        logger: ILogger | None,
+        logger: ILogger,
     ):
-        self.logger = logger or DEFAULT_LOGGER
+        self.logger = logger
         self.storage_dir = storage_dir
         self.uploader = uploader
         self.storage_dir.mkdir(parents=True, exist_ok=True)

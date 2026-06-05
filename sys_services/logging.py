@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from sys_services.system_dirs import ROOT_DIR
+from sys_services.system_dirs import LOGS_DIR
 from backend.apps.core.enums.e_type_message import ETypeMessage
 from backend.apps.core.interfaces.system.i_logging import ILogger
 
@@ -9,33 +9,40 @@ class Logger(ILogger):
     _log_dirs: dict[str, Path] = {}
     _separator = "─" * 80
 
-    def info(self, message: str, source: str = "") -> None:
+    def __init__(self, logs_dir: Path | None = None):
+        if logs_dir:
+            self._logs_dir = logs_dir
+        else:
+            self._logs_dir = LOGS_DIR
+
+    def info(self, message: str, source: str = "", call_by: str = "") -> None:
         """Log info message"""
-        self._log_message(ETypeMessage.INFO, message, source)
+        self._log_message(ETypeMessage.INFO, message, source, call_by)
 
-    def warning(self, message: str, source: str = "") -> None:
+    def warning(self, message: str, source: str = "", call_by: str = "") -> None:
         """Log warning message"""
-        self._log_message(ETypeMessage.WARNING, message, source)
+        self._log_message(ETypeMessage.WARNING, message, source, call_by)
 
-    def error(self, message: str, source: str = "") -> None:
+    def error(self, message: str, source: str = "", call_by: str = "") -> None:
         """Log error message"""
-        self._log_message(ETypeMessage.ERROR, message, source)
+        self._log_message(ETypeMessage.ERROR, message, source, call_by)
 
-    def debug(self, message: str, source: str = "") -> None:
+    def debug(self, message: str, source: str = "", call_by: str = "") -> None:
         """Log debug message"""
-        self._log_message(ETypeMessage.DEBUG, message, source)
+        self._log_message(ETypeMessage.DEBUG, message, source, call_by)
 
     def _log_message(
         self,
         type_message: ETypeMessage,
         message: str,
         source: str,
+        call_by: str
     ) -> None:
         """Internal method to handle logging to file"""
         try:
             folder_name = datetime.date.today().strftime("%Y-%m-%d")
-            log_dir = self._ensure_log_dir(folder_name=folder_name)
-            log_file_path = self._execute_log_file_path(log_dir, folder_name)
+            log_dir = self.__ensure_log_dir(folder_name=folder_name)
+            log_file_path = self.__execute_log_file_path(log_dir, folder_name)
 
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             type_str = type_message.value.upper()
@@ -51,6 +58,10 @@ class Logger(ILogger):
                 if source.strip():
                     log_file.write(f"Source: {source}\n")
 
+                # Write call by if provided
+                if call_by.strip():
+                    log_file.write(f"Call by: {call_by}\n")
+
                 # Write message with proper indentation
                 log_file.write(f"Message:\n  {message}\n")
 
@@ -60,26 +71,23 @@ class Logger(ILogger):
         except Exception as exc:
             print(f"Error writing log message to file: {exc}")
 
-    def _ensure_log_dir(self, folder_name: str) -> Path:
+    def __ensure_log_dir(self, folder_name: str) -> Path:
         """Ensure log directory exists"""
         key = folder_name
         if key in self._log_dirs:
             return self._log_dirs[key]
-        logging_out_dir = ROOT_DIR / "docs" / "logs" / folder_name
+        logging_out_dir = self._logs_dir / folder_name
         logging_out_dir.mkdir(parents=True, exist_ok=True)
         self._log_dirs[key] = logging_out_dir
         return logging_out_dir
 
-    def _execute_log_file_name(self, folder_name: str) -> str:
+    def __execute_log_file_name(self, folder_name: str) -> str:
         """Generate log file name"""
         return f"{folder_name}.log"
 
-    def _execute_log_file_path(self, log_dir: Path, folder_name: str) -> Path:
+    def __execute_log_file_path(self, log_dir: Path, folder_name: str) -> Path:
         """Get or create log file path"""
-        file_name = self._execute_log_file_name(folder_name)
+        file_name = self.__execute_log_file_name(folder_name)
         log_file_path = log_dir / file_name
         log_file_path.touch(exist_ok=True)
         return log_file_path
-
-
-DEFAULT_LOGGER = Logger()

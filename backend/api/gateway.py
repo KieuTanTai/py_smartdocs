@@ -16,7 +16,6 @@ from backend.apps.services.chat.models import ConversationModel, MessageModel, D
 from backend.apps.services.chat.serializers import ConversationSerializer, MessageSerializer, DocumentSerializer
 from backend.apps.core.normalize.normalize import Normalize
 from backend.apps.core.chunk.chunker import Chunker
-from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest

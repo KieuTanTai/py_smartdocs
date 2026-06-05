@@ -8,12 +8,11 @@ from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response 
 from mistralai.client import Mistral, cast
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 
 
 class MistralUploader(ILLMUploader):
-    def __init__(self, logger: ILogger | None = None):
-        self.logger = logger or DEFAULT_LOGGER
+    def __init__(self, logger: ILogger):
+        self.logger = logger
         self.client = Mistral(api_key=MISTRAL_CONFIG["api_key"])
 
     def upload_file(self, file_path: Path) -> ICreateFileResponse:

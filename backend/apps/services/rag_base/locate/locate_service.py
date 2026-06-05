@@ -9,19 +9,18 @@ from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service impo
 from backend.apps.services.rag_base.locate.faiss_service import FaissService
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 
 
 class LocateService(ILocateService):
     def __init__(
         self,
-        metadata_dir: Path | None = None,
-        faiss_service: FaissService | None = None,
-        logger: ILogger | None = None,
+        metadata_dir: Path,
+        faiss_service: FaissService,
+        logger: ILogger,
     ):
         self.metadata_dir = metadata_dir
         self.faiss_service = faiss_service
-        self.logger = logger or DEFAULT_LOGGER
+        self.logger = logger
 
     def get_vector_store(self, backend: EBackendStorageName) -> IVectorStoreService:
         """Get vector store service instance based on backend name.
