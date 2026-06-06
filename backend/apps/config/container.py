@@ -1,5 +1,6 @@
 from pathlib import Path
 from dependency_injector import containers, providers
+from backend.apps.core.chunk.chunker import Chunker
 from backend.apps.core.normalize.normalize import Normalize
 from backend.apps.services.rag_base.storage.storage_service import FileStorageService
 from backend.apps.core.interfaces.services.rag_base.storage.i_storage import IFileStorage
@@ -43,9 +44,6 @@ class BackendContainer(containers.DeclarativeContainer):
     config_provider = providers.Singleton(EnvConfigProvider)
     logger = providers.Singleton(Logger)
 
-    # Normalize
-    normalize = providers.Singleton(Normalize, logger=logger)
-
     # Storage
     llm_ocr_factory = providers.Factory(LLMOCRFactory, config_provider=config_provider, logger=logger)
     llm_uploader = providers.Factory(MistralUploader, logger=logger)
@@ -64,10 +62,15 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=logger,
     )
 
+    # Normalize
+    normalize = providers.Singleton(Normalize, logger=logger)
+
+    # Chunking
+    chunker = providers.Singleton(Chunker, logger=logger)
+
     # Locate
     locate_service = providers.Factory(
         LocateService,
         metadata_dir=METADATA_DIR,
-        faiss_service=providers.Factory(FaissService, logger=logger),
         logger=logger,
     )

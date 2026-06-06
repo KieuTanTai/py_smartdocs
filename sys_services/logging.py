@@ -15,28 +15,29 @@ class Logger(ILogger):
         else:
             self._logs_dir = LOGS_DIR
 
-    def info(self, message: str, source: str = "", call_by: str = "") -> None:
+    def info(self, message: str, source: str = "", call_by: str = "", method_call: str = "") -> None:
         """Log info message"""
-        self._log_message(ETypeMessage.INFO, message, source, call_by)
+        self._log_message(ETypeMessage.INFO, message, source, call_by, method_call)
 
-    def warning(self, message: str, source: str = "", call_by: str = "") -> None:
+    def warning(self, message: str, source: str = "", call_by: str = "", method_call: str = "") -> None:
         """Log warning message"""
-        self._log_message(ETypeMessage.WARNING, message, source, call_by)
+        self._log_message(ETypeMessage.WARNING, message, source, call_by, method_call)
 
-    def error(self, message: str, source: str = "", call_by: str = "") -> None:
+    def error(self, message: str, source: str = "", call_by: str = "", method_call: str = "") -> None:
         """Log error message"""
-        self._log_message(ETypeMessage.ERROR, message, source, call_by)
+        self._log_message(ETypeMessage.ERROR, message, source, call_by, method_call)
 
-    def debug(self, message: str, source: str = "", call_by: str = "") -> None:
+    def debug(self, message: str, source: str = "", call_by: str = "", method_call: str = "") -> None:
         """Log debug message"""
-        self._log_message(ETypeMessage.DEBUG, message, source, call_by)
+        self._log_message(ETypeMessage.DEBUG, message, source, call_by, method_call)
 
     def _log_message(
         self,
         type_message: ETypeMessage,
         message: str,
         source: str,
-        call_by: str
+        call_by: str,
+        method_call: str,
     ) -> None:
         """Internal method to handle logging to file"""
         try:
@@ -61,6 +62,10 @@ class Logger(ILogger):
                 # Write call by if provided
                 if call_by.strip():
                     log_file.write(f"Call by: {call_by}\n")
+
+                # Write method call if provided
+                if method_call.strip():
+                    log_file.write(f"Method call: '{method_call}'\n")
 
                 # Write message with proper indentation
                 log_file.write(f"Message:\n  {message}\n")

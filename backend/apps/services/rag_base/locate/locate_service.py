@@ -15,11 +15,9 @@ class LocateService(ILocateService):
     def __init__(
         self,
         metadata_dir: Path,
-        faiss_service: FaissService,
         logger: ILogger,
     ):
         self.metadata_dir = metadata_dir
-        self.faiss_service = faiss_service
         self.logger = logger
 
     def get_vector_store(self, backend: EBackendStorageName) -> IVectorStoreService:
@@ -30,10 +28,7 @@ class LocateService(ILocateService):
             IVectorStoreService instance for specified backend
         """
         if backend == EBackendStorageName.FAISS:
-            faiss_service = self.faiss_service or FaissService(
-                metadata_dir=self.metadata_dir,
-                logger=self.logger,
-            )
+            faiss_service = FaissService(metadata_dir=self.metadata_dir, logger=self.logger)
             self.logger.info("Using FAISS vector store")
             self.logger.info(f"FAISS metadata directory: {self.metadata_dir}")
             return faiss_service
