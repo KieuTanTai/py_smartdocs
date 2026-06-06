@@ -1,7 +1,7 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from backend.api.gateway import urlpatterns as api_urls
+from backend.api.urls import urlpatterns as api_urls
 
 urlpatterns = api_urls
 

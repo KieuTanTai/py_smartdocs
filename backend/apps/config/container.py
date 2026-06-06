@@ -1,5 +1,10 @@
 from pathlib import Path
 from dependency_injector import containers, providers
+import redis
+from backend.apps.core.chunk.chunker import Chunker
+from backend.apps.core.normalize.normalize import Normalize
+from backend.apps.services.cache.radis_cache_service import RedisCacheService
+from backend.apps.services.cache.redis_cache_session import RedisCacheSession
 from backend.apps.services.rag_base.storage.storage_service import FileStorageService
 from backend.apps.core.interfaces.services.rag_base.storage.i_storage import IFileStorage
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
@@ -19,8 +24,8 @@ from backend.apps.services.rag_base.locate.faiss_service import FaissService
 from backend.apps.services.rag_base.locate.locate_service import LocateService
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
-from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
+from sys_services.logging import Logger
+from sys_services.read_config.config_provider import EnvConfigProvider
 from sys_services.system_dirs import METADATA_DIR
 
 
@@ -39,11 +44,11 @@ class BackendContainer(containers.DeclarativeContainer):
     This container centralizes the configuration of all backend services and promotes modularity and testability.
     """
 
-    config_provider = providers.Singleton(IConfigProvider, DEFAULT_CONFIG_PROVIDER)
-    logger = providers.Singleton(ILogger, DEFAULT_LOGGER)
+    config_provider = providers.Singleton(EnvConfigProvider)
+    logger = providers.Singleton(Logger)
 
     # Storage
-    llm_ocr_factory = providers.Factory(LLMOCRFactory)
+    llm_ocr_factory = providers.Factory(LLMOCRFactory, config_provider=config_provider, logger=logger)
     llm_uploader = providers.Factory(MistralUploader, logger=logger)
     file_storage = providers.Factory(
         FileStorageService,
@@ -60,10 +65,23 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=logger,
     )
 
+    # Normalize
+    normalize = providers.Singleton(Normalize, logger=logger)
+
+    # Chunking
+    chunker = providers.Singleton(Chunker, logger=logger)
+
+    # Caching
+    cache_service = providers.Factory(
+        RedisCacheSession,
+        config_provider=config_provider,
+        metadata_dir=METADATA_DIR,
+        logger=logger,
+    )
+
     # Locate
     locate_service = providers.Factory(
         LocateService,
-        metadata_dir=config_provider.provided.get("faiss_metadata_dir"),
-        faiss_service=providers.Factory(FaissService, logger=logger),
+        metadata_dir=METADATA_DIR,
         logger=logger,
     )

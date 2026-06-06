@@ -7,7 +7,7 @@ from shiny import App, reactive, render, ui
 from frontend.components.account.signup import signup_modal
 from frontend.components.chat.box_chat import box_chat_ui
 from frontend.components.chat.message import build_message, send_message
-from frontend.components.header import account_dropdown_ui, header_ui
+from frontend.components.header import header_ui
 from frontend.components.history import history_ui
 from frontend.components.settings.system_settings import system_settings_modal
 from frontend.components.sidebars.left import left_sidebar_ui
@@ -19,7 +19,7 @@ from sys_services.read_config.read_google_config import (
     INITIAL_API_BASE_URL,
 )
 from sys_services.system_dirs import BASE_FE_DIR
-from sys_services.read_config.read_models import LIST_MODELS
+from sys_services.read_config.read_list_provider import LIST_PROVIDERS
 
 app_ui = ui.page_fluid(
     ui.tags.head(
@@ -31,7 +31,6 @@ app_ui = ui.page_fluid(
         ui.tags.script(src="js/upload/google-picker.js"),
         ui.tags.script(src="https://apis.google.com/js/api.js?onload=onGoogleApiLoad"),
         ui.tags.script(src="https://accounts.google.com/gsi/client"),
-        ui.tags.script(src="js/dropdown-close.js"),
         ui.tags.script(src="js/upload/sidebar-upload.js"),
         ui.tags.script(src="js/upload/modal-upload.js"),
         ui.tags.script(src="js/model_settings.js"),
@@ -48,7 +47,7 @@ app_ui = ui.page_fluid(
         ),
         ui.tags.div(
             ui.tags.aside(left_sidebar_ui(), class_="sidebar left"),
-            ui.tags.main(box_chat_ui(LIST_MODELS), class_="main"),
+            ui.tags.main(box_chat_ui([provider.model_name for provider in LIST_PROVIDERS]), class_="main"),
             ui.tags.aside(right_sidebar_ui(), class_="sidebar right"),
             class_="layout",
         ),
@@ -262,10 +261,6 @@ def server(input: Any, output: Any, session: Any) -> None:
     def user_badge() -> ui.Tag:
         user = current_user.get() or "Guest"
         return ui.tags.div(user, class_="badge subtle")
-
-    @render.ui
-    def account_menu() -> ui.Tag:
-        return account_dropdown_ui(current_user.get() is not None)
 
     @reactive.effect
     @reactive.event(input.open_settings)

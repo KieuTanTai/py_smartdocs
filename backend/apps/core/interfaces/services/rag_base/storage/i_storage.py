@@ -39,7 +39,7 @@ class IFileStorage(ABC):
         Load file content from storage.
 
         Args:
-            file_info: File response info from Mistral
+            file_info: File response info from upload cloud
 
         Returns:
             IGetFileResponse: Response object with file content or None if not found
@@ -52,7 +52,7 @@ class IFileStorage(ABC):
         Delete file from storage.
 
         Args:
-            file_id: File id in Mistral
+            file_id: File id in upload cloud
 
         Returns:
             bool: True if file was deleted, False otherwise
@@ -65,9 +65,24 @@ class IFileStorage(ABC):
         Get file size in bytes.
 
         Args:
-            file_info: File response info from Mistral
+            file_info: File response info from upload cloud
 
         Returns:
             File size in bytes
         """
         pass
+
+    @abstractmethod
+    def is_file_existed(self, file_id: str) -> IGetFileResponse:
+        """
+        Check if file exists in storage.
+
+        Args:
+            file_id: File id in upload cloud
+
+        Returns:
+            IGetFileResponse: Response object with file info if it exists, raise FileNotFoundError otherwise
+        """
+        pass
+
+    

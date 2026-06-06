@@ -16,32 +16,11 @@ from backend.apps.services.chat.models import ConversationModel, MessageModel, D
 from backend.apps.services.chat.serializers import ConversationSerializer, MessageSerializer, DocumentSerializer
 from backend.apps.core.normalize.normalize import Normalize
 from backend.apps.core.chunk.chunker import Chunker
-from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 
-
-class HealthView(APIView):
-    def get(self, request):
-        return Response({"status": "ok", "detail": "Backend is running"}, status=status.HTTP_200_OK)
-
-
-class ProviderListView(APIView):
-    def get(self, request):
-        return Response({
-            "providers": [
-                {"name": "gemini", "models": ["gemini-2.5-flash", "gemini-2.5-pro"]},
-                {"name": "mistral", "models": ["mistral-large-latest", "mistral-ocr-latest"]},
-                {"name": "ollama", "models": ["qwen2.5:3b", "llama3"]}
-            ]
-        }, status=status.HTTP_200_OK)
-
-
-class ProviderTestView(APIView):
-    def post(self, request):
-        return Response({"status": "ok", "message": "Provider connection successful"}, status=status.HTTP_200_OK)
 
 
 class DocumentListView(APIView):
@@ -352,27 +331,8 @@ class MessageListView(APIView):
         llm_prompt = f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nUser: {content}\n\nAssistant:"
         
         # 5. Invoke LLM client
-        provider_name = request.data.get("provider", "auto")
-        model_name = request.data.get("model", "auto")
-        
-        # Auto resolve provider
-        if provider_name == "auto":
-            if os.getenv("GEMINI_API_KEY") and os.getenv("GEMINI_API_KEY") != "change-me":
-                provider_name = "gemini"
-            elif os.getenv("MISTRAL_API_KEY") and os.getenv("MISTRAL_API_KEY") != "change-me":
-                provider_name = "mistral"
-            else:
-                provider_name = "ollama"
-                
-        # Auto resolve model
-        if model_name == "auto":
-            if provider_name == "gemini":
-                model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-            elif provider_name == "mistral":
-                model_name = os.getenv("MISTRAL_MODEL", "mistral-large-latest")
-            else:
-                model_name = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
-                
+        model_name = request.data.get("model", "gemini-2.5-flash")
+
         start_time = time.time()
         answer = ""
         used_mock = False
@@ -421,19 +381,6 @@ class CoreSearchView(APIView):
     def post(self, request):
         return Response({"detail": "Not implemented."}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
-
-
-
-class AuthSignupView(APIView):
-    def post(self, request):
-        email = request.data.get("email")
-        password = request.data.get("password")
-        name = request.data.get("name", "User")
-        if not email or not password:
-            return Response({"error": "Email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"status": "success", "email": email, "name": name}, status=status.HTTP_201_CREATED)
-
-
 urlpatterns = [
     path("api/health/", HealthView.as_view(), name="health"),
     path("api/providers/", ProviderListView.as_view(), name="providers"),
@@ -459,6 +406,4 @@ urlpatterns = [
     
     path("api/core/search/", CoreSearchView.as_view(), name="core-search"),
     
-    # Auth endpoints
-    path("api/auth/signup/", AuthSignupView.as_view(), name="auth-signup"),
 ]

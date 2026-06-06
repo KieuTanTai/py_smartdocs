@@ -11,6 +11,10 @@ CHUNK_FILE = OUTPUT_DIR / "chunks_output.txt"
 
 id = "test_embedding"
 
+# In-process cache: lives in RAM for the current Python process only.
+FAISS_INDEX_CACHE: dict[str, faiss.IndexFlatL2] = {}
+
+
 def test_get_chunks() -> list[str]:
     with open(CHUNK_FILE, "r") as f:
         content = f.read()
@@ -49,7 +53,7 @@ def test_load_to_faiss_index(
 ) -> faiss.IndexFlatL2:
     index = faiss.IndexFlatL2(dimension)
     index.add(np_vectors)  # type: ignore
-    print("FAISS index: " + str(index.ntotal))
+    print("FAISS index: " + str(index))
     print("FAISS index created and vectors added successfully.")
     return index
 
@@ -58,10 +62,23 @@ def test_save_faiss_to_local_file(index: faiss.IndexFlatL2, file_path: Path) -> 
     faiss.write_index(index, str(file_path))
     print(f"FAISS index saved to {file_path} successfully.")
 
+
 def test_load_faiss_from_local_file(file_path: Path) -> faiss.IndexFlatL2:
     index = faiss.read_index(str(file_path))
     print(f"FAISS index loaded from {file_path} successfully.")
     return index
+
+
+def test_get_cached_or_load_index(file_id: str, file_path: Path) -> faiss.IndexFlatL2:
+    cached = FAISS_INDEX_CACHE.get(file_id)
+    if cached is not None:
+        print(f"FAISS cache hit for {file_id}.")
+        return cached
+    print(f"FAISS cache miss for {file_id}, loading from disk.")
+    index = faiss.read_index(str(file_path))
+    FAISS_INDEX_CACHE[file_id] = index
+    return index
+
 
 if __name__ == "__main__":
     chunks = test_get_chunks()
@@ -69,10 +86,15 @@ if __name__ == "__main__":
     responses = np.array([test_mistral_embedding(chunk) for chunk in chunks])
     test_save_embedding(id, responses)
     test_check_output_file(id)
-    faiss_index = test_load_to_faiss_index(dimension=responses.shape[1], np_vectors=responses)
+    faiss_index = test_load_to_faiss_index(
+        dimension=responses.shape[1], np_vectors=responses
+    )
     print(faiss_index)  # Print the index object to verify its creation
     print("FAISS index created with the given embeddings." + str(faiss_index.ntotal))
     test_save_faiss_to_local_file(faiss_index, OUTPUT_DIR / f"{id}.faiss")
     loaded_index = test_load_faiss_from_local_file(OUTPUT_DIR / f"{id}.faiss")
     print(loaded_index)
+    cached_index = test_get_cached_or_load_index(id, OUTPUT_DIR / f"{id}.faiss")
+    print(cached_index)
+    print("FAISS cache keys:", list(FAISS_INDEX_CACHE.keys()))
     print("All tests completed successfully.")

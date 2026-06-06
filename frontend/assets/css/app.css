@@ -10,6 +10,7 @@
   --function-button: #4a595a;
   --upload-button: #5db974;
   --form-button: #1f7a36;
+  --setting-button: rgba(97, 97, 132, 0.4);
   --panel: rgba(51, 55, 59, 0.78);
   --panel-strong: rgba(51, 55, 59, 0.9);
   --panel-border: rgba(255, 255, 255, 0.12);
@@ -41,6 +42,17 @@
 html,
 body {
   height: 100%;
+}
+
+select {
+  text-align: center;
+  color: var(--ink) !important;
+}
+
+select option {
+  text-align: left;
+  background-color: var(--button) !important;
+  color: var(--ink) !important;
 }
 
 body {
@@ -499,7 +511,8 @@ summary.avatar-btn::-webkit-details-marker {
 
 .button-select-wrap {
   display: flex;
-  text-align: center;
+  width: max-content;
+  justify-content: center;
   align-items: center;
   gap: 6px;
   border: 1px solid transparent;
@@ -517,9 +530,11 @@ summary.avatar-btn::-webkit-details-marker {
 
 .select-pill .shiny-input-container {
   margin: 0;
-  width: auto;
-  max-width: 100px;
+  width: max-content;
+  max-width:fit-content;
   display: inline-flex;
+  background-color: var(--setting-button);
+  border-radius: var(--border-radius-8);
 }
 
 .select-pill .shiny-input-container > label {
