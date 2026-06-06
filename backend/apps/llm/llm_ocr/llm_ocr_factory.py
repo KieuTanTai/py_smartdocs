@@ -4,7 +4,6 @@ from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFa
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.read_config.config_provider import (
-    DEFAULT_CONFIG_PROVIDER,
     IConfigProvider,
 )
 
@@ -12,7 +11,7 @@ from sys_services.read_config.config_provider import (
 class LLMOCRFactory(ILLMOCRFactory):
 
     def __init__(self, config_provider: IConfigProvider, logger: ILogger):
-        self.config_provider = config_provider or DEFAULT_CONFIG_PROVIDER
+        self.config_provider = config_provider
         self.logger = logger
 
     def create_ocr_extractor(self, provider_name: EProviderName) -> ILLMOCR:

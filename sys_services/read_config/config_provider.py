@@ -12,6 +12,7 @@ from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.read_config.read_list_provider import LIST_EMBEDDING_MODELS, LIST_MODELS, LIST_PROVIDERS
 from sys_services.read_config.read_ollama_config import OLLAMA_CONFIG
 from sys_services.read_config.read_qdrant_config import CLUSTER_CONFIG
+from sys_services.read_config.read_redis_config import REDIS_CONFIG
 
 
 class EnvConfigProvider(IConfigProvider):
@@ -45,5 +46,5 @@ class EnvConfigProvider(IConfigProvider):
     def get_list_providers(self) -> list[IProvider]:
         return LIST_PROVIDERS
 
-
-DEFAULT_CONFIG_PROVIDER = EnvConfigProvider()
+    def get_redis_config(self) -> Mapping[str, Any]:
+        return dict(REDIS_CONFIG)

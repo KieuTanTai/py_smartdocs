@@ -45,5 +45,9 @@ class IConfigProvider(ABC):
     def get_list_providers(self) -> list[IProvider]:
         pass
 
+    @abstractmethod
+    def get_redis_config(self) -> Mapping[str, Any]:
+        pass
+
 
 

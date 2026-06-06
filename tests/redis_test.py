@@ -4,6 +4,7 @@ from pathlib import Path
 import redis
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
 from sys_services.logging import Logger
+from sys_services.read_config.config_provider import EnvConfigProvider
 
 CURRENT_DIR = Path(__file__).parent.resolve()
 OUTPUT_DIR = CURRENT_DIR / "output" / "cache"
@@ -12,8 +13,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 def test_redis_cache():
     # DATA DRIVEN TESTING
     logger = Logger()
-    cache_client = RedisCacheSession(redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
-                                      , metadata_dir=OUTPUT_DIR, logger=logger)
+    cache_client = RedisCacheSession(config_provider=EnvConfigProvider(), metadata_dir=OUTPUT_DIR, logger=logger)
     cache_service = cache_client.connect(file_caller=Path(__file__).name)
 
     # Test set and get

@@ -15,7 +15,7 @@ from backend.apps.core.interfaces.core.i_dataclass_transaction import (
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.core.enums.e_provider_name import EProviderName
 from sys_services.logging import Logger
-from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
+from sys_services.read_config.config_provider import EnvConfigProvider
 from sys_services.read_config.read_gemini_config import GEMINI_EMBEDDING_CONFIG
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.read_config.read_ollama_config import OLLAMA_CONFIG
@@ -60,7 +60,7 @@ TEST_PROMPT = f"""
         If the information is insufficient to answer the question, please indicate that you do not have enough information to provide an answer.
         NOT ALLOWED TO MAKE UP ANSWERS. ONLY USE THE INFORMATION PROVIDED ABOVE.
         """
-FACTORY = LLMProviderFactory(config_provider=DEFAULT_CONFIG_PROVIDER, logger = Logger())
+FACTORY = LLMProviderFactory(config_provider=EnvConfigProvider(), logger = Logger())
 CURRENT_DIR = Path(__file__).parent.resolve()
 OUTPUT_DIR = CURRENT_DIR / "output"
 
