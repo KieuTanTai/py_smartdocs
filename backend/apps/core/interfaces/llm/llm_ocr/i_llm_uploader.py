@@ -37,3 +37,10 @@ class ILLMUploader(ABC):
         Delete file in Mistral.
         """
         pass
+
+    @abstractmethod
+    def is_file_exists(self, file_id: str) -> bool:
+        """
+        Check if file exists in Mistral.
+        """
+        pass

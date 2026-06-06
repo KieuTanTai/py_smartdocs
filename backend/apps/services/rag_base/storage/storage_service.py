@@ -40,6 +40,10 @@ class FileStorageService(IFileStorage):
 
     def delete_file(self, file_id: str) -> bool:
         return self.uploader.delete_file(file_id)
+    
+    def is_file_existed(self, file_id: str) -> bool:
+        return self.uploader.is_file_exists(file_id)
+
 
     # This method is to get file size in bytes, which can be used for logging, validation, etc.
     def get_file_size(self, file_info: ICreateFileResponse) -> float:
