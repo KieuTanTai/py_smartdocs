@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import uuid
 import time
+import logging
 from pathlib import Path
 import pypdf
 
@@ -21,8 +22,71 @@ from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.enums.e_provider_name import EProviderName
 
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 
+# Health Check View
+class HealthView(APIView):
+    def get(self, request):
+        return Response({
+            "status": "healthy",
+            "message": "SmartDocs API is running"
+        }, status=status.HTTP_200_OK)
+
+
+# Provider Management Views
+class ProviderListView(APIView):
+    def get(self, request):
+        """Get list of configured providers"""
+        try:
+            factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, logger)
+            providers = factory.get_available_providers()
+            return Response({
+                "providers": providers,
+                "count": len(providers)
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Failed to get providers: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ProviderTestView(APIView):
+    def post(self, request):
+        """Test a specific provider connection"""
+        provider_name = request.data.get("provider")
+        model_name = request.data.get("model")
+        
+        if not provider_name or not model_name:
+            return Response({
+                "error": "provider and model parameters are required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, logger)
+            client = factory.get_provider(provider_name)
+            req = ICompletionRequest(
+                provider=EProviderName(provider_name),
+                model=model_name,
+                prompt="Test message",
+                context_hits=[]
+            )
+            response = client.generate(req)
+            return Response({
+                "status": "success",
+                "provider": provider_name,
+                "model": model_name,
+                "response": response[:100] + "..." if len(response) > 100 else response
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Provider test failed: {e}")
+            return Response({
+                "status": "failed",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Document Management Views
 class DocumentListView(APIView):
     def get(self, request):
         docs = DocumentModel.objects.all().order_by("-faiss_index_created_at")
@@ -124,13 +188,13 @@ class DocumentIndexView(APIView):
                                 text_list.append(t)
                         extracted_text = "\n".join(text_list)
                     except Exception as e:
-                        DEFAULT_LOGGER.error(f"Failed to read PDF: {e}")
+                        logger.error(f"Failed to read PDF: {e}")
                 else:
                     try:
                         with open(doc.file_path, "r", encoding="utf-8", errors="ignore") as f:
                             extracted_text = f.read()
                     except Exception as e:
-                        DEFAULT_LOGGER.error(f"Failed to read text file: {e}")
+                        logger.error(f"Failed to read text file: {e}")
             
             # Normalize text
             normalizer = Normalize()
@@ -316,13 +380,14 @@ class MessageListView(APIView):
         
         # 5. Invoke LLM client
         model_name = request.data.get("model", "gemini-2.5-flash")
+        provider_name = request.data.get("provider", "gemini")
 
         start_time = time.time()
         answer = ""
         used_mock = False
         
         try:
-            factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, DEFAULT_LOGGER)
+            factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, logger)
             client = factory.get_provider(provider_name)
             req = ICompletionRequest(
                 provider=EProviderName(provider_name),
@@ -332,7 +397,7 @@ class MessageListView(APIView):
             )
             answer = client.generate(req)
         except Exception as exc:
-            DEFAULT_LOGGER.error(f"LLM execution error: {exc}. Using mock response.")
+            logger.error(f"LLM execution error: {exc}. Using mock response.")
             answer = f"I failed to connect to {provider_name} ({model_name}). Here is a simulated response based on the context: {context_text[:200]}"
             used_mock = True
             

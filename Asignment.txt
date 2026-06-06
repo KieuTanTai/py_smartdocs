@@ -1,0 +1,69 @@
+﻿SMART DOCS REQS (Python3)
+I) Tổng quan:
+Trong kỷ nguyên số hiện nay, việc xử lý và tìm kiếm thông tin từ các tài liệu điện tử đã trở thành một nhu cầu thiết yếu. Với sự phát triển mạnh mẽ của Trí tuệ nhân tạo (AI) và Xử lý ngôn ngữ tự nhiên (NLP), các hệ thống RAG (Retrieval-Augmented Generation) đã nổi lên như một giải pháp hiệu quả cho bài toán này. Dự án này được thực hiện nhằm xây dựng một hệ thống RAG hoàn chỉnh, cho phép người dùng tải lên tài liệu PDF và đặt câu hỏi về nội dung tài liệu. Hệ thống sử dụng 3 mô hình: qwen của Ollama; Mistral AI của Mistral AI SAS; Gemini của Google , kết hợp với công nghệ embedding đa ngôn ngữ của từng mô hình và vector database để cung cấp câu trả lời chính xác. Báo cáo này trình bày chi tiết về kiến trúc hệ thống, các công nghệ được sử dụng, quy trình triển khai và kết quả đạt được.
+II) Thực nghiệm và thiết kế hệ thống
+1. Cấu trúc: 
+– SmartDocsAI xây dựng dựa theo kiến trúc Object - Oriented Architectural kết hợp với SOLID pattern giúp tách biệt rõ các tầng (UI, Bussiness Core, Async handler, Database...), các thành phần độc lập với nhau và giao tiếp qua API và message queue.
+o Lớp trình diễn: sử dụng Shiny với cấu trúc phân loại theo Components để tạo giao diện web
+o API Gateway: là cổng kết nối cho các components của frontend cần gọi tới backend, đóng vai trò như controller, lớp validate I và gửi request xuống cho Application
+o Lớp ứng dụng: Sử dụng LangChain để quản lý pipeline RAG và prompt engineering
+o Lớp dữ liệu: 
+§ lưu trữ vector với FAISS với khả năng flexible hỗ trợ đa chiều dimensions, đồng thời lưu lại file metadata để không mất dữ liệu sau khi tắt máy
+§ MariaDB (11.7+) với công nghệ Django ORM để lưu trữ conversations, messages, files (path)
+o Lớp nghiệp vụ: Core/ định nghĩa 1 phần trong pipeline base RAG (chunk, Normalize) và đồng thời cung cấp Interfaces cho các phần còn lại của RAG
+o Lớp mô hình: llm/ chứa các class cung cấp dịch vụ gọi tới endpoint của các model LLMs dùng cho việc Scan OCR, Embedding, Generation, đồng thời là nơi định nghĩa context structure cho các response của các mô hình LLM
+2. Luồng xử lý:
+– Luồng 1: Xử lý tài liệu upload bởi frontend
+o Nhận file thông qua file input => Gọi upload_file gateway => validate lớp I, đưa path xuống cho tầng Application => application/upload/ validate lớp II, gọi job/upload/ => job/upload/ tách thread, tiến hành chạy bất đồng bộ => chạy pipeline( storage - normalize - chunking - embedding  - save vector/metadata - insert metadata path to database)
+– Luồng 2: Hỏi - Đáp: 
+o Input câu hỏi => message_gateway => Search vector store => create context => generate response => save to database
+3. Module Frontend
+– Các phần chính:
+o file_uploader
+o process input
+o create new conversation + save active conversation to local storage
+o chat bar gửi object {active_conversation_id: UUID v7, conversation type: normal chat hoặc cli-termux, model name: EProviderName, str input}
+o Response cần: detail time (uploading, processing, embedding, query, total)
+– phần phụ:
+o Documents: hiển thị trạng thái các file
+o status: gửi về backend tên model check healthy
+o remove chat : gửi về backend active_conversation_id => set lại status conversation trong db thành false => xóa metadata => ẩn ở UI
+o Sessions: hiển thị những conversation còn hoạt động
+4. Module Backend
+– api/ : gateway giữa Frontend và Backend
+– apps/ :
+o application/: nơi xử lý nghiệp vụ chính của hệ thống, gọi xuống job chạy pipeline background nếu cần
+o config/: settings cho backend, đồng thời chứa injection container cho DI 
+o core/: xương sống của backend, chứa các định nghĩa interface cốt lõi, đồng thời chứa các class nghiệp vụ cơ bản phục vụ 1 phần trong pipeline
+o interface/: external interface dành cho application/, job/,..
+o llm/: implement interface trong core/, là nơi chứa các class gọi model llm (ocr, generate, embed), đồng thời chứa context class cho input generate 
+o job/: là nơi chạy các pipeline bất đồng bộ
+o utils/: chứa các functions để hỗ trợ validate
+o metadata/: là nơi chứa các file upload từ input
+§ metadata/faiss/{name}.faiss: là nơi chứa metadata của faiss, bao gồm name là tên được gửi xuống sau khi hashing content của file gốc
+5. Lưu ý:
+– các file được upload mặc định sẽ tạo thành 1 conversation mới (chưa hỗ trợ upload file trực tiếp từ chat bar) => index của mỗi conversation sẽ được 
+– Pipeline sẽ đi theo idea tổng quan như sau:
+o upload:
+§ Get Path => Store to metadata folders/ => read content => test hasing content by sha256 for name file => check faiss/:
+·  if not have  any file equal to this index => normalize => chunk => embed => pass object {name: sha256 index; vectors: np.array) to faiss => locate it on memory => create file metadata with name is {name}.faiss, content is faiss index content by using faiss.write_index => save to database and return UUID =>  sumarize.
+o object return is {UUID, create_at, sumarize content}
+· if have => load this file metadata and pass content to faiss_load(vectors: np.array) for load again content to memory => return
+o message:
+§ pass object {active_conversation_id: UUID v7, conversation type: normal chat hoặc cli-termux, model name: EProviderName, str input} for gateway => pass to application/message/ => call pipeline retrieval on job/retrieval/ => search by faiss => revert content from vectors by faiss => create context => pass to llm generate => return result
+o delete conversation (must using transaction):
+§ get UUID => query conversation_files, messages and remove records on DB => using faiss_index_id on conversation_files for remove records on faiss_index, also remove on metadata/faiss/{name}.faiss by names get on faiss_index table => remove conversation on UI
+o benchmark:
+§ check time on each part on pipeline (on application/ )* 
+§ Evaluation Criteria: 
+· Privacy
+· Cost
+· Upload File
+· Speed
+o using instance model & chat type:
+§ Frontend pass object {active_conversation_id: UUID v7, conversation type: normal chat hoặc cli-termux, model name:EProviderName, str input} for gateway => using conversation type for swap conversation (NOT AVAILABLE NOW), model name for get istance model
+III) Kết quả & đánh giá
+– Test Documents
+– Queries strategy
+– Latency breakdown
+– Driven test and compare model

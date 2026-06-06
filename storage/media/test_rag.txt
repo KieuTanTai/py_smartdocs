@@ -1,0 +1,11 @@
+Python is a programming language created by Guido van Rossum.
+
+Django is a Python web framework.
+
+Shiny for Python is used to build interactive web applications.
+
+OpenAI develops artificial intelligence models.
+
+The capital of Vietnam is Hanoi.
+
+SGU stands for Saigon University.
