@@ -35,12 +35,18 @@ class ILLMUploader(ABC):
     def delete_file(self, file_id: str) -> bool:
         """
         Delete file in Mistral.
+        MUST SURE NOT HAVE ANY CONVERSATION REFERENCE THIS FILE, OR THIS METHOD WILL RAISE EXCEPTION OR JUST RETURN FALSE, NOT DELETE THIS FILE IN MISTRAL
         """
         pass
 
     @abstractmethod
-    def is_file_exists(self, file_id: str) -> bool:
+    def is_file_exists(self, file_id: str) -> IGetFileResponse:
         """
         Check if file exists in Mistral.
+        Args:
+            file_id: File id in upload cloud
+
+        Returns:
+            IGetFileResponse: Response object with file info if it exists, None otherwise
         """
         pass

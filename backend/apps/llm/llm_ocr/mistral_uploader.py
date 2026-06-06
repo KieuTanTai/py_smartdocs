@@ -90,13 +90,13 @@ class MistralUploader(ILLMUploader):
             )
             raise e
 
-    def is_file_exists(self, file_id: str) -> bool:
+    def is_file_exists(self, file_id: str) -> IGetFileResponse:
         try:
-            self.client.files.retrieve(file_id=file_id)
+            response = self.client.files.retrieve(file_id=file_id)
             self.logger.info(f"File with id '{file_id}' exists in Mistral",
                 Path(__file__).name, Path(__file__).name)
-            return True
+            return cast(IGetFileResponse, response)
         except Exception as e:
             self.logger.info(f"File with id '{file_id}' does not exist in Mistral. Error: {e}",
                 Path(__file__).name, Path(__file__).name)
-            return False
+            raise FileNotFoundError(f"File with id '{file_id}' does not exist in Mistral. Error: {e}")

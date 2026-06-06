@@ -73,7 +73,7 @@ class IFileStorage(ABC):
         pass
 
     @abstractmethod
-    def is_file_existed(self, file_id: str) -> bool:
+    def is_file_existed(self, file_id: str) -> IGetFileResponse:
         """
         Check if file exists in storage.
 
@@ -81,7 +81,7 @@ class IFileStorage(ABC):
             file_id: File id in upload cloud
 
         Returns:
-            bool: True if file exists, False otherwise
+            IGetFileResponse: Response object with file info if it exists, raise FileNotFoundError otherwise
         """
         pass
 

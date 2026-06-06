@@ -24,6 +24,7 @@ class IVectorDBQueryResponse:
 class IVectorDBDeleteResponse:
     UUID: str
     is_success: bool
+    deleted_count: int = 0
     message: str = ""  # Optional message field for additional info or error messages
 
 @dataclass

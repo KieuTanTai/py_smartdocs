@@ -43,3 +43,7 @@
 ### CACHING
 
 - redis: `https://github.com/redis/redis`
+
+### DJANGO
+
+- `https://docs.djangoproject.com/en/6.0/`, `https://www.w3schools.com/django/`

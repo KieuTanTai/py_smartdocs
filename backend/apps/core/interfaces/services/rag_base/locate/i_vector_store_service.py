@@ -92,13 +92,12 @@ class IVectorStoreService(ABC):
         pass
 
     @abstractmethod
-    def is_existed_in_metadata(self, vector_id: str, file_caller: str = "") -> Path | None:
+    def is_existed_in_metadata(self, vector_id: str) -> Path | None:
         """
         Check if vector_id exists in metadata.
 
         Args:
             vector_id: Vector identifier to check.
-            file_caller: Identifier for the calling file.
         Returns:
             Path to metadata file if exists, otherwise None.
         """

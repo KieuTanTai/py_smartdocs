@@ -41,7 +41,7 @@ class FileStorageService(IFileStorage):
     def delete_file(self, file_id: str) -> bool:
         return self.uploader.delete_file(file_id)
     
-    def is_file_existed(self, file_id: str) -> bool:
+    def is_file_existed(self, file_id: str) -> IGetFileResponse:
         return self.uploader.is_file_exists(file_id)
 
 

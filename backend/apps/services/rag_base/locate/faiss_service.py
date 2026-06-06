@@ -15,6 +15,7 @@ from backend.apps.core.interfaces.response.i_vector_db_response import (
     IVectorDBQueryResponse,
     IVectorDBUpsertResponse,
 )
+from backend.apps.utils.path_file_helper import create_path_file, delete_file_metadata_with_file_name, is_existed_in_metadata
 
 class FaissService(IVectorStoreService):
     """
@@ -54,18 +55,18 @@ class FaissService(IVectorStoreService):
         return IVectorDBQueryResponse(UUID=vector_id, distances=distances.tolist(), indices=indices.tolist()[0])
 
     def delete(self, vector_id: str, file_caller: str = "") -> IVectorDBDeleteResponse:
-        path = self.is_existed_in_metadata(vector_id, file_caller)
-        if (path is None):
-            self.logger.error(f"Metadata for vector_id '{vector_id}' does not exist",
+        deleted_count = delete_file_metadata_with_file_name(self.metadata_dir, vector_id, "faiss", self.logger)    
+        if deleted_count == 0:
+            self.logger.warning(f"Vector with id '{vector_id}' does not exist in metadata and cannot be deleted",
                 Path(__file__).name, file_caller, method_call=self.delete.__name__)
-            raise ValueError(f"Vector with id '{vector_id}' does not exist in metadata")
-        path.unlink()
-        self.logger.info(f"Deleted FAISS index metadata for vector_id '{vector_id}' at '{path}'",
-            Path(__file__).name, file_caller, method_call=self.delete.__name__)
-        return IVectorDBDeleteResponse(UUID=vector_id, is_success=True)
+            return IVectorDBDeleteResponse(UUID=vector_id, is_success=False, message=f"Vector with id '{vector_id}' does not exist in metadata")
+        else:
+            self.logger.info(f"Deleted vector with id '{vector_id}' from metadata",
+                Path(__file__).name, file_caller, method_call=self.delete.__name__)
+        return IVectorDBDeleteResponse(UUID=vector_id, is_success=True, deleted_count=deleted_count)
 
     def load(self, vector_id: str, file_caller: str = "") -> IVectorDBLoadResponse:
-        path = self.is_existed_in_metadata(vector_id, file_caller)
+        path = self.is_existed_in_metadata(vector_id)
         if (path is None):
             self.logger.error(f"Metadata for vector_id '{vector_id}' does not exist",
                 Path(__file__).name, file_caller, method_call=self.load.__name__)
@@ -75,20 +76,12 @@ class FaissService(IVectorStoreService):
             Path(__file__).name, file_caller, method_call=self.load.__name__)
         return IVectorDBLoadResponse(UUID=vector_id, is_success=True, index=index)
 
-
-    def is_existed_in_metadata(self, vector_id: str, file_caller: str = "") -> Path | None:
-        metadata_path = self.metadata_dir / f"{vector_id}.faiss"
-        path =  metadata_path if metadata_path.exists() else None
-        if path is None:
-            self.logger.error(f"Metadata for vector_id '{vector_id}' does not exist",
-                Path(__file__).name, file_caller, method_call=self.is_existed_in_metadata.__name__)
-        else:
-            self.logger.info(f"Metadata for vector_id '{vector_id}' exists at '{path}'",
-                Path(__file__).name, file_caller, method_call=self.is_existed_in_metadata.__name__)
-        return path
+    def is_existed_in_metadata(self, vector_id: str) -> Path | None:
+        return is_existed_in_metadata(self.metadata_dir, vector_id, "faiss", self.logger)
 
 
     # region Private methods
+    # helper method to filter FAISS search results based on allow_ids and chunk_file_map, it will log the filtering process and return the filtered distances and indices
     def __filter_output_search_results(self, distances: np.ndarray, indices: np.ndarray, allow_ids: set | None, chunk_file_map: dict | None, file_caller: str = "") -> tuple[np.ndarray, np.ndarray]:
         if allow_ids is None and chunk_file_map is None:
             self.logger.warning("No filters applied to search results, returning all results",
@@ -107,6 +100,7 @@ class FaissService(IVectorStoreService):
             Path(__file__).name, file_caller, method_call=self.__filter_output_search_results.__name__)
         return np.array(filtered_distances), np.array(filtered_indices)
 
+    # helper method to validate input numpy array, it will check if the input is empty, has zero rows, and has the correct dtype. It will also reshape 1D float32 input to 2D if necessary, and log the validation process.
     def __validate_input(self, input: np.ndarray, input_type: Any):
         if (input.size == 0):
             self.logger.error("Input cannot be empty",
@@ -127,6 +121,7 @@ class FaissService(IVectorStoreService):
         
         return input
 
+    # helper method to generate FAISS index from numpy vectors, it will validate the input vectors and ids, and log the process. It supports both IndexFlatL2 and IndexIDMap based on whether ids are provided.
     def __generate_faiss_index(self, np_vectors: np.ndarray, ids: np.ndarray = np.array([]), file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap:
         np_vectors = self.__validate_input(np_vectors, np.float32)
         ids = self.__validate_input(ids, np.int64)
@@ -146,19 +141,16 @@ class FaissService(IVectorStoreService):
                 Path(__file__).name, file_caller, method_call=self.__generate_faiss_index.__name__)
             return index
 
+
+    # helper method to write FAISS index metadata file, it will check if metadata for the vector_id already exists before writing, and log the process
     def __write_metadata_file(self, vector_id: str, faiss_index: faiss.IndexFlatL2, file_caller: str = ""):
-        destination_path = (
-            self.metadata_dir
-            / f"{datetime.date.today().strftime("%Y-%m-%d")}"
-            / f"{vector_id}.faiss"
-        )
         path = self.is_existed_in_metadata(vector_id)
         if (path is not None and type(path) == Path):
             self.logger.warning(f"Metadata for vector_id '{vector_id}' already exists, skipping write",
                 Path(__file__).name, file_caller, method_call=self.is_existed_in_metadata.__name__)
             return
 
-        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        destination_path = create_path_file(self.metadata_dir, vector_id, "faiss")
         faiss.write_index(faiss_index, str(destination_path))
         self.logger.info(f"FAISS index metadata for vector_id '{vector_id}' written to '{destination_path}'",
             Path(__file__).name, file_caller, method_call=self.__write_metadata_file.__name__)
