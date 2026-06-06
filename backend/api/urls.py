@@ -22,13 +22,6 @@ from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletio
 from backend.apps.core.enums.e_provider_name import EProviderName
 
 
-class HealthView(APIView):
-    def get(self, request):
-        return Response({"status": "ok", "detail": "Backend is running"}, status=status.HTTP_200_OK)
-
-
-
-
 
 class DocumentListView(APIView):
     def get(self, request):
@@ -397,6 +390,4 @@ urlpatterns = [
     
     path("api/core/search/", CoreSearchView.as_view(), name="core-search"),
     
-    # Auth endpoints
-    path("api/auth/signup/", AuthSignupView.as_view(), name="auth-signup"),
 ]
