@@ -7,7 +7,7 @@ from sys_services.logging import Logger
 from sys_services.read_config.config_provider import EnvConfigProvider
 
 CURRENT_DIR = Path(__file__).parent.resolve()
-OUTPUT_DIR = CURRENT_DIR / "output" / "cache"
+OUTPUT_DIR = CURRENT_DIR / "output" 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def test_redis_cache():
@@ -27,9 +27,9 @@ def test_redis_cache():
     print("Response 2:", type(response2), response2)
     response3 = cache_service.exists("test_key", file_caller=Path(__file__).name)
     print("Response 3:", type(response3) == int, response3)
-    cache_service.delete("test_key", file_caller=Path(__file__).name)
-    cache_service.delete("test_key_expire", file_caller=Path(__file__).name)
-    cache_service.clear(file_caller=Path(__file__).name)
+    # cache_service.delete("test_key", file_caller=Path(__file__).name)
+    # cache_service.delete("test_key_expire", file_caller=Path(__file__).name)
+    # cache_service.clear(file_caller=Path(__file__).name)
     cache_client.disconnect(file_caller=Path(__file__).name)
 
 if __name__ == "__main__":
