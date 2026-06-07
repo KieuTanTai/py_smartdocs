@@ -11,7 +11,6 @@ from pathlib import Path
 
 from django.conf import settings
 from backend.apps.services.chat.models import DocumentModel
-from backend.apps.utils.path_file_helper import create_media_path
 
 logger = logging.getLogger(__name__)
 

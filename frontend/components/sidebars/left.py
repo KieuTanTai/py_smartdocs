@@ -41,6 +41,15 @@ def left_sidebar_ui() -> ui.Tag:
             ui.tags.h3("Documents"),
             ui.tags.p("Select documents for prompt context.", class_="muted"),
             ui.output_ui("doc_selector"),
+            ui.tags.div(
+                ui.input_action_button(
+                    "delete_selected_docs",
+                    "Remove selected",
+                    class_="btn-ghost full-width",
+                    title="Remove selected documents from the list",
+                ),
+                class_="margin-top-8",
+            ),
             class_="card",
         ),
         ui.tags.div(

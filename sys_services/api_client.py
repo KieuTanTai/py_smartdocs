@@ -16,18 +16,51 @@ class ApiClient:
             base_url or os.getenv("SMARTDOCS_API_BASE_URL") or DEFAULT_BASE_URL
         ).rstrip("/")
         self.timeout = timeout
+        self._access_token: Optional[str] = None
+        self._refresh_token: Optional[str] = None
+
+    def clear_session(self) -> None:
+        self._access_token = None
+        self._refresh_token = None
+
+    def _headers(self) -> Dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self._access_token:
+            headers["Authorization"] = f"Bearer {self._access_token}"
+        return headers
+
+    def set_tokens(self, access_token: str, refresh_token: str, user: Optional[Dict] = None) -> None:
+        self._access_token = access_token
+        self._refresh_token = refresh_token
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
+        headers = self._headers()
+        if "headers" in kwargs:
+            headers = {**headers, **kwargs.pop("headers")}
+        # Multipart uploads set their own Content-Type with boundary;
+        # avoid overriding it with application/json.
+        is_multipart = "files" in kwargs
+        if is_multipart and "Content-Type" in headers:
+            headers = {k: v for k, v in headers.items() if k != "Content-Type"}
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                response = client.request(method, url, **kwargs)
+                response = client.request(method, url, headers=headers, **kwargs)
             response.raise_for_status()
         except httpx.RequestError as exc:
             raise ApiError(f"Request failed: {exc}") from exc
         except httpx.HTTPStatusError as exc:
+            # Safely read response body, handling non-UTF-8 content (e.g. HTML error pages)
+            raw_body = exc.response.content
+            try:
+                body_text = raw_body.decode("utf-8")
+            except UnicodeDecodeError:
+                try:
+                    body_text = raw_body.decode("latin-1")
+                except Exception:
+                    body_text = raw_body.decode("utf-8", errors="replace")
             raise ApiError(
-                f"HTTP {exc.response.status_code}: {exc.response.text}"
+                f"HTTP {exc.response.status_code}: {body_text}"
             ) from exc
 
         content_type = response.headers.get("content-type", "")
@@ -41,6 +74,7 @@ class ApiClient:
         try:
             return self._request(method, primary_path, **kwargs)
         except ApiError as exc:
+            print(f"Primary path {primary_path} failed: {exc}")
             if "HTTP 404" not in str(exc):
                 raise
         return self._request(method, fallback_path, **kwargs)
@@ -104,13 +138,16 @@ class ApiClient:
         with open(file_info["datapath"], "rb") as handle:
             files = {"file": (file_info["name"], handle, file_type)}
             data = {"source": source}
-            return self._request_with_fallback(
+            # Multipart requests don't use JSON headers
+            resp = self._request_with_fallback(
                 "POST",
                 "/api/documents/upload/",
                 "/api/documents/",
                 files=files,
                 data=data,
             )
+            print(f"Upload response: {resp}")
+            return resp
 
     def index_document(self, document_id: str) -> Dict[str, Any]:
         return self._request_with_fallback(
@@ -126,6 +163,26 @@ class ApiClient:
             f"/api/documents/{document_id}/",
         )
 
+    def delete_document(self, document_id: str) -> Dict[str, Any]:
+        return self._request("DELETE", f"/api/documents/{document_id}/")
+
+    # ── Auth ────────────────────────────────────────────────────────────────
+
     def signup(self, email: str, password: str, name: str) -> Dict[str, Any]:
         payload = {"email": email, "password": password, "name": name}
         return self._request("POST", "/api/auth/signup/", json=payload)
+
+    def login(self, email: str, password: str) -> Dict[str, Any]:
+        payload = {"email": email, "password": password}
+        return self._request("POST", "/api/auth/login/", json=payload)
+
+    def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+        payload = {"refresh_token": refresh_token}
+        return self._request("POST", "/api/auth/refresh/", json=payload)
+
+    def me(self) -> Dict[str, Any]:
+        return self._request("GET", "/api/auth/me/")
+
+    def logout(self, user_id: str) -> Dict[str, Any]:
+        payload = {"user_id": user_id}
+        return self._request("POST", "/api/auth/logout/", json=payload)

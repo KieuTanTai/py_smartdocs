@@ -1,0 +1,10 @@
+{
+  "document_id": "f3d8952b-df81-4174-b5c1-1b5f1096e13a",
+  "file_name": "smartdocs_test2.txt",
+  "chunk_count": 1,
+  "embedding_model": "gemini-embedding-2",
+  "embedding_dimensions": 3072,
+  "chunks": {
+    "0": "This is a test document.\n\nMachine learning is about artificial intelligence.\n\nDeep learning uses neural networks."
+  }
+}

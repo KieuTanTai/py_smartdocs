@@ -11,6 +11,9 @@ urlpatterns = [
     # Health check
     path("api/health/", include("backend.api.health.urls")),
 
+    # Authentication (signup, login, logout)
+    path("api/auth/", include("backend.api.auth.urls")),
+
     # Document management
     path("api/documents/", include("backend.api.documents.urls")),
 

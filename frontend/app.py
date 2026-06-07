@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict, List, Optional
 from shiny import App, reactive, render, ui
 from frontend.components.account.signup import signup_modal
+from frontend.components.account.login import login_modal
 from frontend.components.chat.box_chat import box_chat_ui
 from frontend.components.chat.message import build_message, send_message
 from frontend.components.header import header_ui
@@ -20,6 +21,10 @@ from sys_services.read_config.read_google_config import (
 )
 from sys_services.system_dirs import BASE_FE_DIR
 from sys_services.read_config.read_list_provider import LIST_PROVIDERS
+
+# ── Global auth token store (persists across Shiny sessions) ─────────────────
+_auth_tokens: Dict[str, str] = {}   # "access_token", "refresh_token"
+_auth_user: Optional[Dict] = None
 
 app_ui = ui.page_fluid(
     ui.tags.head(
@@ -72,13 +77,17 @@ def server(input: Any, output: Any, session: Any) -> None:
     system_prompt = reactive.Value("")
     mock_on_fail = reactive.Value(True)
     upload_source = reactive.Value("local")
-    current_user = reactive.Value(None)
+    current_user = reactive.Value(_auth_user.get("email") if _auth_user else None)
 
     def set_status(label: str, detail: str, kind: str = "info") -> None:
         status.set({"label": label, "detail": detail, "kind": kind})
 
     def client() -> ApiClient:
-        return ApiClient(api_base_url.get())
+        c = ApiClient(api_base_url.get())
+        if _auth_tokens.get("access_token"):
+            c._access_token = _auth_tokens["access_token"]
+            c._refresh_token = _auth_tokens.get("refresh_token")
+        return c
 
     def normalize_doc(
         payload: Dict[str, Any], file_info: dict, source: str
@@ -261,6 +270,37 @@ def server(input: Any, output: Any, session: Any) -> None:
     def user_badge() -> ui.Tag:
         user = current_user.get() or "Guest"
         return ui.tags.div(user, class_="badge subtle")
+
+    @render.ui
+    def account_menu() -> ui.Tag:
+        user = current_user.get()
+        if user:
+            return ui.tags.div(
+                ui.tags.div(
+                    ui.tags.div(user, class_="account-name"),
+                    ui.input_action_button(
+                        "logout_submit",
+                        "Sign out",
+                        class_="btn-ghost btn-sm",
+                    ),
+                    class_="account-dropdown",
+                ),
+                class_="account-menu",
+            )
+        else:
+            return ui.tags.div(
+                ui.input_action_button(
+                    "open_login",
+                    "Sign in",
+                    class_="btn-ghost btn-sm",
+                ),
+                ui.input_action_button(
+                    "open_signup",
+                    "Sign up",
+                    class_="btn-primary btn-sm",
+                ),
+                class_="account-menu account-menu-guest",
+            )
 
     @reactive.effect
     @reactive.event(input.open_settings)
@@ -510,20 +550,85 @@ def server(input: Any, output: Any, session: Any) -> None:
         set_status("Session removed", "Conversation removed from list.", "success")
 
     @reactive.effect
+    @reactive.event(input.delete_selected_docs)
+    def _delete_selected_docs() -> None:
+        selected = input.selected_docs() or []
+        if not selected:
+            set_status("No documents", "Nothing selected to delete.", "warning")
+            return
+        current_docs = docs.get()
+        removed_count = 0
+        for doc_id in selected:
+            try:
+                # Only delete from backend if it's a real UUID (not a local- prefix)
+                if not str(doc_id).startswith("local-"):
+                    client().delete_document(str(doc_id))
+                removed_count += 1
+            except ApiError:
+                pass  # Backend delete failed; remove from local list anyway
+        docs.set([d for d in current_docs if str(d.get("id")) not in selected])
+        set_status("Documents removed", f"Removed {removed_count} document(s).", "success")
+
+    @reactive.effect
     @reactive.event(input.open_signup)
     def _show_signup() -> None:
         ui.modal_show(signup_modal())
 
     @reactive.effect
+    @reactive.event(input.open_login)
+    def _show_login() -> None:
+        ui.modal_show(login_modal())
+
+    @reactive.effect
+    @reactive.event(input.login_submit)
+    def _login() -> None:
+        try:
+            result = client().login(
+                input.login_email(),
+                input.login_password(),
+            )
+            global _auth_tokens, _auth_user
+            _auth_tokens["access_token"] = result.get("access_token", "")
+            _auth_tokens["refresh_token"] = result.get("refresh_token", "")
+            _auth_user = result.get("user")
+            _api = client()
+            _api.set_tokens(
+                _auth_tokens["access_token"],
+                _auth_tokens["refresh_token"],
+                _auth_user,
+            )
+            current_user.set(result.get("email", input.login_email()))
+            set_status(
+                "Welcome back",
+                f"Signed in as {result.get('name', result.get('email', 'User'))}",
+                "success",
+            )
+        except ApiError as exc:
+            set_status("Login failed", str(exc), "error")
+        ui.modal_remove()
+
+    @reactive.effect
     @reactive.event(input.signup_submit)
     def _signup() -> None:
         try:
-            client().signup(
+            result = client().signup(
                 input.signup_email(),
                 input.signup_password(),
                 name=input.signup_name(),
             )
-            current_user.set(input.signup_email())
+            # Store JWT tokens globally (persists across page reloads within the session)
+            global _auth_tokens, _auth_user
+            _auth_tokens["access_token"] = result.get("access_token", "")
+            _auth_tokens["refresh_token"] = result.get("refresh_token", "")
+            _auth_user = result.get("user")
+            # Restore session in ApiClient
+            _api = client()
+            _api.set_tokens(
+                _auth_tokens["access_token"],
+                _auth_tokens["refresh_token"],
+                _auth_user,
+            )
+            current_user.set(result.get("email", input.signup_email()))
             set_status("Account created", "Signed in", "success")
         except ApiError as exc:
             set_status("Signup failed", str(exc), "error")
@@ -532,6 +637,17 @@ def server(input: Any, output: Any, session: Any) -> None:
     @reactive.effect
     @reactive.event(input.logout_submit)
     def _logout() -> None:
+        user = current_user.get()
+        if user:
+            try:
+                client().logout(user)
+            except ApiError:
+                pass
+        global _auth_tokens, _auth_user
+        _auth_tokens.clear()
+        _auth_user = None
+        _api = client()
+        _api.clear_session()
         current_user.set(None)
         set_status("Logged out", "Signed out", "info")
 

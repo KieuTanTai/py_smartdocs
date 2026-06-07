@@ -95,7 +95,7 @@ class MistralLLMOCR(ILLMOCR):
 
     def __get_document_object_by_mime_type(
         self, mime_type: str, signed_url: str
-    ) -> models.DocumentUnion | models.DocumentUnionTypeDict:
+    ) -> models.DocumentUnion | models.DocumentUnionTypedDict:
         if mime_type in [
             "application/pdf",
             "text/plain",

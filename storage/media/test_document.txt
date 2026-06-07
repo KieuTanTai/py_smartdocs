@@ -1,15 +1,1 @@
-
-    Báo cáo tài chính năm 2024
-    ==========================
-    
-    Tổng doanh thu: 150,000,000,000 VND
-    Chi phí hoạt động: 95,000,000,000 VND
-    Lợi nhuận ròng: 55,000,000,000 VND
-    
-    Công ty ABC có kết quả kinh doanh tích cực trong năm 2024.
-    Doanh thu tăng 15% so với cùng kỳ năm trước.
-    Chi phí được kiểm soát tốt, tỷ lệ chi phí/doanh thu giảm từ 68% xuống 63%.
-    
-    Ban Giám đốc đánh giá cao nỗ lực của toàn bộ nhân viên
-    trong việc đạt được các mục tiêu kinh doanh đề ra.
-    
+This is a test document for RAG system testing.

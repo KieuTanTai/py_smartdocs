@@ -1,0 +1,11 @@
+{
+  "document_id": "60ea6f40-904d-4bc4-ac53-fb250ce053aa",
+  "file_name": "test_system_check.txt",
+  "chunk_count": 2,
+  "embedding_model": "gemini-embedding-2",
+  "embedding_dimensions": 3072,
+  "chunks": {
+    "0": "Hello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!",
+    "1": "Hello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs.\n\nHello World!\n\nThis is a test document for SmartDocs."
+  }
+}
