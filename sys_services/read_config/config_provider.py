@@ -49,4 +49,5 @@ class EnvConfigProvider(IConfigProvider):
     def get_redis_config(self) -> Mapping[str, Any]:
         return dict(REDIS_CONFIG)
 
+
 DEFAULT_CONFIG_PROVIDER = EnvConfigProvider()

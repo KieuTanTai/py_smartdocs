@@ -48,7 +48,7 @@ class Logger(ILogger):
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             type_str = type_message.value.upper()
 
-            with open(log_file_path, "a") as log_file:
+            with open(log_file_path, "a", encoding="utf-8") as log_file:
                 # Write separator for readability
                 log_file.write(f"\n{self._separator}\n")
 
@@ -96,3 +96,6 @@ class Logger(ILogger):
         log_file_path = log_dir / file_name
         log_file_path.touch(exist_ok=True)
         return log_file_path
+
+
+DEFAULT_LOGGER = Logger()

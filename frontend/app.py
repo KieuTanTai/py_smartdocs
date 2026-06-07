@@ -126,7 +126,7 @@ def server(input: Any, output: Any, session: Any) -> None:
                     meta_line = " | ".join(parts)
             rows.append(
                 ui.tags.div(
-                    ui.tags.p(msg.get("content", ""), class_="message-text"),
+                    ui.markdown(msg.get("content", "")),
                     (
                         ui.tags.div(meta_line, class_="message-meta")
                         if meta_line
