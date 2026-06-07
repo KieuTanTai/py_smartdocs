@@ -48,3 +48,7 @@ class EnvConfigProvider(IConfigProvider):
 
     def get_redis_config(self) -> Mapping[str, Any]:
         return dict(REDIS_CONFIG)
+
+
+# Default global config provider instance used across the codebase
+DEFAULT_CONFIG_PROVIDER = EnvConfigProvider()

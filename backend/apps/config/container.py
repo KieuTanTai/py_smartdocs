@@ -3,6 +3,10 @@ from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
 from backend.apps.core.normalize.normalize import Normalize
+from backend.apps.llm.llm_provider_factory import LLMProviderFactory
+from backend.apps.job.message_job import MessageJob
+from backend.apps.job.conversation_job import ConversationJob
+from backend.apps.job.upload_job import UploadJob
 from backend.apps.services.cache.radis_cache_service import RedisCacheService
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
 from backend.apps.services.rag_base.storage.storage_service import FileStorageService
@@ -79,9 +83,43 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=logger,
     )
 
+    llm_provider_factory = providers.Factory(
+        LLMProviderFactory,
+        config_provider=config_provider,
+        logger=logger,
+    )
+
     # Locate
     locate_service = providers.Factory(
         LocateService,
         metadata_dir=METADATA_DIR,
+        logger=logger,
+    )
+
+    upload_job = providers.Factory(
+        UploadJob,
+        extract_service=extract_content_service,
+        normalize=normalize,
+        chunker=chunker,
+        cache_session=cache_service,
+        llm_provider_factory=llm_provider_factory,
+        locate_service=locate_service,
+        config_provider=config_provider,
+        logger=logger,
+    )
+
+    message_job = providers.Factory(
+        MessageJob,
+        llm_provider_factory=llm_provider_factory,
+        config_provider=config_provider,
+        locate_service=locate_service,
+        cache_session=cache_service,
+        logger=logger,
+    )
+
+    conversation_job = providers.Factory(
+        ConversationJob,
+        llm_provider_factory=llm_provider_factory,
+        config_provider=config_provider,
         logger=logger,
     )
