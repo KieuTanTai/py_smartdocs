@@ -96,3 +96,6 @@ class Logger(ILogger):
         log_file_path = log_dir / file_name
         log_file_path.touch(exist_ok=True)
         return log_file_path
+
+
+DEFAULT_LOGGER = Logger()

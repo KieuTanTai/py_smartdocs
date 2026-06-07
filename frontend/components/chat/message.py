@@ -30,12 +30,12 @@ def _extract_id(payload: Dict[str, Any]) -> Optional[str]:
 
 
 def _extract_text(payload: Dict[str, Any]) -> str:
-    for key in ("message", "content", "answer", "text"):
+    for key in ("message", "content", "answer", "text", "assistant"):
         if key in payload and payload[key]:
             return str(payload[key])
     data = payload.get("data", {})
     if isinstance(data, dict):
-        for key in ("message", "content", "answer", "text"):
+        for key in ("message", "content", "answer", "text", "assistant"):
             if key in data and data[key]:
                 return str(data[key])
     return ""
@@ -80,7 +80,12 @@ def send_message(
         if not new_conversation:
             api.update_conversation_documents(conversation_id, selected_docs)
 
-        response = api.send_message(conversation_id, content)
+        response = api.send_message(
+            conversation_id,
+            content,
+            provider=provider,
+            model=model,
+        )
         assistant = _extract_text(response) or "No response text returned."
         metrics = _extract_metrics(response)
         return {

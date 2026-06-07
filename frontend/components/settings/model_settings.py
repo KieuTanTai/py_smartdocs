@@ -9,7 +9,7 @@ def model_settings_ui(models: list[str]) -> ui.Tag:
                 ui.input_select(
                     "mode_select",
                     "Mode",
-                    choices=["normal", "cli-termux"],
+                    choices=["normal", "graph rag"],
                     selected="normal",
                 ),
                 class_="button-select-wrap",

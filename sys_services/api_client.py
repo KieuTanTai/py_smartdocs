@@ -11,7 +11,7 @@ class ApiError(RuntimeError):
 
 
 class ApiClient:
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 20.0) -> None:
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 60.0) -> None:
         self.base_url = (
             base_url or os.getenv("SMARTDOCS_API_BASE_URL") or DEFAULT_BASE_URL
         ).rstrip("/")
@@ -70,8 +70,18 @@ class ApiClient:
         }
         return self._request("POST", "/api/conversations/", json=payload)
 
-    def send_message(self, conversation_id: str, content: str) -> Dict[str, Any]:
+    def send_message(
+        self,
+        conversation_id: str,
+        content: str,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+    ) -> Dict[str, Any]:
         payload = {"content": content}
+        if provider:
+            payload["provider"] = provider
+        if model:
+            payload["model"] = model
         return self._request(
             "POST", f"/api/conversations/{conversation_id}/messages/", json=payload
         )

@@ -1,7 +1,7 @@
 from django.urls import path
 
-from backend.api.urls import HealthView
+from backend.api.health.views import APIHealthView
+
 urlpatterns = [
-    path('api/health/', HealthView.as_view(), name='health'),
-    
+    path("", APIHealthView.as_view(), name="health"),
 ]
