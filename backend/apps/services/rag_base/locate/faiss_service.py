@@ -52,7 +52,7 @@ class FaissService(IVectorStoreService):
         distances, indices = self.__filter_output_search_results(distances, indices, allow_ids, chunk_file_map, file_caller)
         self.logger.info(f"FAISS search results for vector_id '{vector_id}': distances={distances}, indices={indices}",
             Path(__file__).name, file_caller, method_call=self.search.__name__)
-        return IVectorDBQueryResponse(UUID=vector_id, distances=distances.tolist(), indices=indices.tolist()[0])
+        return IVectorDBQueryResponse(UUID=vector_id, distances=distances.tolist()[0], indices=indices.tolist()[0])
 
     def delete(self, vector_id: str, file_caller: str = "") -> IVectorDBDeleteResponse:
         deleted_count = delete_file_metadata_with_file_name(self.metadata_dir, vector_id, "faiss", self.logger)    
@@ -103,9 +103,7 @@ class FaissService(IVectorStoreService):
     # helper method to validate input numpy array, it will check if the input is empty, has zero rows, and has the correct dtype. It will also reshape 1D float32 input to 2D if necessary, and log the validation process.
     def __validate_input(self, input: np.ndarray, input_type: Any):
         if (input.size == 0):
-            self.logger.error("Input cannot be empty",
-                Path(__file__).name, Path(__file__).name)
-            raise ValueError("Input cannot be empty")
+            return input  # Return empty array as-is (valid for ids when no IDs are provided)
         if (input.shape[0] == 0):
             self.logger.error("Input cannot have zero rows",
                 Path(__file__).name, Path(__file__).name)

@@ -1,0 +1,127 @@
+# ============================================================
+# SmartDocs Production Docker Compose
+# ============================================================
+# Services:
+#   - nginx: reverse proxy (routes /api/* → backend, /* → frontend)
+#   - backend: Django API via Gunicorn
+#   - celery: Celery worker (async task processing)
+#   - celery-beat: Celery beat scheduler (periodic tasks)
+#   - redis: message broker + result backend
+#   - frontend: Shiny web UI
+#
+# Usage:
+#   docker compose -f docker-compose.yml --env-file .env up --build
+# ============================================================
+
+version: "3.9"
+
+x-common-env: &common-env
+  env_file:
+    - .env
+
+services:
+
+  # ── Redis ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend (Django + Gunicorn) ───────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      << : *common-env
+      DB_ENGINE: django.db.backends.mysql
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./storage:/app/storage
+      - ./metadata:/app/metadata
+      - ./logs:/app/logs
+    command: >
+      gunicorn app.asgi:application
+      --bind 0.0.0.0:8000
+      --workers 4
+      --worker-class uvicorn.workers.UvicornWorker
+      --access-logfile -
+      --error-logfile -
+
+  # ── Celery Worker ──────────────────────────────────────────
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      << : *common-env
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./storage:/app/storage
+      - ./metadata:/app/metadata
+    command: celery -A backend.apps.tasks worker --loglevel=info
+
+  # ── Celery Beat (Periodic Tasks) ──────────────────────────
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      << : *common-env
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./storage:/app/storage
+      - ./metadata:/app/metadata
+    command: >
+      celery -A backend.apps.tasks beat
+      --loglevel=info
+      --scheduler celery_beat_sqlitedb.Scheduler
+
+  # ── Frontend (Shiny) ──────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      << : *common-env
+      SMARTDOCS_API_BASE_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+    # Shiny server in ShinyProxy mode is complex; simpler: use uvicorn
+    command: >
+      uvicorn
+      --host 0.0.0.0
+      --port 8001
+      shiny_asgi:app
+
+volumes:
+  redis_data:

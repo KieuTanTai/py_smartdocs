@@ -1,3 +1,5 @@
+#! NOTE: NEED TO FIX CALLING, THIS FILE MUST BE CALLED ONE TIME AND NOT CALL AGAIN
+
 import os
 import re
 from typing import List
@@ -44,9 +46,9 @@ def get_ai_providers_config() -> List[IProvider]:
             embedding_value = os.getenv(key)
             temp_data[name]["embed_model_name"] = embedding_value
 
-    return mapping_results(temp_data)
+    return __mapping_results(temp_data)
 
-def mapping_results(temp_data: dict) -> List[IProvider]:
+def __mapping_results(temp_data: dict) -> List[IProvider]:
     providers = list[IProvider]()
     for name, data in temp_data.items():
         if data["model_name"] is not None and data["embed_model_name"] is not None:

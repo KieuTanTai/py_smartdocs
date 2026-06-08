@@ -3,6 +3,8 @@ import sys
 import django
 import numpy as np
 
+#! NOTE : SOMETHING ERROR IN THIS FILE
+
 # =====================================================================
 # BƯỚC 1: THIẾT LẬP MÔI TRƯỜNG DJANGO NỀN TẢNG
 # =====================================================================

@@ -1,15 +1,16 @@
+from __future__ import annotations
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+
 from sys_services.read_config.read_list_provider import LIST_PROVIDERS
 
 
-class APIProvider(APIView):
+class ProviderListView(APIView):
+    """Return the list of available LLM providers and their models."""
+
     def get(self, request):
-        """Handle GET request for provider info.
-        Returns a JSON response with available providers and their models.
-        """
-        providers = []
         return Response(
             {
                 "status": "ok",
@@ -26,11 +27,10 @@ class APIProvider(APIView):
         )
 
 
+class ProviderTestView(APIView):
+    """Test provider connection."""
+
     def post(self, request):
-        """Handle POST request to test provider connection.
-        Expects a JSON body with 'provider' and 'model' fields.
-        Returns a JSON response indicating success or failure of the connection test.
-        """
         return Response(
             {"status": "ok", "message": "Provider connection successful"},
             status=status.HTTP_200_OK,

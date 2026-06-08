@@ -10,7 +10,7 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 if __name__ == "__main__":
-    root_dir = Path(__file__).resolve().parents[2]
+    root_dir = Path(__file__).resolve().parents[1]
     pdf_path = root_dir / "docs" / "pdfs_test" / "Báo cáo tài chính Kiểm toán năm 2025.pdf"
     extracted_text = extract_text_from_pdf(pdf_path)
     file_name = Path(pdf_path).stem

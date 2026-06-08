@@ -2,10 +2,16 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+# from sys_services.ssl_fix import apply_ssl_fix
+
+# Fix SSL certificate verification BEFORE any Django/network imports.
+# This must be the very first thing executed.
+# sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'app.settings.local')
+    # apply_ssl_fix()
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

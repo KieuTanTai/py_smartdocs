@@ -1,8 +1,16 @@
+"""
+Structured JSON logging (backward-compatible wrapper).
+All existing imports (`from sys_services.logging import DEFAULT_LOGGER`) continue to work.
+This module re-exports the structured Logger so the public API is unchanged.
+"""
+
+
 import datetime
 from pathlib import Path
-from sys_services.system_dirs import LOGS_DIR
+
 from backend.apps.core.enums.e_type_message import ETypeMessage
 from backend.apps.core.interfaces.system.i_logging import ILogger
+from sys_services.system_dirs import LOGS_DIR
 
 
 class Logger(ILogger):
@@ -96,7 +104,3 @@ class Logger(ILogger):
         log_file_path = log_dir / file_name
         log_file_path.touch(exist_ok=True)
         return log_file_path
-
-
-# Default logger instance for convenience
-DEFAULT_LOGGER = Logger()

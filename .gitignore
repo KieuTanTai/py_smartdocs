@@ -11,7 +11,10 @@ __pycache__/
 myenv/
 .venv/
 venv/
+venv311/
 ENV/
+*env*/
+*venv*/
 
 # Environment files
 .env
@@ -41,3 +44,5 @@ Thumbs.db
 docs/pdfs_test/
 tests/output/
 docs/.~*
+storage/
+backend/metadata

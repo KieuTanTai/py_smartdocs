@@ -1,4 +1,5 @@
 from shiny import ui
+from sys_services.read_config.read_list_provider import LIST_PROVIDERS
 
 
 def system_settings_modal(
@@ -7,13 +8,14 @@ def system_settings_modal(
     system_prompt: str,
     mock_on_fail: bool,
 ) -> ui.Tag:
+    all_providers = ["auto"] + [p.provider_name.value for p in LIST_PROVIDERS]
     return ui.modal(
         ui.tags.div(
             ui.input_text("api_base_url", "API base URL", value=api_base_url),
             ui.input_select(
                 "provider_select",
                 "Provider",
-                choices=["auto", "gemini", "ollama"],
+                choices={p: p for p in all_providers},
                 selected=provider,
             ),
             ui.input_text(
