@@ -16,7 +16,9 @@ from backend.apps.services.chat.models import ConversationModel, MessageModel, D
 from backend.apps.services.chat.serializers import ConversationSerializer, MessageSerializer, DocumentSerializer
 from backend.apps.core.normalize.normalize import Normalize
 from backend.apps.core.chunk.chunker import Chunker
+from backend.apps.config.container import BackendContainer
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
+from sys_services.logging import DEFAULT_LOGGER
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.enums.e_provider_name import EProviderName
@@ -269,82 +271,32 @@ class MessageListView(APIView):
             conv = ConversationModel.objects.get(pk=conversation_id)
         except ConversationModel.DoesNotExist:
             return Response({"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
-            
+
         content = request.data.get("content")
         if not content:
             return Response({"error": "Message content is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
-        # 1. Save user message
-        MessageModel.objects.create(
-            message_conversation=conv,
-            message_is_user_send=True,
-            message_content=content
-        )
-        
-        # 2. Get attached documents
-        file_mappings = ConversationFilesModel.objects.filter(conversation=conv)
-        doc_contents = []
-        for mapping in file_mappings:
-            if mapping.faiss_index.content:
-                doc_contents.append(mapping.faiss_index.content)
-                
-        # 3. Retrieve context hits using keyword paragraph search (Offline RAG)
-        context_text = ""
-        context_hits = []
-        if doc_contents:
-            paragraphs = []
-            for doc_text in doc_contents:
-                paragraphs.extend([p.strip() for p in doc_text.split("\n") if p.strip()])
-            
-            query_words = set(content.lower().split())
-            scored_paragraphs = []
-            for p in paragraphs:
-                p_words = set(p.lower().split())
-                score = len(query_words.intersection(p_words))
-                if score > 0:
-                    scored_paragraphs.append((score, p))
-                    
-            scored_paragraphs.sort(key=lambda x: x[0], reverse=True)
-            top_paragraphs = [p for score, p in scored_paragraphs[:5]]
-            context_text = "\n".join(top_paragraphs)
-            for score, p in scored_paragraphs[:5]:
-                context_hits.append({"text": p[:200] + "...", "score": score})
-                
-        # 4. Build Prompt Context
-        system_prompt = "You are a helpful assistant."
-        llm_prompt = f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nUser: {content}\n\nAssistant:"
-        
-        # 5. Invoke LLM client
+
+        provider_name = request.data.get("provider", EProviderName.MISTRAL.value)
         model_name = request.data.get("model", "gemini-2.5-flash")
 
-        start_time = time.time()
-        answer = ""
-        used_mock = False
-        
         try:
-            factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, DEFAULT_LOGGER)
-            client = factory.get_provider(provider_name)
-            req = ICompletionRequest(
+            container = BackendContainer()
+            message_job = container.message_job()
+            result = message_job.run(
+                conversation_id=conversation_id,
+                content=content,
                 provider=EProviderName(provider_name),
-                model=model_name,
-                prompt=llm_prompt,
-                context_hits=context_hits
+                model_name=model_name,
             )
-            answer = client.generate(req)
+            answer = result["assistant"]
+            context_hits = result.get("retrieval_hits", [])
+            used_mock = False
         except Exception as exc:
-            DEFAULT_LOGGER.error(f"LLM execution error: {exc}. Using mock response.")
-            answer = f"I failed to connect to {provider_name} ({model_name}). Here is a simulated response based on the context: {context_text[:200]}"
+            DEFAULT_LOGGER.error(f"Message processing error: {exc}")
+            answer = f"I failed to process the message: {exc}"
+            context_hits = []
             used_mock = True
-            
-        latency_ms = int((time.time() - start_time) * 1000)
-        
-        # 6. Save assistant message
-        MessageModel.objects.create(
-            message_conversation=conv,
-            message_is_user_send=False,
-            message_content=answer
-        )
-        
+
         return Response({
             "conversation_id": str(conv.conversation_id),
             "assistant": answer,
@@ -352,11 +304,11 @@ class MessageListView(APIView):
             "metrics": {
                 "provider": provider_name,
                 "model": model_name,
-                "total_ms": latency_ms,
+                "total_ms": 0,
                 "embed_ms": 0,
                 "query_ms": 0,
-                "response_ms": latency_ms,
-                "retrieval_hits": context_hits
+                "response_ms": 0,
+                "retrieval_hits": context_hits,
             }
         }, status=status.HTTP_200_OK)
 
@@ -366,9 +318,9 @@ class CoreSearchView(APIView):
         return Response({"detail": "Not implemented."}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
 urlpatterns = [
-    path("api/health/", HealthView.as_view(), name="health"),
-    path("api/providers/", ProviderListView.as_view(), name="providers"),
-    path("api/providers/test/", ProviderTestView.as_view(), name="providers-test"),
+    # path("api/health/", HealthView.as_view(), name="health"),
+    # path("api/providers/", ProviderListView.as_view(), name="providers"),
+    # path("api/providers/test/", ProviderTestView.as_view(), name="providers-test"),
     path("api/documents/", DocumentListView.as_view(), name="documents-list"),
     path("api/documents/upload/", DocumentUploadView.as_view(), name="documents-upload"),
     path("api/documents/<str:document_id>/", DocumentDetailView.as_view(), name="documents-detail"),
