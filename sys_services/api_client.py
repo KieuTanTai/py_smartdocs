@@ -76,6 +76,16 @@ class ApiClient:
             "POST", f"/api/conversations/{conversation_id}/messages/", json=payload
         )
 
+    def update_conversation_documents(
+        self, conversation_id: str, document_ids: list[str]
+    ) -> Dict[str, Any]:
+        payload = {"document_ids": document_ids}
+        return self._request(
+            "PATCH",
+            f"/api/conversations/{conversation_id}/documents/",
+            json=payload,
+        )
+
     def upload_document(self, file_info: dict, source: str) -> Dict[str, Any]:
         file_type = file_info.get("type") or "application/octet-stream"
         print(f"Uploading document with file type: {file_type}")
@@ -105,3 +115,7 @@ class ApiClient:
             f"/api/documents/{document_id}/status/",
             f"/api/documents/{document_id}/",
         )
+
+    def signup(self, email: str, password: str, name: str) -> Dict[str, Any]:
+        payload = {"email": email, "password": password, "name": name}
+        return self._request("POST", "/api/auth/signup/", json=payload)

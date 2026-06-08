@@ -4,7 +4,7 @@ from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_respon
     ICreateFileResponse,
 )
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.utils.is_content_empty import check_empty_content
 

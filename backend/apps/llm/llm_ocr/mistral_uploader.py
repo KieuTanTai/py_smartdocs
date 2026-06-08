@@ -8,12 +8,11 @@ from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response 
 from mistralai.client import Mistral, cast
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 
 
 class MistralUploader(ILLMUploader):
-    def __init__(self, logger: ILogger | None = None):
-        self.logger = logger or DEFAULT_LOGGER
+    def __init__(self, logger: ILogger):
+        self.logger = logger
         self.client = Mistral(api_key=MISTRAL_CONFIG["api_key"])
 
     def upload_file(self, file_path: Path) -> ICreateFileResponse:
@@ -90,3 +89,14 @@ class MistralUploader(ILLMUploader):
                 source=str(self.__class__),
             )
             raise e
+
+    def is_file_exists(self, file_id: str) -> IGetFileResponse:
+        try:
+            response = self.client.files.retrieve(file_id=file_id)
+            self.logger.info(f"File with id '{file_id}' exists in Mistral",
+                Path(__file__).name, Path(__file__).name)
+            return cast(IGetFileResponse, response)
+        except Exception as e:
+            self.logger.info(f"File with id '{file_id}' does not exist in Mistral. Error: {e}",
+                Path(__file__).name, Path(__file__).name)
+            raise FileNotFoundError(f"File with id '{file_id}' does not exist in Mistral. Error: {e}")

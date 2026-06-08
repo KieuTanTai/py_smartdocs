@@ -2,7 +2,7 @@ import asyncio
 import shutil
 from pathlib import Path
 
-from backend.apps.core.extract.extractor import Extractor
+from backend.apps.services.rag_base.extract.extract_content_service import ExtractContentService
 from backend.apps.llm.llm_ocr.mistral_uploader import MistralUploader
 from backend.apps.services.rag_base.storage.storage_service import FileStorage
 from backend.apps.llm.llm_ocr.llm_ocr_factory import LLMOCRFactory
@@ -11,7 +11,7 @@ from backend.apps.services.rag_base.extract.extract_content_service import (
 )
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 PDF_SOURCE = (

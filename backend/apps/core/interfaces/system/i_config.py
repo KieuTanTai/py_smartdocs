@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Mapping
 
+from backend.apps.core.interfaces.system.i_provider import IProvider
+
 
 class IConfigProvider(ABC):
     @abstractmethod
@@ -32,9 +34,20 @@ class IConfigProvider(ABC):
         pass
 
     @abstractmethod
-    def get_embedding_provider(self) -> str:
+    def get_list_model_embedding(self) -> list[str]:
         pass
 
     @abstractmethod
     def get_list_models(self) -> list[str]:
         pass
+
+    @abstractmethod
+    def get_list_providers(self) -> list[IProvider]:
+        pass
+
+    @abstractmethod
+    def get_redis_config(self) -> Mapping[str, Any]:
+        pass
+
+
+

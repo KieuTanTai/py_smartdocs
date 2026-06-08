@@ -2,11 +2,9 @@ import os
 from pathlib import Path
 
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 
 
-def check_file_path(file_path: Path, logger: ILogger | None = None):
-    logger = logger or DEFAULT_LOGGER
+def check_file_path(file_path: Path, logger: ILogger):
     if not file_path.exists():
         logger.error(f"File {file_path} does not exist.", source=Path(__file__).name)
         raise FileNotFoundError(f"File {file_path} does not exist.")
@@ -16,9 +14,8 @@ def check_file_path(file_path: Path, logger: ILogger | None = None):
 
 
 def check_storage_dir_exists_and_accessible(
-    storage_dir: Path, logger: ILogger | None = None
+    storage_dir: Path, logger: ILogger
 ):
-    logger = logger or DEFAULT_LOGGER
     if not os.path.exists(storage_dir):
         logger.warning(
             f"Storage directory does not exist: {storage_dir} and will be created.",

@@ -2,7 +2,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
-from sys_services.enums.e_provider_name import EProviderName
+from backend.apps.core.enums.e_provider_name import EProviderName
 
 
 class ILLMOCRFactory(ABC):

@@ -3,12 +3,11 @@ import re
 
 from backend.apps.core.interfaces.core.normalize.i_normalize import INormalize
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from sys_services.logging import DEFAULT_LOGGER
 
 class Normalize(INormalize):
 
     def __init__(self, looger = ILogger | None):
-        self.logger = looger or DEFAULT_LOGGER
+        self.logger = looger
 
     def normalize(self, content: str) -> str:
         normalized_content = content.strip()

@@ -39,3 +39,4 @@ Thumbs.db
 **/__init__.py
 docs/pdfs_test/
 tests/output/
+docs/.~*
