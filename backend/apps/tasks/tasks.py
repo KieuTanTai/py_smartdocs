@@ -19,9 +19,10 @@ from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletio
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.services.rag_base.locate.locate_service import LocateService
-from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from sys_services.system_dirs import METADATA_DIR
+#! NOTE: THIS VALUES SHOULD BE GET FROM GET_CONFIG, NOT HARDCODED
+#! NOTE: INJECT LOGGER BY INIT, CHANGE TO CLASS, IMPLEMENT INTERFACE ON 'interfaces/tasks/'
 
 _INDEX_EMBEDDING_PROVIDER = EProviderName.GEMINI
 _INDEX_EMBEDDING_MODEL = "gemini-embedding-2"

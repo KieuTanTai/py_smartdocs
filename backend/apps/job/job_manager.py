@@ -3,74 +3,18 @@ Job Manager with Factory Pattern.
 Orchestrates background job scheduling and monitoring.
 """
 
+
+from backend.apps.core.interfaces.system.i_logging import ILogger
+from backend.apps.interfaces.job.i_base_job import IBaseJob
 from backend.apps.job.conversation_job import ConversationJob
 from backend.apps.job.upload_job import UploadJob
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.tasks.conversation_tasks import prepare_conversation as prepare_conversation_task
 from celery.result import AsyncResult
 from pathlib import Path
 from typing import Dict, Any, Optional, Type
-from uuid import UUID
-from enum import Enum
-import logging
-import uuid
 
-logger = logging.getLogger(__name__)
-
-
-class JobType(Enum):
-    """Enumeration of available job types."""
-    DOCUMENT_UPLOAD = "document_upload"
-    MESSAGE_PROCESS = "message_process"
-    CONVERSATION_PREPARE = "conversation_prepare"
-    DELETE_CONVERSATION = "delete_conversation"
-
-
-class BaseJob:
-    """Base class for all background jobs."""
-
-    def __init__(self, job_id: Optional[UUID] = None):
-        """
-        Initialize base job.
-
-        Args:
-            job_id: Optional UUID for the job (auto-generated if not provided)
-        """
-        self.job_id = job_id or uuid.uuid4()
-        self.status = "pending"  # pending, running, completed, failed
-        self.result = None
-        self.error = None
-        self.logger = logger
-
-    def execute(self, **kwargs) -> Dict[str, Any]:
-        """
-        Execute the job (to be implemented by subclasses).
-
-        Args:
-            **kwargs: Job-specific parameters
-
-        Returns:
-            Dictionary with execution results
-        """
-        raise NotImplementedError("Subclasses must implement execute()")
-
-    def get_status(self) -> Dict[str, Any]:
-        """
-        Get current job status.
-
-        Returns:
-            Dictionary with job status and metadata
-        """
-        return {
-            "job_id": str(self.job_id),
-            "job_type": self.__class__.__name__,
-            "status": self.status,
-            "result": self.result,
-            "error": self.error,
-        }
-
-
-class DocumentUploadJob(BaseJob):
+#! NOTE: THIS
+class DocumentUploadJob(IBaseJob):
     """Background job for document upload and processing."""
 
     def execute(self, **kwargs) -> Dict[str, Any]:
@@ -115,7 +59,7 @@ class DocumentUploadJob(BaseJob):
             raise
 
 
-class MessageProcessJob(BaseJob):
+class MessageProcessJob(IBaseJob):
     """Background job for message processing and response generation."""
 
     def execute(self, **kwargs) -> Dict[str, Any]:
@@ -164,7 +108,7 @@ class MessageProcessJob(BaseJob):
             raise
 
 
-class ConversationPrepareJob(BaseJob):
+class ConversationPrepareJob(IBaseJob):
     """Background job for conversation preparation."""
 
     def execute(self, **kwargs) -> Dict[str, Any]:
@@ -207,7 +151,7 @@ class ConversationPrepareJob(BaseJob):
             raise
 
 
-class DeleteConversationJob(BaseJob):
+class DeleteConversationJob(IBaseJob):
     """Background job for conversation deletion with cleanup."""
 
     def execute(self, **kwargs) -> Dict[str, Any]:

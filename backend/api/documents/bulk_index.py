@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from backend.apps.services.chat.models import DocumentModel
-from backend.apps.tasks import index_document, bulk_index_documents
+from backend.apps.tasks.tasks import index_document, bulk_index_documents
 from sys_services.logging import DEFAULT_LOGGER
 
 _cached_celery = None

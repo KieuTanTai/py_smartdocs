@@ -4,6 +4,7 @@ from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
 
+#! NOTE: CHANGE TO CLASS AND IMPLE INTERFACE ON 'interfaces/tasks/'
 
 def _build_message_job():
     container = BackendContainer()

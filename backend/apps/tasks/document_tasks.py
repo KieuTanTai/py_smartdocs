@@ -5,7 +5,6 @@ Extract -> Normalize -> Chunk -> Embed -> Save
 """
 
 import json
-import logging
 from pathlib import Path
 from uuid import UUID
 from typing import Dict, List, Tuple, Any
@@ -19,11 +18,12 @@ from backend.apps.services.chat.models import DocumentModel
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.enums.e_mime_type import EMimeType
 
-logger = logging.getLogger(__name__)
 
 from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.services.chat.models import DocumentModel
+
+#! NOTE: INJECT lOGGER BY INIT, NOT CREATE UNNECESSARY INSTANCE,MUST IMPLEMENT INTERFACE ON 'interfaces/tasks/'
 
 class DocumentTaskExecutor:
     """

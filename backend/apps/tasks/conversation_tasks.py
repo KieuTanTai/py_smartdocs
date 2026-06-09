@@ -4,20 +4,20 @@ Task implementations for message pipeline:
 Retrieve -> Generate Response -> Save
 """
 
-import logging
 from typing import Dict, List, Any
 from uuid import UUID
 
-logger = logging.getLogger(__name__)
+from backend.apps.core.interfaces.system.i_logging import ILogger
 
 
+#! NOTE: INJECT lOGGER BY INIT, NOT CREATE UNNECESSARY INSTANCE,MUST IMPLEMENT INTERFACE ON 'interfaces/tasks/'
 class MessageTaskExecutor:
     """
     Executes message processing pipeline tasks.
     Handles: Retrieve -> Generate Response -> Save
     """
 
-    def __init__(self):
+    def __init__(self, logger: ILogger):
         """Initialize message task executor."""
         self.logger = logger
 

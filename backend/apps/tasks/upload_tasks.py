@@ -7,6 +7,7 @@ from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.services.chat.models import DocumentModel
 
 
+#! NOTE: CHANGE TO CLASS AND IMPLE INTERFACE ON 'interfaces/tasks/'
 def build_upload_job():
     container = BackendContainer()
     return container.upload_job()

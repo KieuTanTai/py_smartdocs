@@ -4,8 +4,10 @@ from typing import List
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
+from backend.apps.core.interfaces.response.i_conversation_job_response import IConversationJobResponse
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
+from backend.apps.interfaces.job.i_conversation_job import IConversationJob
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
 
 
@@ -13,7 +15,8 @@ class DocumentsNotReadyError(ValueError):
     pass
 
 
-class ConversationJob:
+#! NOTE: NEED INTERFACE FOR THIS CLASS 
+class ConversationJob(IConversationJob):
     """Job that prepares a conversation for chat.
 
     Flow:
@@ -33,12 +36,14 @@ class ConversationJob:
         self.config_provider = config_provider
         self.logger = logger
 
+
+#! NOTE: CHANGE RETURN TYPE HERE, MODEL_NAME MUST NOT BE NONE
     def prepare_conversation(
         self,
         conversation_id: str,
         provider: EProviderName,
-        model_name: str | None = None,
-    ) -> dict:
+        model_name: str,
+    ) -> IConversationJobResponse:
         conversation = self._get_conversation(conversation_id)
 
         if not self._documents_ready(conversation):
@@ -49,37 +54,39 @@ class ConversationJob:
         prompt, context_hits = self._build_prompt(conversation)
         answer = self._generate_assistant_response(prompt, provider, model_name)
         self._save_message(conversation, is_user_send=False, content=answer)
+        return IConversationJobResponse(
+            conversation_id=str(conversation.conversation_id),
+            status="ready",
+            assistant=answer,
+            provider=provider,
+            model=model_name,
+            retrieval_hits=context_hits,
+        )
 
-        return {
-            "conversation_id": str(conversation.conversation_id),
-            "status": "ready",
-            "assistant": answer,
-            "provider": provider,
-            "model": model_name or "qwen2.5:1.5b-instruct",
-            "retrieval_hits": context_hits,
-        }
 
     def check_documents_ready(self, conversation_id: str) -> bool:
         conversation = self._get_conversation(conversation_id)
         return self._documents_ready(conversation)
 
+#! NOTE: MODEL_NAME MUST NOT BE NONE
     def generate_bootstrap_message(
         self,
         conversation_id: str,
         provider: EProviderName,
-        model_name: str | None = None,
-    ) -> dict:
+        model_name: str,
+    ) -> IConversationJobResponse:
         conversation = self._get_conversation(conversation_id)
         prompt, context_hits = self._build_prompt(conversation)
         answer = self._generate_assistant_response(prompt, provider, model_name)
         self._save_message(conversation, is_user_send=False, content=answer)
-        return {
-            "conversation_id": str(conversation.conversation_id),
-            "assistant": answer,
-            "provider": provider,
-            "model": model_name or "qwen2.5:1.5b-instruct",
-            "retrieval_hits": context_hits,
-        }
+        return IConversationJobResponse(
+            conversation_id=str(conversation.conversation_id),
+            status="ready",
+            assistant=answer,
+            provider=provider,
+            model=model_name,
+            retrieval_hits=context_hits,
+        )
 
     def _get_conversation(self, conversation_id: str) -> ConversationModel:
         try:
@@ -124,11 +131,13 @@ class ConversationJob:
 
         return prompt, context_hits
 
+
+#! NOTE: MODEL_NAME MUST NOT BE NONE
     def _generate_assistant_response(
         self,
         prompt: str,
         provider: EProviderName,
-        model_name: str | None = None,
+        model_name: str,
     ) -> str:
         llm_client = self.llm_provider_factory.get_provider(provider)
         model = model_name or "qwen2.5:1.5b-instruct"
