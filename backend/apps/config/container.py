@@ -97,6 +97,12 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=logger,
     )
 
+    hybrid_search_service = providers.Factory(
+        HybridSearchService,
+        locate_service=locate_service,
+        logger=logger,
+    )
+
     upload_job = providers.Factory(
         UploadJob,
         extract_service=extract_content_service,
@@ -116,12 +122,8 @@ class BackendContainer(containers.DeclarativeContainer):
         locate_service=locate_service,
         cache_session=cache_service,
         logger=logger,
-    )
-
-    hybrid_search_service = providers.Factory(
-        HybridSearchService,
-        locate_service=locate_service,
-        logger=logger,
+        hybrid_search_service=hybrid_search_service,
+        extract_service=extract_content_service,
     )
 
     conversation_job = providers.Factory(

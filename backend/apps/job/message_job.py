@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 import numpy as np
 
-# Import Interfaces & DTOs
+from backend.apps.core.interfaces.services.rag_base.locate.i_hybrid_search_service import IHybridSearchService
 from backend.apps.interfaces.job.i_message_job import IMessageJob, MessageResponse, ContextHit
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName
@@ -17,19 +17,20 @@ from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
 
 class MessageJob(IMessageJob):
-    def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, locate_service: ILocateService, cache_session: IConnectCacheSession, logger: ILogger):
+    def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, locate_service: ILocateService, cache_session: IConnectCacheSession, logger: ILogger, hybrid_search_service: IHybridSearchService, extract_service: IExtractContent):
         self.llm_provider_factory = llm_provider_factory
         self.config_provider = config_provider
         self.locate_service = locate_service
         self.cache_session = cache_session
-        self.logger = logger
+        self.logger = logger,
+        self.hybrid_search_service = hybrid_search_service,
+        self.extract_service = extract_service
 
     def run(self, conversation_id: str, content: str, provider: EProviderName, model_name: str | None = None) -> MessageResponse:
         conversation = self._get_conversation(conversation_id)
         self._save_message(conversation, is_user_send=True, content=content)
 
         context_hits = self._retrieve_context_hits(content, conversation, provider)
-        # Convert dataclasses to dict cho prompt context và log (tránh lỗi serialization khi đẩy qua message broker)
         context_hits_dicts = [{"text": hit.text, "score": hit.score} for hit in context_hits]
         prompt = self._build_prompt(content, context_hits_dicts)
 
@@ -68,8 +69,12 @@ class MessageJob(IMessageJob):
 
     def _retrieve_context_hits(self, content: str, conversation: ConversationModel, provider: EProviderName) -> List[ContextHit]:
         query_embedding = self._embed_text(content, provider)
-        hits: List[ContextHit] = []
-        vector_store = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
+        
+        dense_hits: List[ContextHit] = []
+        sparse_hits: List[ContextHit] = []
+        
+        faiss_store = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
+        bm25_store = self.locate_service.get_vector_store(EBackendStorageName.BM25)
 
         mappings = ConversationFilesModel.objects.filter(conversation=conversation)
         for mapping in mappings:
@@ -82,32 +87,44 @@ class MessageJob(IMessageJob):
             if meta is None:
                 continue
 
-            # Load FAISS index với file_caller truy vết
-            load_res = vector_store.load(doc_id_str, file_caller=self._retrieve_context_hits.__name__)
-            if not load_res.is_success or load_res.index is None:
-                continue
+            # FAISS SEARCH (Tìm theo Ngữ Nghĩa/semantic search)
+            load_faiss = faiss_store.load(doc_id_str, file_caller=self._retrieve_context_hits.__name__)
+            if load_faiss.is_success and load_faiss.index is not None:
+                query_res = faiss_store.search(
+                    load_faiss.index, doc_id_str, query_embedding, limit=5, file_caller=self._retrieve_context_hits.__name__
+                )
+                for distance, vector_id in zip(query_res.distances, query_res.indices):
+                    try:
+                        chunk_text = self._resolve_chunk_text(doc_id_str, vector_id, meta)
+                        similarity = 1.0 / (1.0 + float(distance))
+                        dense_hits.append(ContextHit(text=chunk_text, score=similarity, source_document_id=doc_id_str))
+                    except ValueError:
+                        continue
 
-            # Tìm kiếm FAISS với file_caller truy vết
-            query_res = vector_store.search(load_res.index, doc_id_str, query_embedding, limit=5, file_caller=self._retrieve_context_hits.__name__)
+            # BM25 SEARCH (Tìm theo Từ Khóa/ keyword search)
+            load_bm25 = bm25_store.load(doc_id_str, file_caller=self._retrieve_context_hits.__name__)
+            if load_bm25.is_success and load_bm25.index is not None:
+                bm25_res = bm25_store.search(
+                    load_bm25.index, doc_id_str, query_vector=np.array([]), query_text=content, limit=5, file_caller=self._retrieve_context_hits.__name__
+                )
+                for score, chunk_key in zip(bm25_res.distances, bm25_res.indices):
+                    try:
+                        # BM25 trả về trực tiếp string key "doc_id:chunk_idx"
+                        chunk_text = meta.get("chunks", {}).get(str(chunk_key))
+                        if chunk_text:
+                            sparse_hits.append(ContextHit(text=chunk_text, score=float(score), source_document_id=doc_id_str))
+                    except Exception:
+                        continue
 
-            for distance, vector_id in zip(query_res.distances, query_res.indices):
-                try:
-                    chunk_text = self._resolve_chunk_text(doc_id_str, vector_id, meta)
-                except ValueError:
-                    continue
-                
-                similarity = 1.0 / (1.0 + float(distance))
-                hits.append(ContextHit(
-                    text=chunk_text[:200] + "...",
-                    score=similarity,
-                    source_document_id=doc_id_str
-                ))
+        # Sắp xếp cục bộ trước khi truyền vào RRF để lấy Rank
+        dense_hits.sort(key=lambda item: item.score, reverse=True)
+        sparse_hits.sort(key=lambda item: item.score, reverse=True)
 
-        hits.sort(key=lambda item: item.score, reverse=True)
-        if hits:
-            return hits[:5]
+        # HYBRID FUSION (Gộp kết quả bằng RRF)
+        if dense_hits or sparse_hits:
+            self.logger.info("Fusing Dense and Sparse results using RRF", file_caller=self._retrieve_context_hits.__name__)
+            return self.hybrid_search_service.fuse_results(dense_hits, sparse_hits, top_k=5)
 
-        # Trả về fallback keyword hits
         return self._keyword_context_hits(content, self._get_attached_document_texts(conversation))
 
     def _embed_text(self, text: str, provider: EProviderName) -> np.ndarray:
@@ -168,8 +185,49 @@ class MessageJob(IMessageJob):
         ]
 
     def _get_attached_document_texts(self, conversation: ConversationModel) -> List[str]:
-        # Implementation dummy gốc
-        return []
+        """
+        Thu thập toàn bộ nội dung văn bản thô của các tài liệu đính kèm phục vụ luồng fallback keyword match.
+        Sử dụng extract_service chuẩn IoC khi Redis cache bị mất hoặc hết hạn dữ liệu (Eviction).
+        """
+        document_texts: List[str] = []
+        
+        # Tìm tất cả các liên kết file với Conversation hiện tại
+        mappings = ConversationFilesModel.objects.filter(conversation=conversation)
+        
+        for mapping in mappings:
+            document = mapping.faiss_index
+            if document is None or document.status != "indexed":
+                continue
+                
+            doc_id_str = str(document.faiss_index_id)
+            
+            # Thử tải dữ liệu chunks từ Redis cache trước để tối ưu tốc độ RAM
+            meta = self._load_document_chunk_metadata(doc_id_str)
+            if meta and "chunks" in meta:
+                chunks_dict = meta["chunks"]
+                # Sắp xếp các phân đoạn theo thứ tự index tăng dần (doc_id:1, doc_id:2...) để văn bản liền mạch
+                sorted_keys = sorted(chunks_dict.keys(), key=lambda k: int(k.split(":")[-1]) if ":" in k else 0)
+                full_text = "\n".join(chunks_dict[k] for k in sorted_keys)
+                document_texts.append(full_text)
+                continue
+                
+            # FALLBACK: Nếu Redis trống, sử dụng đúng self.extract_service để bóc tách lại file vật lý từ ổ cứng
+            if document.file_path:
+                file_path = Path(document.file_path)
+                if file_path.exists():
+                    try:
+                        # Tiến hành trích xuất sử dụng đúng service đã được inject qua Container
+                        raw_text = self.extract_service.extract_from_file_text(file_path, EProviderName.MISTRAL)
+                        if raw_text:
+                            document_texts.append(raw_text)
+                    except Exception as exc:
+                        self.logger.error(
+                            f"Fallback text extraction failed for document {doc_id_str}: {exc}",
+                            source=str(self.__class__),
+                            method_call=self._get_attached_document_texts.__name__
+                        )
+                        
+        return document_texts
 
     def _build_prompt(self, content: str, context_hits: List[dict]) -> str:
         context_text = "\n".join(hit["text"] for hit in context_hits)

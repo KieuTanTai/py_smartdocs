@@ -57,7 +57,7 @@ class IVectorStoreService(ABC):
         pass
 
     @abstractmethod
-    def search(self, index: Any, vector_id: str, query_vector: np.ndarray, limit=5, 
+    def search(self, index: Any, vector_id: str, query_vector: np.ndarray, query_text: str | None = None, limit=5, 
                allow_ids: set | None = None, chunk_file_map: dict | None = None, file_caller: str = "") -> IVectorDBQueryResponse:
         """
         Perform similarity search.
@@ -66,6 +66,7 @@ class IVectorStoreService(ABC):
             index: Provider-specific index object or identifier
             vector_id: Unique identifier for the vector to search within (id for searching datablocks on cache)
             query_vector: Query embedding vector
+            query_text: Optional text query for hybrid search
             limit: Maximum number of results
             allow_ids: Optional set of allowed vector IDs
             chunk_file_map: Optional dictionary mapping chunks to files
