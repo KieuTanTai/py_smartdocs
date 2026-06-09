@@ -1,89 +1,29 @@
-from celery import shared_task
+from dataclasses import asdict
+from typing import Any, Dict
+from celery import Task
 
 from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
+from backend.apps.interfaces.job.i_message_job import IMessageJob
+from backend.apps.interfaces.task.i_message_task import IMessageTask
 
+class MessageTask(Task, IMessageTask):
+    name = "backend.apps.tasks.message_tasks.process_chat_message"
 
-def _build_message_job():
-    container = BackendContainer()
-    return container.message_job()
+    def run(self, conversation_id: str, content: str, provider_name: str, model_name: str | None = None) -> Dict[str, Any]:
+        container = BackendContainer()
+        try:
+            provider = EProviderName(provider_name)
+        except ValueError as exc:
+            raise ValueError(f"Unsupported provider: {provider_name}") from exc
 
+        message_job: IMessageJob = container.message_job()
 
-def _resolve_provider(provider_name: str) -> EProviderName:
-    try:
-        return EProviderName(provider_name)
-    except ValueError as exc:
-        raise ValueError(f"Unsupported provider: {provider_name}") from exc
-
-
-@shared_task
-def send_message_task(
-    conversation_id: str,
-    content: str,
-    provider_name: str = EProviderName.MISTRAL.value,
-    model_name: str | None = None,
-):
-    provider = _resolve_provider(provider_name)
-    message_job = _build_message_job()
-    return message_job.run(
-        conversation_id=conversation_id,
-        content=content,
-        provider=provider,
-        model_name=model_name,
-    )
-
-
-@shared_task
-def save_user_message_task(conversation_id: str, content: str):
-    container = BackendContainer()
-    message_job = _build_message_job()
-    conversation = message_job._get_conversation(conversation_id)
-    return message_job._save_message(conversation, is_user_send=True, content=content)
-
-
-@shared_task
-def build_message_context_task(conversation_id: str, content: str):
-    container = BackendContainer()
-    message_job = _build_message_job()
-    conversation = message_job._get_conversation(conversation_id)
-    document_texts = message_job._get_attached_document_texts(conversation)
-    context_hits = message_job._retrieve_context_hits(content, document_texts)
-    prompt = message_job._build_prompt(content, context_hits)
-    return {
-        "prompt": prompt,
-        "context_hits": context_hits,
-    }
-
-
-@shared_task
-def generate_assistant_response_task(
-    prompt: str,
-    provider_name: str = EProviderName.MISTRAL.value,
-    model_name: str | None = None,
-):
-    provider = _resolve_provider(provider_name)
-    container = BackendContainer()
-    llm_client = container.llm_provider_factory()
-    model = model_name or "gemini-2.5-flash"
-    response = llm_client.generate(
-        ICompletionRequest(
+        result_dataclass = message_job.run(
+            conversation_id=conversation_id,
+            content=content,
             provider=provider,
-            model=model,
-            prompt=prompt,
-            context_hits=[],
+            model_name=model_name
         )
-    )
-    return {
-        "assistant": response,
-        "provider": provider_name,
-        "model": model,
-    }
-
-
-@shared_task
-def save_assistant_message_task(conversation_id: str, content: str):
-    container = BackendContainer()
-    message_job = _build_message_job()
-    conversation = message_job._get_conversation(conversation_id)
-    return message_job._save_message(conversation, is_user_send=False, content=content)
+        
+        return asdict(result_dataclass)

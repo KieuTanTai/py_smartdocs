@@ -1,46 +1,55 @@
-"""
-Job manager module.
-Orchestrates background job scheduling and monitoring.
-"""
-
-from backend.apps.job.conversation_job import ConversationJob
-from backend.apps.job.upload_job import UploadJob
-from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.tasks.conversation_tasks import prepare_conversation as prepare_conversation_task
-from celery.result import AsyncResult
 from pathlib import Path
+from celery import current_app
+from celery.result import AsyncResult
 
+from backend.apps.core.enums.e_provider_name import EProviderName
 
-class JobManager:
-    """
-    Manages background job lifecycle.
-    Schedules, monitors, and coordinates upload and conversation jobs.
-    """
+from backend.apps.interfaces.job.i_job_management import IJobManagement
+from backend.apps.interfaces.job.i_upload_job import IUploadJob
+from backend.apps.interfaces.job.i_conversation_job import IConversationJob
+from backend.apps.interfaces.job.i_message_job import IMessageJob
 
-    def __init__(self, upload_job: UploadJob, conversation_job: ConversationJob):
+from backend.apps.tasks.document_tasks import DocumentTask
+from backend.apps.tasks.conversation_tasks import ConversationTask
+from backend.apps.tasks.message_tasks import MessageTask
+from backend.apps.tasks.upload_tasks import UploadTask
+
+class JobManager(IJobManagement):
+    def __init__(self, upload_job: IUploadJob, conversation_job: IConversationJob, message_job: IMessageJob):
         self.upload_job = upload_job
         self.conversation_job = conversation_job
+        self.message_job = message_job
 
-    def schedule_document_processing(
-        self,
-        document_id: str,
-        file_path: Path,
-        provider: EProviderName,
-    ):
-        """Schedule upload/document processing flow."""
-        return self.upload_job.run(document_id=document_id, file_path=file_path, provider=provider)
+    def schedule_document_processing(self, document_id: str, file_path: Path, provider: EProviderName):
+        result = current_app.send_task(
+            UploadTask.name, 
+            obj={
+                "document_id": document_id, 
+                "provider_name": provider.value
+            }
+        )
+        return {"task_id": result.id}
 
-    def schedule_conversation_preparation(
-        self,
-        conversation_id: str,
-        provider: EProviderName,
-        model_name: str | None = None,
-    ):
-        """Schedule conversation preparation flow using Celery chain."""
-        result = prepare_conversation_task.delay(
-            conversation_id,
-            provider.value,
-            model_name,
+    def schedule_conversation_preparation(self, conversation_id: str, provider: EProviderName, model_name: str | None = None):
+        result = current_app.send_task(
+            ConversationTask.name,
+            obj={
+                "conversation_id": conversation_id,
+                "provider_name": provider.value,
+                "model_name": model_name
+            }
+        )
+        return {"task_id": result.id}
+        
+    def execute_chat_message_async(self, conversation_id: str, content: str, provider: EProviderName, model_name: str | None = None):
+        result = current_app.send_task(
+            MessageTask.name,
+            obj={
+                "conversation_id": conversation_id,
+                "content": content,
+                "provider_name": provider.value,
+                "model_name": model_name
+            }
         )
         return {"task_id": result.id}
 
