@@ -18,6 +18,7 @@ ENV/
 
 # Environment files
 .env
+.env.example
 
 # Build artifacts
 build/
@@ -46,3 +47,4 @@ tests/output/
 docs/.~*
 storage/
 backend/metadata
+backend/*.zip

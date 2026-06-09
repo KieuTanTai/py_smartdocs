@@ -33,3 +33,6 @@ mistralai
 NLTK
 google-genai
 ollama
+dependency-injector
+rank-bm25
+PyVi

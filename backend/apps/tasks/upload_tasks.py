@@ -1,33 +1,52 @@
-from pathlib import Path
+"""
+Upload tasks module.
+Handles the execution flow for uploaded files via background workers.
+"""
 
-from celery import shared_task
+from dataclasses import asdict
+from typing import Any, Dict
+from pathlib import Path
+from celery import Task
 
 from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.services.chat.models import DocumentModel
+from backend.apps.interfaces.task.i_upload_task import IUploadTask
+from backend.apps.interfaces.job.i_upload_job import IUploadJob
 
+class UploadTask(Task, IUploadTask): # <--- Class UploadTask chuẩn chỉ
 
-#! NOTE: CHANGE TO CLASS AND IMPLE INTERFACE ON 'interfaces/tasks/'
-def build_upload_job():
-    container = BackendContainer()
-    return container.upload_job()
+    def run(self, document_id: str, provider_name: str) -> Dict[str, Any]:
+        container = BackendContainer()
+        try:
+            provider = EProviderName(provider_name)
+        except ValueError as exc:
+            raise ValueError(f"Unsupported provider: {provider_name}") from exc
 
+        document = DocumentModel.objects.get(pk=document_id)
+        document.status = "processing"
+        document.save(update_fields=["status"])
 
-@shared_task
-def upload_document_task(document_id: str, provider_name: str = EProviderName.MISTRAL.value):
-    try:
-        provider = EProviderName(provider_name)
-    except ValueError:
-        raise ValueError(f"Unsupported provider: {provider_name}")
+        try:
+            if not document.file_path:
+                raise ValueError(f"Document {document_id} has no stored file path")
 
-    document = DocumentModel.objects.get(pk=document_id)
-    if document.file_path is None:
-        raise ValueError(f"Document {document_id} has no stored file path")
+            upload_job: IUploadJob = container.upload_job() 
+            file_path = Path(document.file_path)
+            
+            # Thực thi flow tuần tự
+            ext_text = upload_job.step_extract(file_path, provider)
+            norm_text = upload_job.step_normalize(ext_text)
+            chunk_data = upload_job.step_chunk_and_cache(document_id, norm_text)
 
-    upload_job = build_upload_job()
-    result = upload_job.run(document_id=document_id, file_path=Path(document.file_path), provider=provider)
+            result_dataclass = upload_job.step_embed_and_save(chunk_data, provider)
 
-    document.status = "indexed"
-    document.save(update_fields=["status"])
-
-    return result
+            document.status = "indexed"
+            document.save(update_fields=["status"])
+            
+            return asdict(result_dataclass) 
+            
+        except Exception as exc:
+            document.status = "failed"
+            document.save(update_fields=["status"])
+            raise exc

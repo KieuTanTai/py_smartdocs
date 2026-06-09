@@ -1,167 +1,75 @@
 import time
 from typing import List
+import numpy as np
+from pathlib import Path
 
+# Import Interfaces
+from backend.apps.interfaces.job.i_conversation_job import IConversationJob, BootstrapMessageResponse
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.response.i_conversation_job_response import IConversationJobResponse
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.interfaces.job.i_conversation_job import IConversationJob
+from backend.apps.core.interfaces.services.rag_base.locate.i_hybrid_search_service import IHybridSearchService
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
 
-
-class DocumentsNotReadyError(ValueError):
-    pass
-
-
-#! NOTE: NEED INTERFACE FOR THIS CLASS 
 class ConversationJob(IConversationJob):
-    """Job that prepares a conversation for chat.
+    class DocumentsNotReadyError(ValueError):
+        pass
 
-    Flow:
-      1. Verify attached documents are indexed
-      2. Build retrieval context from attached documents
-      3. Generate bootstrap assistant message
-      4. Save assistant message and return conversation info
-    """
-
-    def __init__(
-        self,
-        llm_provider_factory: ILLMProviderFactory,
-        config_provider: IConfigProvider,
-        logger: ILogger,
-    ):
+    def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, logger: ILogger, hybrid_search_service: IHybridSearchService | None = None):
         self.llm_provider_factory = llm_provider_factory
         self.config_provider = config_provider
         self.logger = logger
-
-
-#! NOTE: CHANGE RETURN TYPE HERE, MODEL_NAME MUST NOT BE NONE
-    def prepare_conversation(
-        self,
-        conversation_id: str,
-        provider: EProviderName,
-        model_name: str,
-    ) -> IConversationJobResponse:
-        conversation = self._get_conversation(conversation_id)
-
-        if not self._documents_ready(conversation):
-            raise DocumentsNotReadyError(
-                f"Documents attached to conversation {conversation_id} are not ready"
-            )
-
-        prompt, context_hits = self._build_prompt(conversation)
-        answer = self._generate_assistant_response(prompt, provider, model_name)
-        self._save_message(conversation, is_user_send=False, content=answer)
-        return IConversationJobResponse(
-            conversation_id=str(conversation.conversation_id),
-            status="ready",
-            assistant=answer,
-            provider=provider,
-            model=model_name,
-            retrieval_hits=context_hits,
-        )
-
+        self.hybrid_search_service = hybrid_search_service
 
     def check_documents_ready(self, conversation_id: str) -> bool:
-        conversation = self._get_conversation(conversation_id)
-        return self._documents_ready(conversation)
-
-#! NOTE: MODEL_NAME MUST NOT BE NONE
-    def generate_bootstrap_message(
-        self,
-        conversation_id: str,
-        provider: EProviderName,
-        model_name: str,
-    ) -> IConversationJobResponse:
-        conversation = self._get_conversation(conversation_id)
-        prompt, context_hits = self._build_prompt(conversation)
-        answer = self._generate_assistant_response(prompt, provider, model_name)
-        self._save_message(conversation, is_user_send=False, content=answer)
-        return IConversationJobResponse(
-            conversation_id=str(conversation.conversation_id),
-            status="ready",
-            assistant=answer,
-            provider=provider,
-            model=model_name,
-            retrieval_hits=context_hits,
-        )
-
-    def _get_conversation(self, conversation_id: str) -> ConversationModel:
         try:
-            return ConversationModel.objects.get(pk=conversation_id)
-        except ConversationModel.DoesNotExist as exc:
-            raise ValueError(f"Conversation not found: {conversation_id}") from exc
+            conversation = ConversationModel.objects.get(pk=conversation_id)
+            mappings = ConversationFilesModel.objects.filter(conversation=conversation)
+            if not mappings.exists():
+                return True
+            for mapping in mappings:
+                if mapping.faiss_index is None or mapping.faiss_index.status != "indexed":
+                    return False
+            return True
+        except ConversationModel.DoesNotExist:
+            raise ValueError(f"Conversation not found: {conversation_id}")
 
-    def _documents_ready(self, conversation: ConversationModel) -> bool:
-        mappings = ConversationFilesModel.objects.filter(conversation=conversation)
-        for mapping in mappings:
-            if mapping.faiss_index is None or mapping.faiss_index.status != "indexed":
-                return False
-        return True
+    def generate_bootstrap_message(self, conversation_id: str, provider: EProviderName, model_name: str | None = None) -> BootstrapMessageResponse:
+        try:
+            conversation = ConversationModel.objects.get(pk=conversation_id)
+        except ConversationModel.DoesNotExist:
+            raise ValueError(f"Conversation not found: {conversation_id}")
 
-    def _get_attached_document_texts(self, conversation: ConversationModel) -> List[str]:
-        texts: List[str] = []
-        mappings = ConversationFilesModel.objects.filter(conversation=conversation)
-        for mapping in mappings:
-            if mapping.faiss_index and mapping.faiss_index.content:
-                texts.append(mapping.faiss_index.content)
-        return texts
-
-    def _build_prompt(self, conversation: ConversationModel) -> tuple[str, List[dict]]:
-        document_texts = self._get_attached_document_texts(conversation)
-        paragraphs: List[str] = []
-        for doc_text in document_texts:
-            paragraphs.extend([p.strip() for p in doc_text.split("\n") if p.strip()])
-
-        top_paragraphs = paragraphs[:5]
-        context_text = "\n".join(top_paragraphs)
-        context_hits = [
-            {"text": paragraph[:200] + "...", "score": idx + 1}
-            for idx, paragraph in enumerate(top_paragraphs)
-        ]
-
-        system_prompt = "You are a helpful assistant."
-        prompt = (
-            f"System prompt: {system_prompt}\n\n"
-            f"Context from attached documents:\n{context_text}\n\n"
-            f"Assistant: Please summarize the attached documents and explain how the conversation can proceed."
+        prompt = "Vui lòng chào người dùng và tóm tắt ngắn gọn các tài liệu đính kèm để bắt đầu hội thoại."
+        model = model_name or "gemini-2.5-flash"
+        
+        # Sinh câu trả lời bằng LLM
+        assistant_message = self._generate_assistant_response(prompt, provider, model)
+        
+        # Lưu vào Database
+        self._save_message(conversation, is_user_send=False, content=assistant_message)
+        
+        return BootstrapMessageResponse(
+            conversation_id=str(conversation.conversation_id),
+            assistant_message=assistant_message,
+            provider=provider.value,
+            model=model
         )
 
-        return prompt, context_hits
-
-
-#! NOTE: MODEL_NAME MUST NOT BE NONE
-    def _generate_assistant_response(
-        self,
-        prompt: str,
-        provider: EProviderName,
-        model_name: str,
-    ) -> str:
+    def _generate_assistant_response(self, prompt: str, provider: EProviderName, model_name: str) -> str:
         llm_client = self.llm_provider_factory.get_provider(provider)
-        model = model_name or "qwen2.5:1.5b-instruct"
         self.logger.info(
-            f"Generating bootstrap message for conversation with provider={provider}",
+            f"Generating bootstrap message for conversation with provider={provider.value}",
             source=str(self.__class__),
             method_call=self._generate_assistant_response.__name__,
         )
-        response = llm_client.generate(
-            ICompletionRequest(
-                provider=provider,
-                model=model,
-                prompt=prompt,
-                context_hits=[],
-            )
-        )
+        response = llm_client.generate(ICompletionRequest(provider=provider, model=model_name, prompt=prompt, context_hits=[]))
         return response
 
-    def _save_message(
-        self,
-        conversation: ConversationModel,
-        is_user_send: bool,
-        content: str,
-    ) -> MessageModel:
+    def _save_message(self, conversation: ConversationModel, is_user_send: bool, content: str) -> MessageModel:
         return MessageModel.objects.create(
             message_conversation=conversation,
             message_is_user_send=is_user_send,
