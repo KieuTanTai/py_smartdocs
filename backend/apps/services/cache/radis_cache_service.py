@@ -26,7 +26,7 @@ class RedisCacheService(ICacheService):
         self.pipeline.set(key, str(value), ex=expire)
         self.pipeline.execute()
         self.logger.info(f"Cache key: {key} set", Path(__file__).name, file_caller, self.set.__name__)
-        return self.__write_metadata(key, value)
+        return self.__write_metadata(key, str(value))
 
 
     def get(self, key: str, file_caller: str = "") -> List[Any] | None:
@@ -55,10 +55,10 @@ class RedisCacheService(ICacheService):
         self.logger.info(f"Cache key: {key} exists: {result}", Path(__file__).name, file_caller, self.exists.__name__)
         return result
     
-    def __write_metadata(self, key: str, value: Any):
+    def __write_metadata(self, key: str, value: str):
         destination_path = create_path_file(self.metadata_dir, key, "json")
         with open(destination_path, "w") as f:
-            json.dump(value, f)
+            json.dump(str(value), f)
         self.logger.info(f"Metadata for cache key: {key} written to {destination_path}", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
 
     def __convert_to_origin_type(self, value: Any):

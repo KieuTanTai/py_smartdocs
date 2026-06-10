@@ -1,6 +1,7 @@
 import ast
 from pathlib import Path
 
+import numpy as np
 import redis
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
 from sys_services.logging import Logger
@@ -17,10 +18,10 @@ def test_redis_cache():
     cache_service = cache_client.connect(file_caller=Path(__file__).name)
 
     # Test set and get
-    cache_service.set("test_key", [("test_key:1", "test_value"), ("test_key:2", "test_value2")], file_caller=Path(__file__).name)
+    cache_service.set("test_key", [(np.int64(1), "test_value"), (np.int64(2), "test_value2")], file_caller=Path(__file__).name)
     result = cache_service.get("test_key", file_caller=Path(__file__).name)
     print("Result:", result)
-    cache_service.set("test_key_expire", [("test_key_expire:1", "test_value_expire")], expire=1, file_caller=Path(__file__).name)  # Set with expiration
+    cache_service.set("test_key_expire", [(np.int64(1), "test_value_expire")], expire=1, file_caller=Path(__file__).name)  # Set with expiration
     response1 = cache_service.get("test_key", file_caller=Path(__file__).name)
     response2 = cache_service.get("test_key_expire", file_caller=Path(__file__).name)
     print("Response 1:", type(response1), response1)
