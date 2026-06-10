@@ -2,6 +2,7 @@ from pathlib import Path
 from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
+from backend.apps.core.interfaces.system.i_log_pool import ILogPool
 from backend.apps.core.normalize.normalize import Normalize
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.job.message_job import MessageJob
@@ -51,6 +52,10 @@ class BackendContainer(containers.DeclarativeContainer):
 
     config_provider = providers.Singleton(EnvConfigProvider)
     logger = providers.Singleton(Logger)
+    log_pool = providers.Singleton(
+        ILogPool,
+        log_file_path = "storage/logs/app_runtime.log"
+    ) 
 
     # Storage
     llm_ocr_factory = providers.Factory(LLMOCRFactory, config_provider=config_provider, logger=logger)
