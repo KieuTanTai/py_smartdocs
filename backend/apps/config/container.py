@@ -2,7 +2,6 @@ from pathlib import Path
 from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
-from backend.apps.core.interfaces.system.i_log_pool import ILogPool
 from backend.apps.core.normalize.normalize import Normalize
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.job.message_job import MessageJob
@@ -30,9 +29,10 @@ from backend.apps.services.rag_base.search.hybrid_search_service import HybridSe
 from backend.apps.services.rag_base.locate.locate_service import LocateService
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
+from sys_services.log_pool import LogPool
 from sys_services.logging import Logger
 from sys_services.read_config.config_provider import EnvConfigProvider
-from sys_services.system_dirs import METADATA_DIR
+from sys_services.system_dirs import LOGS_DIR, METADATA_DIR
 
 
 class BackendContainer(containers.DeclarativeContainer):
@@ -51,20 +51,17 @@ class BackendContainer(containers.DeclarativeContainer):
     """
 
     config_provider = providers.Singleton(EnvConfigProvider)
-    logger = providers.Singleton(Logger)
-    log_pool = providers.Singleton(
-        ILogPool,
-        log_file_path = "storage/logs/app_runtime.log"
-    ) 
+    logger = providers.Singleton(Logger, LOGS_DIR)
+    log_pool = providers.Singleton(LogPool, LOGS_DIR)
 
     # Storage
-    llm_ocr_factory = providers.Factory(LLMOCRFactory, config_provider=config_provider, logger=logger)
-    llm_uploader = providers.Factory(MistralUploader, logger=logger)
+    llm_ocr_factory = providers.Factory(LLMOCRFactory, config_provider=config_provider, logger=log_pool)
+    llm_uploader = providers.Factory(MistralUploader, logger=log_pool)
     file_storage = providers.Factory(
         FileStorageService,
         storage_dir=METADATA_DIR,
         uploader=llm_uploader,
-        logger=logger,
+        logger=log_pool,
     )
 
     # Extract
@@ -72,41 +69,41 @@ class BackendContainer(containers.DeclarativeContainer):
         ExtractContentService,
         factory=llm_ocr_factory,
         storage=file_storage,
-        logger=logger,
+        logger=log_pool,
     )
 
     # Normalize
-    normalize = providers.Singleton(Normalize, logger=logger)
+    normalize = providers.Singleton(Normalize, logger=log_pool)
 
     # Chunking
-    chunker = providers.Singleton(Chunker, logger=logger)
+    chunker = providers.Singleton(Chunker, logger=log_pool)
 
     # Caching
     cache_service = providers.Factory(
         RedisCacheSession,
         config_provider=config_provider,
         metadata_dir=METADATA_DIR,
-        logger=logger,
+        logger=log_pool,
     )
 
     llm_provider_factory = providers.Factory(
         LLMProviderFactory,
         config_provider=config_provider,
-        logger=logger,
+        logger=log_pool,
     )
 
     # Locate
     locate_service = providers.Factory(
         LocateService,
         metadata_dir=METADATA_DIR,
-        logger=logger,
+        logger=log_pool,
     )
 
     # Search
     hybrid_search_service = providers.Factory(
         HybridSearchService,
         locate_service=locate_service,
-        logger=logger,
+        logger=log_pool,
     )
 
     upload_job = providers.Factory(
@@ -118,7 +115,7 @@ class BackendContainer(containers.DeclarativeContainer):
         llm_provider_factory=llm_provider_factory,
         locate_service=locate_service,
         config_provider=config_provider,
-        logger=logger,
+        logger=log_pool,
     )
 
     message_job = providers.Factory(
@@ -127,7 +124,7 @@ class BackendContainer(containers.DeclarativeContainer):
         config_provider=config_provider,
         locate_service=locate_service,
         cache_session=cache_service,
-        logger=logger,
+        logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,
     )
@@ -136,6 +133,6 @@ class BackendContainer(containers.DeclarativeContainer):
         ConversationJob,
         llm_provider_factory=llm_provider_factory,
         config_provider=config_provider,
-        logger=logger,
+        logger=log_pool,
         hybrid_search_service=hybrid_search_service,
     )
