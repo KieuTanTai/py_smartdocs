@@ -84,6 +84,10 @@ class Logger(ILogger):
         except Exception as exc:
             print(f"Error writing log message to file: {exc}")
 
+    def flush(self) -> None:
+        """Flush is not needed for this Logger implementation since it writes directly to file."""
+        pass
+
     def __ensure_log_dir(self, folder_name: str) -> Path:
         """Ensure log directory exists"""
         key = folder_name

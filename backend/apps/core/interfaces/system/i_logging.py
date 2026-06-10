@@ -23,3 +23,8 @@ class ILogger(ABC):
     def debug(self, message: str, source: str = "", call_by: str = "", method_call="") -> None:
         """Log debug message"""
         pass
+
+    @abstractmethod
+    def flush(self) -> None:
+        """Flush buffered log messages to the output (e.g., file, console)"""
+        pass
