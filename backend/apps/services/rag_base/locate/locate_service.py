@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import (
     IVectorStoreService,
 )
@@ -21,12 +22,12 @@ class LocateService(ILocateService):
         self.metadata_dir = metadata_dir
         self.logger = logger
 
-    def get_vector_store(self, backend: EBackendStorageName) -> IVectorStoreService:
+    def get_vector_store(self, backend: EBackendStorageName) -> IVectorDBService:
         """Get vector store service instance based on backend name.
         Args:
             backend: Name of vector store backend (e.g., "faiss", "bm25")
         Returns:
-            IVectorStoreService instance for specified backend
+            IVectorDBService instance for specified backend
         """
         if backend == EBackendStorageName.FAISS:
             faiss_service = FaissService(metadata_dir=self.metadata_dir, logger=self.logger)

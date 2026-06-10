@@ -10,65 +10,66 @@ from celery import Task
 
 from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.job.i_dataclass_upload_job import EmbedAndSaveResponse
+from backend.apps.core.interfaces.system.i_logging import ILogger
+from backend.apps.core.interfaces.tasks.i_embed_and_save_response import IEmbedAndSaveResponse
 from backend.apps.services.chat.models import DocumentModel
 from backend.apps.interfaces.task.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
 
 class UploadTask(Task, IUploadTask): # <--- Class UploadTask chuẩn chỉ
 
+    def __init__(self, upload_job: IUploadJob, logger: ILogger):
+        self.upload_job = upload_job
+        self.logger = logger
+
     # --- SINGLE RESPONSIBILITY METHODS ---
 
-    def _get_container(self) -> BackendContainer:
-        """Lấy Dependency Container sạch cho Worker."""
-        return BackendContainer()
-
-    def _resolve_provider(self, provider_name: str) -> EProviderName:
-        """Parse và Validate Provider Enum."""
-        try:
-            return EProviderName(provider_name)
-        except ValueError as exc:
-            raise ValueError(f"Unsupported provider: {provider_name}") from exc
-
-    def _update_document_status(self, document_id: str, status: str) -> DocumentModel:
-        """Cập nhật trạng thái DB độc lập."""
+    def __update_document_status(self, document_id: str, status: str) -> DocumentModel:
+        """Update status of a document."""
         document = DocumentModel.objects.get(pk=document_id)
         document.status = status
         document.save(update_fields=["status"])
+        self.logger.info(f"Document {document_id} status updated to {status}", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__update_document_status.__name__)
         return document
 
-    def _get_valid_file_path(self, document: DocumentModel) -> Path:
-        """Kiểm tra và lấy đường dẫn file vật lý."""
+    def __get_valid_file_path(self, document: DocumentModel) -> Path:
+        """Validate and get path of a document."""
         if not document.file_path:
+            self.logger.error(f"Document {document.pk} has no stored file path", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__get_valid_file_path.__name__)
             raise ValueError(f"Document {document.pk} has no stored file path")
         return Path(document.file_path)
 
-    def _execute_pipeline(self, upload_job: IUploadJob, document_id: str, file_path: Path, provider: EProviderName) -> EmbedAndSaveResponse:
-        """Chạy quy trình RAG tuần tự thông qua Job."""
-        ext_text = upload_job.step_extract(file_path, provider)
-        norm_text = upload_job.step_normalize(ext_text)
-        chunk_data = upload_job.step_chunk_and_cache(document_id, norm_text)
+    def __execute_pipeline(self, upload_job: IUploadJob, document_id: str, file_path: Path, provider: EProviderName) -> IEmbedAndSaveResponse:
+        """Run the Upload pipeline."""
+        ext_text = upload_job.step_extract(file_path, provider, file_caller=self.__execute_pipeline.__name__)
+        self.logger.info(f"Document {document_id} extracted text successfully with {len(ext_text)} characters", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__execute_pipeline.__name__)
+        norm_text = upload_job.step_normalize(ext_text, file_caller=self.__execute_pipeline.__name__)
+        self.logger.info(f"Document {document_id} normalized text successfully with {len(norm_text)} characters", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__execute_pipeline.__name__)
+        chunk_data = upload_job.step_chunk_and_cache(document_id, norm_text, file_caller=self.__execute_pipeline.__name__)
+        self.logger.info(f"Document {document_id} chunked into {len(chunk_data.chunk_texts)} chunks", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__execute_pipeline.__name__)
         return upload_job.step_embed_and_save(chunk_data, provider)
 
     # --- MAIN ENTRY POINT ---
+    @property
+    def name(self) -> str:
+        """Return the task name for routing."""
+        self.logger.info(f"Retrieving task name for routing", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.name)
+        return Path(__file__).stem  # Dynamic name based on filename
 
-    def run(self, document_id: str, provider_name: str) -> Dict[str, Any]:
-        """Điều phối các hàm nhỏ để hoàn thành vòng đời Task."""
-        container = self._get_container()
-        provider = self._resolve_provider(provider_name)
-        document = self._update_document_status(document_id, "processing")
-
+    def run(self, document_id: str, provider_name: EProviderName, file_caller: str = "") -> IEmbedAndSaveResponse:
+        """Run the upload task."""
+        self.logger.info(f"Starting UploadTask for document {document_id} with provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run.__name__)
         try:
-            file_path = self._get_valid_file_path(document)
-            upload_job: IUploadJob = container.upload_job()
-            
+            document = self.__update_document_status(document_id, "processing")
+            file_path = self.__get_valid_file_path(document)
             # Chạy luồng lõi
-            result_dataclass = self._execute_pipeline(upload_job, document_id, file_path, provider)
+            self.logger.info(f"Executing RAG pipeline for document {document_id}", source=Path(__file__).name, call_by=file_caller, method_call=self.run.__name__)
+            result_dataclass = self.__execute_pipeline(self.upload_job, document_id, file_path, provider_name)
 
-            self._update_document_status(document_id, "indexed")
-            
-            return asdict(result_dataclass)
+            self.__update_document_status(document_id, "indexed")
+            return result_dataclass
             
         except Exception as exc:
-            self._update_document_status(document_id, "failed")
+            self.logger.error(f"Error processing document {document_id}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run.__name__)
+            self.__update_document_status(document_id, "failed")
             raise exc

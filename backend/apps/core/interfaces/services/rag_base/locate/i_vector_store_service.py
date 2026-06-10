@@ -10,19 +10,26 @@ from typing import Any
 import numpy as np
 
 from backend.apps.core.interfaces.response.i_vector_db_response import IVectorDBDeleteResponse, IVectorDBLoadResponse, IVectorDBQueryResponse, IVectorDBUpsertResponse
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
 
 
-class IVectorStoreService(ABC):
+class IVectorStoreService(IVectorDBService, ABC):
     """
     Abstract interface for vector storage operations.
     Provider-agnostic interface for vector databases (Faiss, etc.).
     """
 
     @abstractmethod
-    def create_index(self, np_vectors: np.ndarray, ids: np.ndarray = np.array([]), file_caller: str = "") -> Any:
+    def create_index(
+        self,
+        np_vectors: np.ndarray,
+        ids: np.ndarray = np.array([], dtype=np.int64),
+        file_caller: str = "",
+    ) -> Any:
         """
         Create vector index with specified dimension.
-
+        if ids not dtype int64 or empty, it will create IndexFlatL2, else it will create IndexIDMap with provided ids.
+        ids will automatically convert to int64 type if provided but not in int64 type, and it will log a warning message.
         Args:
             dimension: Dimensionality of the vectors to be indexed
             np_vectors: Optional initial vectors to add to the index
@@ -30,6 +37,9 @@ class IVectorStoreService(ABC):
         Returns:
             Provider-specific index object or identifier
             Or Raise exception if index creation fails
+        Raises:
+            ValueError if dimension is not positive or if index creation fails
+            ValueError if ids are provided but not in int64 dtype
         """
         pass
 
@@ -45,7 +55,8 @@ class IVectorStoreService(ABC):
         Requires provider-specific index object or identifier to perform upsert operation, and vector_id for metadata and cache management.
         Args:
             index: Provider-specific index object or identifier
-            vector_id: Unique identifier for vector
+            vector_id: Unique identifier for vector (create by plus document_id type string split by `_`: exp: 1234_5678_9012 where 1234 is document_id of file 1, 5678 is document_id of file 2, 
+                9012 is document_id of file 3, this is for example when we want to upsert vector of multiple files into same index, so we can use this vector_id to manage metadata and cache for this vector)
             dimension: Dimensionality of the vector
             np_vectors: Array of vector embeddings (list of floats)
             file_caller: Identifier for the calling file
@@ -57,7 +68,7 @@ class IVectorStoreService(ABC):
         pass
 
     @abstractmethod
-    def search(self, index: Any, vector_id: str, query_vector: np.ndarray, query_text: str | None = None, limit=5, 
+    def search(self, index: Any, vector_id: str, query_vector: np.ndarray,  limit=5, 
                allow_ids: set | None = None, chunk_file_map: dict | None = None, file_caller: str = "") -> IVectorDBQueryResponse:
         """
         Perform similarity search.
@@ -66,7 +77,6 @@ class IVectorStoreService(ABC):
             index: Provider-specific index object or identifier
             vector_id: Unique identifier for the vector to search within (id for searching datablocks on cache)
             query_vector: Query embedding vector
-            query_text: Optional text query for hybrid search
             limit: Maximum number of results
             allow_ids: Optional set of allowed vector IDs
             chunk_file_map: Optional dictionary mapping chunks to files

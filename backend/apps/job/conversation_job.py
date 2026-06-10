@@ -4,19 +4,17 @@ import numpy as np
 from pathlib import Path
 
 # Import Interfaces
-from backend.apps.interfaces.job.i_conversation_job import IConversationJob, BootstrapMessageResponse
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.response.i_conversation_job_response import IConversationJobResponse
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.services.rag_base.locate.i_hybrid_search_service import IHybridSearchService
+from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
 
 class ConversationJob(IConversationJob):
-    class DocumentsNotReadyError(ValueError):
-        pass
+
 
     def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, logger: ILogger, hybrid_search_service: IHybridSearchService | None = None):
         self.llm_provider_factory = llm_provider_factory
@@ -35,6 +33,11 @@ class ConversationJob(IConversationJob):
                     return False
             return True
         except ConversationModel.DoesNotExist:
+            self.logger.error(
+                f"Conversation not found: {conversation_id}",
+                source=__file__,
+                call_by=self.check_documents_ready.__name__
+            )
             raise ValueError(f"Conversation not found: {conversation_id}")
 
     def generate_bootstrap_message(self, conversation_id: str, provider: EProviderName, model_name: str | None = None) -> BootstrapMessageResponse:

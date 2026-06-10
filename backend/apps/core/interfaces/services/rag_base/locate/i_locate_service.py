@@ -5,6 +5,7 @@ Abstract interface for chunk and document location tracking.
 
 from abc import ABC, abstractmethod
 
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 
@@ -15,12 +16,12 @@ class ILocateService(ABC):
 
     """
     @abstractmethod
-    def get_vector_store(self, backend: EBackendStorageName) -> IVectorStoreService:
+    def get_vector_store(self, backend: EBackendStorageName) -> IVectorDBService:
         """Get vector store service instance based on backend name.
         Args:
             backend: Name of vector store backend (e.g., "faiss")
         Returns:
-            IVectorStoreService instance for specified backend
+            IVectorDBService instance for specified backend
         """
         pass
 

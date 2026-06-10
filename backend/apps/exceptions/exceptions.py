@@ -4,15 +4,20 @@ Domain-specific exceptions for error handling.
 """
 
 
-class SmartDocsException(Exception):
+from backend.apps.core.interfaces.exception.i_smartdocs_exception import ISmartdocsException
+
+
+class DocumentsNotReadyError(ISmartdocsException):
     """
-    Base exception for all SmartDocs application errors.
+    Raised when documents are not ready for processing.
     """
+    def __init__(self, message: str = "Documents are not ready for processing.", error_code: str | None = None):
+        super().__init__(message, error_code)
+        self.error_code = error_code
+        super().__init__(message)
 
-    pass
 
-
-class DocumentProcessingError(SmartDocsException):
+class DocumentProcessingError(ISmartdocsException):
     """
     Raised when document processing fails.
     """
@@ -20,7 +25,7 @@ class DocumentProcessingError(SmartDocsException):
     pass
 
 
-class EmbeddingError(SmartDocsException):
+class EmbeddingError(ISmartdocsException):
     """
     Raised when embedding generation fails.
     """
@@ -28,7 +33,7 @@ class EmbeddingError(SmartDocsException):
     pass
 
 
-class VectorStoreError(SmartDocsException):
+class VectorStoreError(ISmartdocsException):
     """
     Raised when vector store operations fail.
     """
@@ -36,7 +41,7 @@ class VectorStoreError(SmartDocsException):
     pass
 
 
-class LLMProviderError(SmartDocsException):
+class LLMProviderError(ISmartdocsException):
     """
     Raised when LLM provider call fails.
     """
@@ -44,7 +49,7 @@ class LLMProviderError(SmartDocsException):
     pass
 
 
-class ConversationError(SmartDocsException):
+class ConversationError(ISmartdocsException):
     """
     Raised when conversation operations fail.
     """
@@ -52,7 +57,7 @@ class ConversationError(SmartDocsException):
     pass
 
 
-class FileExtractionError(SmartDocsException):
+class FileExtractionError(ISmartdocsException):
     """
     Raised when file extraction fails.
     """

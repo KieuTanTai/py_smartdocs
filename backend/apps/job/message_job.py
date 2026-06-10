@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 import numpy as np
 
-from backend.apps.core.interfaces.services.rag_base.locate.i_hybrid_search_service import IHybridSearchService
+from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 from backend.apps.interfaces.job.i_message_job import IMessageJob, MessageResponse, ContextHit
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName

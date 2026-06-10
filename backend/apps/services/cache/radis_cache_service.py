@@ -3,6 +3,7 @@ import datetime
 import json
 from pathlib import Path
 from typing import Any, List
+import numpy as np
 import redis
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
 from backend.apps.core.interfaces.system.i_logging import ILogger
@@ -20,7 +21,7 @@ class RedisCacheService(ICacheService):
         self.metadata_dir.mkdir(parents=True, exist_ok=True)
         self.pipeline = self.redis_client.pipeline()
 
-    def set(self, key: str, value: List[tuple[str, str]], expire: int | None = None, file_caller: str = "") -> Path | None:
+    def set(self, key: str, value: List[tuple[np.int64, str]], expire: int | None = None, file_caller: str = "") -> Path | None:
         self.logger.info(f"Setting cache key: {key}", Path(__file__).name, file_caller, self.set.__name__)
         self.pipeline.set(key, str(value), ex=expire)
         self.pipeline.execute()

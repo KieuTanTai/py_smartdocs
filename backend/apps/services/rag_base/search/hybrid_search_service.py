@@ -3,8 +3,8 @@ Hybrid search service module.
 Combines semantic search (FAISS) and keyword search (BM25) results using RRF.
 """
 from typing import List
-from backend.apps.core.interfaces.services.rag_base.locate.i_hybrid_search_service import IHybridSearchService
-from backend.apps.interfaces.job.i_message_job import ContextHit
+from backend.apps.core.interfaces.job.i_message_job import IMessageJobContextHit
+from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 
 class HybridSearchService(IHybridSearchService):
     def __init__(self, locate_service, logger, rrf_k: int = 60):
@@ -13,7 +13,7 @@ class HybridSearchService(IHybridSearchService):
         # rrf_k = 60 là tham số chuẩn hóa do Elasticsearch khuyến nghị cho RRF
         self.rrf_k = rrf_k
 
-    def fuse_results(self, dense_hits: List[ContextHit], sparse_hits: List[ContextHit], top_k: int = 5) -> List[ContextHit]:
+    def fuse_results(self, dense_hits: List[IMessageJobContextHit], sparse_hits: List[IMessageJobContextHit], top_k: int = 5) -> List[IMessageJobContextHit]:
         """Dung hợp kết quả từ Dense Vector (FAISS) và Sparse Vector (BM25)."""
         fused_scores = {}
         hit_map = {}
@@ -38,7 +38,7 @@ class HybridSearchService(IHybridSearchService):
         results = []
         for key, score in sorted_fused[:top_k]:
             hit = hit_map[key]
-            results.append(ContextHit(
+            results.append(IMessageJobContextHit(
                 text=hit.text, 
                 score=score, 
                 source_document_id=hit.source_document_id

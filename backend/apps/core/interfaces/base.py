@@ -26,7 +26,7 @@ from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content im
 )
 from backend.apps.interfaces.services.chat.i_search import ISearchService
 from backend.apps.interfaces.services.chat.i_summarization import ISummarizationService
-from backend.apps.core.interfaces.services.rag_base.locate.i_hybrid_search_service import IHybridSearchService
+from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service import ILocateService
 
 # Application service interfaces

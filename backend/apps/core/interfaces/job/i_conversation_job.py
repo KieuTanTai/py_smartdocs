@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class BootstrapMessageResponse:
+class IConversationJobResponse:
     conversation_id: str
     assistant_message: str
     provider: str

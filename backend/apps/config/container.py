@@ -25,7 +25,7 @@ from backend.apps.services.rag_base.extract.extract_content_service import (
     ExtractContentService,
 )
 from backend.apps.services.rag_base.locate.faiss_service import FaissService
-from backend.apps.services.rag_base.locate.hybrid_search_service import HybridSearchService
+from backend.apps.services.rag_base.search.hybrid_search_service import HybridSearchService
 from backend.apps.services.rag_base.locate.locate_service import LocateService
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
@@ -97,6 +97,7 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=logger,
     )
 
+    # Search
     hybrid_search_service = providers.Factory(
         HybridSearchService,
         locate_service=locate_service,

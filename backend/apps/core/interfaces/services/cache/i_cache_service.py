@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, List
+import numpy as np
 from redis import Redis
 
 class ICacheService(ABC):
@@ -29,14 +30,14 @@ class ICacheService(ABC):
     def set(
         self,
         key: str,
-        value: List[tuple[str, str]],
+        value: List[tuple[np.int64, str]],
         expire: int | None = None,
         file_caller: str = "",
     ) -> Path | None:
         """Store a value in the cache with the specified key.
         Args:
         key: The primary key to store the value under in the cache.
-        value: The value to store in the cache (tuple[key: str, value: str]).
+        value: The value to store in the cache (tuple[key: np.int64, value: str]).
         expire: The expiration time for the cached value.
         file_caller: Optional string to indicate the caller file for logging purposes.
         Returns:
