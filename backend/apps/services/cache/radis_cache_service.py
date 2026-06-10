@@ -66,7 +66,7 @@ class RedisCacheService(ICacheService):
             return None
         with open(destination_path, "w") as f:
             json.dump(input_value_json, f, ensure_ascii=False, indent=4)
-        self.logger.info(f"Metadata for cache key: {key} written to {destination_path}", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
+        self.logger.info(f"Metadata for cache key: {key} written to '{destination_path}'", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
         return destination_path
 
     def __convert_to_serializable(self, value_key: str, value: List[ICacheParamValue], expire: int | None = None) -> str:
