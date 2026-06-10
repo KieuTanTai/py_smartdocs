@@ -24,7 +24,7 @@ class RedisCacheService(ICacheService):
 
     def set(self, input: ICacheParam, file_caller: str = "") -> Path | None:
         self.logger.info(f"Setting cache key: {input.key}", Path(__file__).name, file_caller, self.set.__name__)
-        value_str = self.__convert_to_serializable(input.key, input.values)
+        value_str = self.__convert_to_serializable(input.key, input.values, input.expire)
         self.pipeline.set(input.key, value_str, ex=input.expire)
         self.pipeline.execute()
         self.logger.info(f"Cache key: {input.key} set", Path(__file__).name, file_caller, self.set.__name__)
@@ -69,8 +69,8 @@ class RedisCacheService(ICacheService):
         self.logger.info(f"Metadata for cache key: {key} written to {destination_path}", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
         return destination_path
 
-    def __convert_to_serializable(self, value_key: str, value: List[ICacheParamValue]) -> str:
-        return json.dumps({"key": value_key, "value": self.__normalize_value(value)})
+    def __convert_to_serializable(self, value_key: str, value: List[ICacheParamValue], expire: int | None = None) -> str:
+        return json.dumps({"key": value_key, "value": self.__normalize_value(value), "expire": expire})
     
     def __normalize_value(self, values: List[ICacheParamValue]):
         result = [

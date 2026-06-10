@@ -7,7 +7,7 @@ import numpy as np
 class ICacheParam:
     key: str
     values: List[ICacheParamValue]
-    expire: int | None = None
+    expire: int | None = None # Expiration time in seconds, optional
 
 @dataclass
 class ICacheParamValue:
