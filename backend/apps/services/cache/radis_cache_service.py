@@ -59,8 +59,13 @@ class RedisCacheService(ICacheService):
     
     def __write_metadata(self, key: str, input_value: str) -> Path | None:
         destination_path = create_path_file(self.metadata_dir, key, "json")
+        try: 
+            input_value_json = json.loads(input_value)
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Error decoding cache value for metadata: {e}", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
+            return None
         with open(destination_path, "w") as f:
-            json.dump(str(input_value), f)
+            json.dump(input_value_json, f, ensure_ascii=False, indent=4)
         self.logger.info(f"Metadata for cache key: {key} written to {destination_path}", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
         return destination_path
 
