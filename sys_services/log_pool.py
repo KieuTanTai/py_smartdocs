@@ -6,6 +6,7 @@ Buffers logs in memory and requires an explicit flush invocation to perform bloc
 import sys
 from pathlib import Path
 import datetime
+from typing import List
 from backend.apps.core.enums.e_type_message import ETypeMessage
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.system_dirs import LOGS_DIR
@@ -52,12 +53,12 @@ class LogPool(ILogger):
         """Đẩy log vào pool trên RAM """
         with self._lock:
             self._pool.append({
-                "timestamp": datetime.datetime.now().isoformat(),
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "type_message": type_message.value.upper(),
-                "message": message,
                 "source": source,
                 "call_by": call_by,
-                "method_call": method_call
+                "method_call": method_call,
+                "message": message
             })
 
     def flush(self) -> None:
@@ -73,11 +74,7 @@ class LogPool(ILogger):
                 return  # Không có log nào để flush
             log_lines = []
             for log in self._pool:
-                log_lines.append(f"\n{self._separator}\n")
-                log_lines.append(f"[{log['timestamp']}] [{log['type_message']}]\n")
-                log_lines.append(f"Source: {log['source']}\n")
-                log_lines.append(f"Called by: {log['call_by']} - Method: {log['method_call']}\n")
-                log_lines.append(f"Message: {log['message']}\n")
+                log_lines.extend(self.__create_log_formatter(log))
 
         try:
             folder_name = datetime.date.today().strftime("%Y-%m-%d")
@@ -92,6 +89,17 @@ class LogPool(ILogger):
             sys.stderr.flush()
         finally:
             self._pool.clear()  # Chắc chắn xóa pool sau khi đã flush
+
+    def __create_log_formatter(self, log: dict) -> List[str]:
+        return [
+            f"\n{self._separator}\n",
+            f"[{log['timestamp']}] [{log['type_message']}]\n",
+            f"Source: {log['source']}\n",
+            f"Called by: {log['call_by']}\n",
+            f"Method call: {log['method_call']}\n",
+            f"Message:\n   {log['message']}\n",
+            f"{self._separator}\n"
+        ]
 
     def __write_log_to_file(self, log_lines: list[str], path: Path) -> None:
         """Internal method to write log lines to file."""

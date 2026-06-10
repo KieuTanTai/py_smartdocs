@@ -8,13 +8,12 @@ from unittest.mock import patch, mock_open, MagicMock
 
 from backend.apps.core.enums.e_type_message import ETypeMessage
 from sys_services.log_pool import LogPool
+import sys_services.log_pool
 
-
-
+logger = LogPool()
 
 def test_logger_buffers_in_memory_without_io():
     """Test 1: Gọi các hàm log chỉ được nạp vào RAM pool, tuyệt đối không được mở file."""
-    logger = LogPool(logs_dir=Path("."), log_file_name="mock_app.log")
     
     with patch("builtins.open", mock_open()) as mocked_open:
         logger.info(
@@ -36,7 +35,6 @@ def test_logger_buffers_in_memory_without_io():
 
 def test_logger_flush_performs_block_io_and_clears_pool():
     """Test 2: Khi gọi flush(), hệ thống phải tạo thư mục, mở file đúng 1 lần và dọn sạch pool RAM."""
-    logger = LogPool(logs_dir=Path("./mock_logs"), log_file_name="mock_app.log")
     
     logger.info("Tin nhắn thử nghiệm hệ thống thành công")
     logger.error("Lỗi crash kết nối FAISS Database")
@@ -69,7 +67,6 @@ def test_logger_flush_performs_block_io_and_clears_pool():
 
 def test_logger_flush_empty_pool_does_nothing():
     """Test 3: Nếu Pool đang trống, gọi flush() phải thoát sớm, không mở file bừa bãi gây lãng phí CPU."""
-    logger = LogPool(logs_dir=Path("."), log_file_name="mock_app.log")
     
     m_open = mock_open()
     with patch("builtins.open", m_open), \
@@ -83,7 +80,6 @@ def test_logger_flush_empty_pool_does_nothing():
 def test_logger_creates_a_real_physical_file(tmp_path):
     """Test 4: Ép hệ thống tạo ra FILE THẬT trên ổ cứng để lập trình viên kiểm chứng."""
 
-    logger = LogPool(logs_dir=tmp_path, log_file_name="real_test_file.log")
 
     logger.info("Log này được ghi xuống ổ cứng thật thông qua pytest!")
     logger.warning("Cảnh báo khẩn cấp hệ thống RAG")
