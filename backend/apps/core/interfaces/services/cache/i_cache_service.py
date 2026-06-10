@@ -4,6 +4,8 @@ from typing import Any, List
 import numpy as np
 from redis import Redis
 
+from backend.apps.core.interfaces.services.cache.i_cache_param_value import ICacheParam
+
 class ICacheService(ABC):
     """
     Interface for a singleton cache service.
@@ -12,7 +14,7 @@ class ICacheService(ABC):
     """
 
     @abstractmethod
-    def get(self, key: str, file_caller="") -> List[Any] | None:
+    def get(self, key: str, file_caller="") -> ICacheParam | None:
         """Retrieve a value from the cache by key.
             Automatic convert to origin type when get value from cache, for example if the value is a list of tuple, it will be converted back to list of tuple instead of string.
             This is done by using ast.literal_eval to safely evaluate the string representation of the value back to its original type.
@@ -29,15 +31,13 @@ class ICacheService(ABC):
     @abstractmethod
     def set(
         self,
-        key: str,
-        value: List[tuple[np.int64, str]],
-        expire: int | None = None,
+        input: ICacheParam,
         file_caller: str = "",
     ) -> Path | None:
         """Store a value in the cache with the specified key.
         Args:
         key: The primary key to store the value under in the cache.
-        value: The value to store in the cache (tuple[key: np.int64, value: str]).
+        input: An ICacheParam object containing the key, value, and optional expiration time for the cache entry.
         expire: The expiration time for the cached value.
         file_caller: Optional string to indicate the caller file for logging purposes.
         Returns:
