@@ -1,20 +1,21 @@
 import ast
 from pathlib import Path
+import threading
 
 import numpy as np
 import redis
 from backend.apps.core.interfaces.services.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
-from sys_services.logging import Logger
+from sys_services.log_pool import LogPool
 from sys_services.read_config.config_provider import EnvConfigProvider
 
 CURRENT_DIR = Path(__file__).parent.resolve()
 OUTPUT_DIR = CURRENT_DIR / "output" 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+logger = LogPool()
 
 def test_redis_cache():
     # DATA DRIVEN TESTING
-    logger = Logger()
     cache_client = RedisCacheSession(config_provider=EnvConfigProvider(), metadata_dir=OUTPUT_DIR, logger=logger)
     cache_service = cache_client.connect(file_caller=Path(__file__).name)
 
@@ -40,7 +41,26 @@ def test_redis_cache():
         print("index in first response:", [value.index for value in response1.values])
         print("value in first response:", [value.text_value for value in response1.values])
     cache_client.disconnect(file_caller=Path(__file__).name)
+    
+def thread_flush_log():
+    logger.flush()
+
+def thread_print():
+    print("Printed")
+
+def multithread_after():
+    threads = []
+    t1 = threading.Thread(target=thread_flush_log)
+    t2 = threading.Thread(target=thread_print)
+    threads.extend([t1, t2])
+    t1.start()
+    t2.start()
+    for t in threads:
+        t.join()
+
 
 if __name__ == "__main__":
     test_redis_cache()
+    multithread_after()
+    print("All tests passed!")
     print("All tests passed!")

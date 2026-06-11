@@ -1,48 +1,9 @@
 import os
-
-# Fix SSL certificate verification on Windows / environments with missing root CAs.
-# MUST be set BEFORE any httpx / httpcore / google-genai imports.
-_SSL_FIXED = False
-
-
-def _apply_ssl_fix() -> None:
-    global _SSL_FIXED
-    if _SSL_FIXED:
-        return
-    _SSL_FIXED = True
-
-    try:
-        import certifi
-
-        _ca_bundle = certifi.where()
-        os.environ.setdefault("SSL_CERT_FILE", _ca_bundle)
-        os.environ.setdefault("REQUESTS_CA_BUNDLE", _ca_bundle)
-        os.environ.setdefault("CURL_CA_BUNDLE", _ca_bundle)
-
-        import ssl
-        import httpcore._sync._connection as _httpcore_conn
-
-        _orig_connect = _httpcore_conn.SyncTCPConnector._connect_tls
-
-        def _connect_tls_patched(self, sni, timeout):
-            ssl_context = ssl.create_default_context()
-            ssl_context.load_verify_locations(cafile=_ca_bundle)
-            return _orig_connect(self, sni, timeout, ssl_context)
-
-        _httpcore_conn.SyncTCPConnector._connect_tls = _connect_tls_patched
-
-    except Exception:
-        pass  # If patching fails, fallback to system defaults
-
-
-_apply_ssl_fix()
-
 import numpy as np
 from google import genai
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.system.i_logging import ILogger
-
 
 class GeminiClient(ILLMClient):
 
