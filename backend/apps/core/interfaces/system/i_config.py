@@ -49,5 +49,9 @@ class IConfigProvider(ABC):
     def get_redis_config(self) -> Mapping[str, Any]:
         pass
 
+    @abstractmethod
+    def get_neo4j_config(self) -> Mapping[str, Any]:
+        pass
+
 
 

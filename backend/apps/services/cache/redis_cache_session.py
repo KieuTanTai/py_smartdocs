@@ -1,7 +1,7 @@
 
 from pathlib import Path
 
-from backend.apps.core.interfaces.services.cache.i_connect_cache_session import IConnectCacheSession
+from backend.apps.core.interfaces.services.repository.i_connect_cache_session import IConnectCacheSession
 import redis
 
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService

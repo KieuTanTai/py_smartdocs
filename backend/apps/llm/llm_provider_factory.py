@@ -13,10 +13,11 @@ class LLMProviderFactory(ILLMProviderFactory):
         self.logger = logger
         self.config_provider = config_provider
 
-    def get_provider(self, provider: EProviderName) -> ILLMClient:
+    def get_provider(self, provider: EProviderName, file_caller: str = "") -> ILLMClient:
         self.logger.info(
             f"Creating LLM client for provider: {provider}",
             source="LLMProviderFactory.get_provider",
+            call_by=file_caller,
         )
 
         if provider == EProviderName.GEMINI.value:
@@ -44,5 +45,7 @@ class LLMProviderFactory(ILLMProviderFactory):
             self.logger.error(
                 f"Unsupported provider: {provider}",
                 source="LLMProviderFactory.get_provider",
+                call_by=file_caller,
+                method_call=self.get_provider.__name__,
             )
             raise ValueError(f"Unsupported provider: {provider}")

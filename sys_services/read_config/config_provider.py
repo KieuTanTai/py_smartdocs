@@ -10,6 +10,7 @@ from sys_services.read_config.read_google_config import (
 )
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.read_config.read_list_provider import LIST_EMBEDDING_MODELS, LIST_MODELS, LIST_PROVIDERS
+from sys_services.read_config.read_neo4j_config import NEO4J_CONFIG
 from sys_services.read_config.read_ollama_config import OLLAMA_CONFIG
 from sys_services.read_config.read_qdrant_config import CLUSTER_CONFIG
 from sys_services.read_config.read_redis_config import REDIS_CONFIG
@@ -42,12 +43,16 @@ class EnvConfigProvider(IConfigProvider):
 
     def get_list_models(self) -> list[str]:
         return LIST_MODELS
-    
+
     def get_list_providers(self) -> list[IProvider]:
         return LIST_PROVIDERS
 
     def get_redis_config(self) -> Mapping[str, Any]:
         return dict(REDIS_CONFIG)
+
+    def get_neo4j_config(self) -> Mapping[str, Any]:
+        # For simplicity, we hardcode the Neo4j config here. In a real implementation, this could be read from environment variables or a config file.
+        return NEO4J_CONFIG
 
 
 # Default global config provider instance used across the codebase

@@ -15,12 +15,13 @@ class ILLMProviderFactory(ABC):
     Resolves and instantiates appropriate LLM clients based on provider name.
     """
     @abstractmethod
-    def get_provider(self, provider: EProviderName) -> ILLMClient:
+    def get_provider(self, provider: EProviderName, file_caller: str = "") -> ILLMClient:
         """
         Get LLM provider client.
 
         Args:
             provider: Provider name ('gemini', 'ollama', 'mistral', etc.)
+            file_caller: The file that is calling this method
 
         Returns:
             ILLMClient implementation

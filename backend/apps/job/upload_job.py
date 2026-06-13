@@ -13,7 +13,7 @@ from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletio
 from backend.apps.core.interfaces.core.normalize.i_normalize import INormalize
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.response.i_vector_db_response import IVectorDBUpsertResponse
-from backend.apps.core.interfaces.services.cache.i_connect_cache_session import IConnectCacheSession
+from backend.apps.core.interfaces.services.repository.i_connect_cache_session import IConnectCacheSession
 from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content import IExtractContent
 from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service import ILocateService
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
