@@ -64,23 +64,23 @@ class Neo4jService(INeo4jService):
         self,
         retrieval_query: str,
         index_name: str,
-        file_paths: list[Path],
+        extracted_texts: list[str],
         llm_model: LLMInterface,
         embedder: Embedder,
         file_caller="",
     ) -> VectorCypherRetriever:
         pipeline = self.__get_simple_KG_pipeline(llm_model, embedder)
         processed_files = 0
-        self.logger.info(f"total files to process: {len(file_paths)}", Path(__file__).name, file_caller, self.execute_file_to_kg_pipeline.__name__)
-        for path in file_paths:
+        self.logger.info(f"total files to process: {len(extracted_texts)}", Path(__file__).name, file_caller, self.execute_file_to_kg_pipeline.__name__)
+        for text in extracted_texts:
             self.logger.info(
-                f"Processing file: '{path}'", Path(__file__).name, file_caller, self.execute_file_to_kg_pipeline.__name__
+                f"Processing text: '{text}'", Path(__file__).name, file_caller, self.execute_file_to_kg_pipeline.__name__
             )
             async with self.semaphore:
-                await pipeline.run_async(file_path=str(path))
+                await pipeline.run_async(text=text)
             processed_files += 1
         self.logger.info(
-            f"Completed processing files: {file_paths}", Path(__file__).name, file_caller, self.execute_file_to_kg_pipeline.__name__
+            f"Completed processing files: {extracted_texts}", Path(__file__).name, file_caller, self.execute_file_to_kg_pipeline.__name__
         )
         return self.__create_graph_retriever(retrieval_query, embedder, index_name, file_caller)
 
@@ -109,7 +109,6 @@ class Neo4jService(INeo4jService):
             entities=self.node_labels,
             relations=self.relationship_type,
             prompt_template=self.prompt_structure,
-            from_pdf=True,
         )
         self.logger.info(f"Created SimpleKG Pipeline: {pipeline}", Path(__file__).name, "__get_simple_KG_pipeline", self.__get_simple_KG_pipeline.__name__)
-        return pipeline
+        return pipeline 

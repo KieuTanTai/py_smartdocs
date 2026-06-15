@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 from pathlib import Path
 from typing import List, Tuple
@@ -13,6 +14,7 @@ from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletio
 from backend.apps.core.interfaces.core.normalize.i_normalize import INormalize
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.response.i_vector_db_response import IVectorDBUpsertResponse
+from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import INeo4jService
 from backend.apps.core.interfaces.services.repository.i_connect_cache_session import IConnectCacheSession
 from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content import IExtractContent
 from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service import ILocateService
@@ -36,6 +38,7 @@ class UploadJob(IUploadJob):
         locate_service: ILocateService,
         config_provider: IConfigProvider,
         logger: ILogger,
+        neo4j_service: INeo4jService,
     ):
         self.extract_service = extract_service
         self.normalize = normalize
@@ -45,6 +48,7 @@ class UploadJob(IUploadJob):
         self.locate_service = locate_service
         self.config_provider = config_provider
         self.logger = logger
+        self.neo4j_service = neo4j_service
 
     def step_extract(self, file_path: Path, provider: EProviderName, file_caller: str = "") -> str:
         extracted_text = self.extract_service.extract_from_file_text(file_path, provider)
@@ -164,3 +168,28 @@ class UploadJob(IUploadJob):
             )
             embeddings.append(response.embedding.astype(np.float32))
         return embeddings
+    
+    def step_build_knowledge_graph(self, document_id: str, extracted_text: str, provider = EProviderName, file_caller: str = ""):
+        """Bước kích hoạt Neo4j chạy ngầm để bóc tách thực thể từ văn bản"""
+        self.logger.info(f"Khởi tạo Graph RAG cho tài liệu {document_id}", Path(__file__).name, file_caller, self.step_build_knowledge_graph.__name__)
+        index_name = f"graph_index_{document_id}"
+        try:
+            self.neo4j_service.create_vector_index(index_name=index_name, dimension=768, label="Chunk")
+        except Exception as e:
+            self.logger.error(f"Failed to create vector index for document {document_id} with error: {str(e)}", Path(__file__).name, file_caller, self.step_build_knowledge_graph.__name__)
+        
+        llm_client = self.llm_provider_factory.get_provider(provider)
+        embedder = self.__embed_chunk_texts([extracted_text], provider)
+
+        async def _run_pipeline():
+            await self.neo4j_service.execute_file_to_kg_pipeline(
+                retrieval_query="MATCH (c:Chunk)-[:MENTIONS]->(e:Entity) RETURN c.text AS text, e.id AS entity",
+                index_name=index_name,
+                extracted_texts=[extracted_text],
+                llmm_model=llm_client,
+                embedder=embedder,
+                file_caller=file_caller
+            )
+        
+        asyncio.run(_run_pipeline())
+        self.logger.info(f"Đã xây dựng xong Knowledge Graph cho {document_id}")

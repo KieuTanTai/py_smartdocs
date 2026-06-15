@@ -26,7 +26,7 @@ class INeo4jService(ABC):
         self,
         retrieval_query: str,
         index_name: str,
-        file_paths: list[Path],
+        extracted_texts: list[str],
         llm_model: LLMInterface,
         embedder: Embedder,
         file_caller="",
@@ -34,7 +34,7 @@ class INeo4jService(ABC):
         """
         Executes the file to knowledge graph pipeline for the given file paths using the provided LLM model and embedder.
         This method automatically creates a graph retriever based on the provided template and embedder, and returns the retriever for use in subsequent search operations.
-        :param file_paths: List of file paths to process
+        :param extracted_texts: List of extracted texts to process
         :param retrieval_query: Query for retrieving relevant information
         :param index_name: Name of the vector index to use
         :param llm_model: LLM model to use for the pipeline

@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import List
 import numpy as np
 
+from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content import IExtractContent
+from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import INeo4jService
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 from backend.apps.interfaces.job.i_message_job import IMessageJob, MessageResponse, ContextHit
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
@@ -17,22 +19,29 @@ from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
 
 class MessageJob(IMessageJob):
-    def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, locate_service: ILocateService, cache_session: IConnectCacheSession, logger: ILogger, hybrid_search_service: IHybridSearchService, extract_service: IExtractContent):
+    def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, locate_service: ILocateService, cache_session: IConnectCacheSession, logger: ILogger, hybrid_search_service: IHybridSearchService, extract_service: IExtractContent, neo4j_service: INeo4jService):
         self.llm_provider_factory = llm_provider_factory
         self.config_provider = config_provider
         self.locate_service = locate_service
         self.cache_session = cache_session
         self.logger = logger,
         self.hybrid_search_service = hybrid_search_service,
-        self.extract_service = extract_service
+        self.extract_service = extract_service,
+        self.neo4j_service = neo4j_service
 
     def run(self, conversation_id: str, content: str, provider: EProviderName, model_name: str | None = None) -> MessageResponse:
         conversation = self._get_conversation(conversation_id)
         self._save_message(conversation, is_user_send=True, content=content)
 
+        # Lấy ngữ cảnh văn bản thô từ FAISS + BM25 (Hybrid)
         context_hits = self._retrieve_context_hits(content, conversation, provider)
         context_hits_dicts = [{"text": hit.text, "score": hit.score} for hit in context_hits]
-        prompt = self._build_prompt(content, context_hits_dicts)
+
+        # Lấy ngữ cảnh quan hệ từ Đồ thị Neo4j (Graph Search)
+        graph_context = self._retrieve_graph_context(content, conversation, provider)
+
+        # Gộp cả 2 vào Prompt
+        prompt = self._build_prompt(content, context_hits_dicts, graph_context)
 
         model = model_name or "gemini-2.5-flash"
         llm_client = self.llm_provider_factory.get_provider(provider)
@@ -229,7 +238,7 @@ class MessageJob(IMessageJob):
                         
         return document_texts
 
-    def _build_prompt(self, content: str, context_hits: List[dict]) -> str:
+    def _build_prompt(self, content: str, context_hits: List[dict], graph_context: str) -> str:
         context_text = "\n".join(hit["text"] for hit in context_hits)
-        system_prompt = "You are a helpful assistant."
-        return f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nUser: {content}\n\nAssistant:"
+        system_prompt = "You are an intelligent assistant. Answer the user based on the provided text context and graph relationships."
+        return f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nGraph Context:\n{graph_context}\n\nUser: {content}\n\nAssistant:"

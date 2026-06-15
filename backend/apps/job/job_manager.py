@@ -8,8 +8,6 @@ from backend.apps.interfaces.job.i_job_management import IJobManagement
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
 from backend.apps.interfaces.job.i_conversation_job import IConversationJob
 from backend.apps.interfaces.job.i_message_job import IMessageJob
-
-from backend.apps.tasks.document_tasks import DocumentTask
 from backend.apps.tasks.conversation_tasks import ConversationTask
 from backend.apps.tasks.message_tasks import MessageTask
 from backend.apps.tasks.upload_tasks import UploadTask

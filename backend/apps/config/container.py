@@ -9,6 +9,8 @@ from backend.apps.job.conversation_job import ConversationJob
 from backend.apps.job.upload_job import UploadJob
 from backend.apps.services.cache.radis_cache_service import RedisCacheService
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
+from backend.apps.services.rag_base.locate.neo4j.neo4j_node_labels_config import Neo4jNodeLabelsConfig
+from backend.apps.services.rag_base.locate.neo4j.neo4j_session import Neo4jSession
 from backend.apps.services.rag_base.storage.storage_service import FileStorageService
 from backend.apps.core.interfaces.services.rag_base.storage.i_storage import IFileStorage
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
@@ -99,6 +101,21 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
     )
 
+    neo4j_node_labels_config = providers.Singleton(Neo4jNodeLabelsConfig, logger=log_pool)
+    
+    neo4j_session = providers.Singleton(
+        Neo4jSession,
+        config_provider=config_provider,
+        metadata_dir=providers.Object(METADATA_DIR),
+        node_labels_config=neo4j_node_labels_config,
+        logger=log_pool
+    )
+    
+    neo4j_service = providers.Factory(
+        lambda session: session.connect(file_caller="DI_Container"),
+        session=neo4j_session
+    )
+
     # Search
     hybrid_search_service = providers.Factory(
         HybridSearchService,
@@ -116,6 +133,7 @@ class BackendContainer(containers.DeclarativeContainer):
         locate_service=locate_service,
         config_provider=config_provider,
         logger=log_pool,
+        neo4j_service=neo4j_service,
     )
 
     message_job = providers.Factory(
@@ -127,6 +145,7 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,
+        neo4j_service=neo4j_service,
     )
 
     conversation_job = providers.Factory(
@@ -136,3 +155,5 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
     )
+
+    
