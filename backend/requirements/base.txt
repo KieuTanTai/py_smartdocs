@@ -29,7 +29,6 @@ uvicorn==0.49.0
 gunicorn==26.0.0
 neo4j
 neo4j-graphrag
-neo4j-graphrag[mistralai]
 mariadb
 mistralai
 NLTK

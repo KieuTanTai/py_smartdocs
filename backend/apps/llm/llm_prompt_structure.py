@@ -7,6 +7,9 @@ class LLMPromptStructure(ILLMPromptStructure):
     It provides a standardized way to create prompts for different LLM providers, ensuring consistency and maintainability across the codebase.
     The prompt structure includes sections for system instructions, user input, and any additional context or constraints that may be necessary for the LLM to generate accurate and relevant responses.
     """
+    def __init__(self):
+        pass
+
 
     def build_prompt(self, retrieved_chunks: list[str], user_input: str) -> str:
         """

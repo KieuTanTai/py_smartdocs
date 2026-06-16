@@ -7,6 +7,7 @@ from sys_services.logging import Logger
 
 CURRENT_DIR = Path(__file__).parent.resolve()
 OUTPUT_DIR = CURRENT_DIR / "output"
+CSV_FILE = OUTPUT_DIR / "test_embedding.csv"
 
 demo_vectors = np.vstack([
     np.array([0.1, 0.2, 0.3], dtype=np.float32),
@@ -18,6 +19,14 @@ demo_vectors = np.vstack([
 ])
 demo_ids = np.array([1, 2, 3, 4, 5, 6], dtype=np.int64)
 
+def test_get_embeddings_from_csv() -> np.ndarray:
+    vectors = []
+    with open(CSV_FILE, "r") as f:
+        for line in f:
+            vector = np
+            vectors.append(vector)
+            print(f"Read vector from CSV: {vector}")
+    return np.vstack(vectors)
 
 def test_backend_faiss_service():
     faiss_service = FaissService(metadata_dir=OUTPUT_DIR, logger=Logger())
@@ -30,4 +39,5 @@ def test_backend_faiss_service():
 
 if __name__ == "__main__":
     test_backend_faiss_service()
+    # test_get_embeddings_from_csv()
     print("All tests passed!")

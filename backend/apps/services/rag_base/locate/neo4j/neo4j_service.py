@@ -109,6 +109,7 @@ class Neo4jService(INeo4jService):
             entities=self.node_labels,
             relations=self.relationship_type,
             prompt_template=self.prompt_structure,
+            from_file=False,
         )
         self.logger.info(f"Created SimpleKG Pipeline: {pipeline}", Path(__file__).name, "__get_simple_KG_pipeline", self.__get_simple_KG_pipeline.__name__)
-        return pipeline 
+        return pipeline
