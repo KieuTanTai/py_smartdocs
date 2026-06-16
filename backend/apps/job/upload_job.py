@@ -181,15 +181,24 @@ class UploadJob(IUploadJob):
         llm_client = self.llm_provider_factory.get_provider(provider)
         embedder = self.__embed_chunk_texts([extracted_text], provider)
 
-        async def _run_pipeline():
-            await self.neo4j_service.execute_file_to_kg_pipeline(
-                retrieval_query="MATCH (c:Chunk)-[:MENTIONS]->(e:Entity) RETURN c.text AS text, e.id AS entity",
-                index_name=index_name,
-                extracted_texts=[extracted_text],
-                llm_model=llm_client,
-                embedder=embedder,
-                file_caller=file_caller
-            )
+        asyncio.run(self._run_kg_pipeline_async(
+            index_name=index_name,
+            extracted_text=extracted_text,
+            llm_client=llm_client,
+            embedder=embedder,
+            file_caller=file_caller
+        ))
         
-        asyncio.run(_run_pipeline())
         self.logger.info(f"Đã xây dựng xong Knowledge Graph cho {document_id}")
+    
+    async def _run_kg_pipeline_async(self, index_name: str, extracted_text: str, llm_client, embedder, file_caller: str):
+        """Hàm bất đồng bộ chạy ngầm để đẩy Text vào Neo4j Pipeline"""
+        # Lưu ý: Tuỳ thuộc vào bạn đang dùng tên hàm 'execute_file...' hay 'execute_text...' ở file interface nhé
+        await self.neo4j_service.execute_file_to_kg_pipeline(
+            retrieval_query="MATCH (c:Chunk)-[:MENTIONS]->(e:Entity) RETURN c.text AS text, e.id AS entity",
+            index_name=index_name,
+            extracted_texts=[extracted_text],
+            llm_model=llm_client,
+            embedder=embedder,
+            file_caller=file_caller
+        )
