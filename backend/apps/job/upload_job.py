@@ -186,7 +186,7 @@ class UploadJob(IUploadJob):
                 retrieval_query="MATCH (c:Chunk)-[:MENTIONS]->(e:Entity) RETURN c.text AS text, e.id AS entity",
                 index_name=index_name,
                 extracted_texts=[extracted_text],
-                llmm_model=llm_client,
+                llm_model=llm_client,
                 embedder=embedder,
                 file_caller=file_caller
             )

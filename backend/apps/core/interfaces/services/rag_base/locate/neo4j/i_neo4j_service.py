@@ -20,6 +20,17 @@ class INeo4jService(ABC):
     """
 
     @abstractmethod
+    def __create_graph_retriever(
+        self,
+        template: str,
+        embedder: Embedder,
+        index_name: str,
+        file_caller="",
+    ) -> VectorCypherRetriever:
+        """This method creates a graph retriever that can be used to retrieve relevant information from the Neo4j"""
+        pass
+
+    @abstractmethod
     # def get_simple_KG_pipeline(self, llm_model: LLMInterface, embedder: Embedder) -> SimpleKGPipeline:
     #     pass
     async def execute_file_to_kg_pipeline(

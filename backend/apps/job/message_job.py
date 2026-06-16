@@ -7,7 +7,8 @@ import numpy as np
 from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content import IExtractContent
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import INeo4jService
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
-from backend.apps.interfaces.job.i_message_job import IMessageJob, MessageResponse, ContextHit
+from backend.apps.interfaces.job.i_message_job import IMessageJob
+from backend.apps.core.interfaces.job.i_message_job import IMessageJobResponse, IMessageJobContextHit
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
@@ -17,6 +18,7 @@ from backend.apps.core.interfaces.services.repository.i_connect_cache_session im
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
+from neo4j_graphrag.generation.prompts import RagTemplate
 
 class MessageJob(IMessageJob):
     def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, locate_service: ILocateService, cache_session: IConnectCacheSession, logger: ILogger, hybrid_search_service: IHybridSearchService, extract_service: IExtractContent, neo4j_service: INeo4jService):
@@ -24,12 +26,12 @@ class MessageJob(IMessageJob):
         self.config_provider = config_provider
         self.locate_service = locate_service
         self.cache_session = cache_session
-        self.logger = logger,
-        self.hybrid_search_service = hybrid_search_service,
-        self.extract_service = extract_service,
+        self.logger = logger
+        self.hybrid_search_service = hybrid_search_service
+        self.extract_service = extract_service
         self.neo4j_service = neo4j_service
 
-    def run(self, conversation_id: str, content: str, provider: EProviderName, model_name: str | None = None) -> MessageResponse:
+    def run(self, conversation_id: str, content: str, provider: EProviderName, model_name: str | None = None) -> IMessageJobResponse:
         conversation = self._get_conversation(conversation_id)
         self._save_message(conversation, is_user_send=True, content=content)
 
@@ -58,7 +60,7 @@ class MessageJob(IMessageJob):
 
         self._save_message(conversation, is_user_send=False, content=response)
 
-        return MessageResponse(
+        return IMessageJobResponse(
             conversation_id=str(conversation.conversation_id),
             assistant=response,
             provider=provider.value,
@@ -76,11 +78,11 @@ class MessageJob(IMessageJob):
     def _save_message(self, conversation: ConversationModel, is_user_send: bool, content: str) -> MessageModel:
         return MessageModel.objects.create(message_conversation=conversation, message_is_user_send=is_user_send, message_content=content)
 
-    def _retrieve_context_hits(self, content: str, conversation: ConversationModel, provider: EProviderName) -> List[ContextHit]:
+    def _retrieve_context_hits(self, content: str, conversation: ConversationModel, provider: EProviderName) -> List[IMessageJobContextHit]:
         query_embedding = self._embed_text(content, provider)
         
-        dense_hits: List[ContextHit] = []
-        sparse_hits: List[ContextHit] = []
+        dense_hits: List[IMessageJobContextHit] = []
+        sparse_hits: List[IMessageJobContextHit] = []
         
         faiss_store = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
         bm25_store = self.locate_service.get_vector_store(EBackendStorageName.BM25)
@@ -106,7 +108,7 @@ class MessageJob(IMessageJob):
                     try:
                         chunk_text = self._resolve_chunk_text(doc_id_str, vector_id, meta)
                         similarity = 1.0 / (1.0 + float(distance))
-                        dense_hits.append(ContextHit(text=chunk_text, score=similarity, source_document_id=doc_id_str))
+                        dense_hits.append(IMessageJobContextHit(text=chunk_text, score=similarity, source_document_id=doc_id_str))
                     except ValueError:
                         continue
 
@@ -121,7 +123,7 @@ class MessageJob(IMessageJob):
                         # BM25 trả về trực tiếp string key "doc_id:chunk_idx"
                         chunk_text = meta.get("chunks", {}).get(str(chunk_key))
                         if chunk_text:
-                            sparse_hits.append(ContextHit(text=chunk_text, score=float(score), source_document_id=doc_id_str))
+                            sparse_hits.append(IMessageJobContextHit(text=chunk_text, score=float(score), source_document_id=doc_id_str))
                     except Exception:
                         continue
 
@@ -174,7 +176,7 @@ class MessageJob(IMessageJob):
                 return provider_record.embed_model_name
         raise ValueError(f"Embedding model not configured for provider {provider}")
 
-    def _keyword_context_hits(self, content: str, document_texts: List[str]) -> List[ContextHit]:
+    def _keyword_context_hits(self, content: str, document_texts: List[str]) -> List[IMessageJobContextHit]:
         paragraphs: List[str] = []
         for doc_text in document_texts:
             paragraphs.extend([p.strip() for p in doc_text.split("\n") if p.strip()])
@@ -189,7 +191,7 @@ class MessageJob(IMessageJob):
 
         scored_paragraphs.sort(key=lambda item: item[0], reverse=True)
         return [
-            ContextHit(text=paragraph[:200] + "...", score=float(score), source_document_id=None)
+            IMessageJobContextHit(text=paragraph[:200] + "...", score=float(score), source_document_id=None)
             for score, paragraph in scored_paragraphs[:5]
         ]
 
@@ -237,6 +239,27 @@ class MessageJob(IMessageJob):
                         )
                         
         return document_texts
+    
+    def _retrieve_graph_context(self, content: str, conversation: ConversationModel, provider: EProviderName) -> str:
+        try:
+            mappings = ConversationFilesModel.objects.filter(conversation=conversation)
+            if not mappings.exists():
+                return ""
+            
+            document_ids = str(mappings.values_list("faiss_index__faiss_index_id", flat=True))
+            index_name = f"graph_index_{document_ids}"
+
+            llm_client = self.llm_provider_factory.get_provider(provider)
+
+            retriever = self.neo4j_service.__create_graph_retriever( template="MATCH (c:Chunk)-[:MENTIONS]->(e) WHERE c.id = $chunk_id RETURN e.id", embedder=llm_client, index_name=index_name, file_caller=self._retrieve_graph_context.__name__)
+
+            graph_answer = self.neo4j_service.search(query_text=content, limit=5, llm=llm_client, retriever=retriever, template=RagTemplate(), file_caller=self._retrieve_graph_context.__name__)
+        
+            return graph_answer
+        
+        except Exception as e:
+            self.logger.error(f"Lỗi khi truy vấn Graph RAG: {e}")
+            return ""
 
     def _build_prompt(self, content: str, context_hits: List[dict], graph_context: str) -> str:
         context_text = "\n".join(hit["text"] for hit in context_hits)
