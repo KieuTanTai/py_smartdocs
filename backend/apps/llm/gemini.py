@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from google import genai
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from neo4j_graphrag.embeddings import Embedder

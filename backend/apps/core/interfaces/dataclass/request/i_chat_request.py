@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from backend.apps.core.interfaces.system.i_provider import IProvider
+from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
 
 @dataclass
 class IChatRequest:

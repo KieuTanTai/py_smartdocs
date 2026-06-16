@@ -12,12 +12,12 @@ import numpy as np
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.core.chunk.i_chunking import IChunking
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.interfaces.core.normalize.i_normalize import INormalize
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
-from backend.apps.core.interfaces.response.i_vector_db_response import IVectorDBUpsertResponse
-from backend.apps.core.interfaces.services.cache.i_cache_param_value import ICacheParam, ICacheParamValue, ICacheParamValue
+from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue, ICacheParamValue
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import INeo4jService
 from backend.apps.core.interfaces.services.repository.i_connect_cache_session import IConnectCacheSession
@@ -26,11 +26,11 @@ from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service impo
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
-from backend.apps.core.interfaces.tasks.i_embed_and_save_response import IEmbedResponse, ISaveResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, ISaveResponse
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
 from backend.apps.utils.hash_content import hash_to_numpy_int64_by_str_content, sha256_embedded_content, sha256_embedded_contents
-from backend.apps.core.interfaces.core.i_dataclass_transaction import (
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
     IEmbeddingResponse,
 )

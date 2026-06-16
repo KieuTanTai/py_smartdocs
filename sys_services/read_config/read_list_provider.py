@@ -6,7 +6,7 @@ from typing import List
 from dotenv import load_dotenv
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.system.i_provider import IProvider
+from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
 from sys_services.system_dirs import ROOT_DIR
 
 load_dotenv(ROOT_DIR / ".env")

@@ -253,7 +253,7 @@ run_test("TEST 10: LLM Provider Tests")
 from backend.apps.llm.gemini import GeminiClient
 from backend.apps.llm.mistral import MistralClient
 from backend.apps.llm.ollama import OllamaClient
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.enums.e_provider_name import EProviderName
 from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER

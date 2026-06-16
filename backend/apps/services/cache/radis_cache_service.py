@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, List
 import numpy as np
 import redis
-from backend.apps.core.interfaces.services.cache.i_cache_param_value import ICacheParam, ICacheParamValue
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.utils.path_file_helper import clear_all_files_on_path, create_path_file, delete_file_metadata_with_file_name

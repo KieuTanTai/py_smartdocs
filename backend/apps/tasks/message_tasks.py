@@ -10,7 +10,7 @@ from celery import Task
 
 from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.job.i_message_job import IMessageJobResponse
+from backend.apps.core.interfaces.dataclass.job.i_message_job import IMessageJobResponse
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.interfaces.job.i_message_job import IMessageJob
 from backend.apps.interfaces.task.i_message_task import IMessageTask

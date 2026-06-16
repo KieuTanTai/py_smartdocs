@@ -14,7 +14,7 @@ from backend.apps.core.interfaces.services.repository.i_connect_graph_db_session
 )
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.core.i_dataclass_transaction import (
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
     ICompletionResponse,
     IEmbeddingResponse,

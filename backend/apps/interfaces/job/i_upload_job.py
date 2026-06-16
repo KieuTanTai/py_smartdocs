@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import List
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
-from backend.apps.core.interfaces.tasks.i_embed_and_save_response import IEmbedResponse, ISaveResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, ISaveResponse
 
 class IUploadJob(ABC):
     """

@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import List
 import faiss
 import numpy as np
-from backend.apps.core.interfaces.core.i_dataclass_transaction import IEmbeddingResponse
-from backend.apps.core.interfaces.response.i_vector_db_response import IVectorDBUpsertResponse
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import IEmbeddingResponse
+from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 
 @dataclass
 class IEmbedResponse:

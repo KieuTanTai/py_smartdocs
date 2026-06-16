@@ -42,7 +42,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings.local")
 import django
 django.setup()
 
-from backend.apps.core.interfaces.core.i_dataclass_transaction import (
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
     ICompletionResponse,
     IEmbeddingResponse,

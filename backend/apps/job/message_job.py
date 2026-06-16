@@ -10,7 +10,7 @@ from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_servi
 from backend.apps.interfaces.job.i_message_job import IMessageJob, MessageResponse, ContextHit
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service import ILocateService
 from backend.apps.core.interfaces.services.repository.i_connect_cache_session import IConnectCacheSession

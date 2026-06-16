@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.job.i_conversation_job import IConversationJobResponse
+from backend.apps.core.interfaces.dataclass.job.i_conversation_job import IConversationJobResponse
 
 class IConversationTask(ABC):
     """Contract for Celery Conversation Preparation Task."""

@@ -45,7 +45,7 @@ from backend.apps.llm.ollama import OllamaClient
 from backend.apps.llm.llm_ocr.mistral_ocr import MistralLLMOCR
 from backend.apps.llm.llm_ocr.mistral_uploader import MistralUploader
 from backend.apps.services.rag_base.storage.storage_service import FileStorageService
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.services.rag_base.locate.locate_service import LocateService
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName

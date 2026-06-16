@@ -8,7 +8,7 @@ from rank_bm25 import BM25Okapi
 from backend.apps.core.interfaces.services.rag_base.locate.i_spare_vector_store_service import ISpareVectorStoreService
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.response.i_vector_db_response import (
+from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import (
     IVectorDBDeleteResponse, IVectorDBLoadResponse, IVectorDBQueryResponse, IVectorDBUpsertResponse
 )
 from backend.apps.utils.path_file_helper import create_path_file, is_existed_in_metadata

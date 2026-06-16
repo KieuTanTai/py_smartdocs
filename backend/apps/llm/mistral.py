@@ -4,7 +4,7 @@ import ssl
 import httpx
 import numpy as np
 from mistralai.client import Mistral
-from backend.apps.core.interfaces.core.i_dataclass_transaction import (
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
     IEmbeddingResponse,
 )

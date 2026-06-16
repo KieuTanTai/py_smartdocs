@@ -5,7 +5,7 @@ Abstract interface for language model providers.
 
 from abc import ABC, abstractmethod
 
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from neo4j_graphrag.llm.base import LLMInterface
 from neo4j_graphrag.embeddings import Embedder
 

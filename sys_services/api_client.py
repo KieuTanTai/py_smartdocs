@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 import httpx
 from typing import Any, Dict, Optional
-from backend.apps.core.interfaces.request.i_create_conversation_request import ICreateConversationRequest
-from backend.apps.core.interfaces.request.i_send_message_request import ISendMessageRequest
+from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest
+from backend.apps.core.interfaces.dataclass.request.i_send_message_request import ISendMessageRequest
 from sys_services.system_dirs import DEFAULT_BASE_URL
 
 

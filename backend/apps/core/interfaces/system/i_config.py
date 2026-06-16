@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Mapping
 
-from backend.apps.core.interfaces.system.i_provider import IProvider
+from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
 
 
 class IConfigProvider(ABC):

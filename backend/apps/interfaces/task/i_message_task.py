@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.job.i_message_job import IMessageJobResponse
+from backend.apps.core.interfaces.dataclass.job.i_message_job import IMessageJobResponse
 
 class IMessageTask(ABC):
     """Contract for Celery Chat Message RAG Inference Task."""

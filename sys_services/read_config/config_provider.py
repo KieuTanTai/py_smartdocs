@@ -1,7 +1,7 @@
 from typing import Any, Mapping
 
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
-from backend.apps.core.interfaces.system.i_provider import IProvider
+from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
 from sys_services.read_config.read_chunking_config import CHUNKING_CONFIG
 from sys_services.read_config.read_gemini_config import GEMINI_EMBEDDING_CONFIG
 from sys_services.read_config.read_google_config import (

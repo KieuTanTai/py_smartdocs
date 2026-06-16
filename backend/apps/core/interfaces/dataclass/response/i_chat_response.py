@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from backend.apps.core.interfaces.request.i_chat_metrics import IChatMetrics
+from backend.apps.core.interfaces.dataclass.request.i_chat_metrics import IChatMetrics
 
 
 @dataclass
