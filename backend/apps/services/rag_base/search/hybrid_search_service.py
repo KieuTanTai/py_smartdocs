@@ -3,7 +3,7 @@ Hybrid search service module.
 Combines semantic search (FAISS) and keyword search (BM25) results using RRF.
 """
 from typing import List
-from backend.apps.core.interfaces.job.i_message_job import IMessageJobContextHit
+from backend.apps.core.interfaces.dataclass.job.i_message_job import IMessageJobContextHit
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 
 class HybridSearchService(IHybridSearchService):

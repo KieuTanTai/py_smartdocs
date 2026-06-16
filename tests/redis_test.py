@@ -4,7 +4,7 @@ import threading
 
 import numpy as np
 import redis
-from backend.apps.core.interfaces.services.cache.i_cache_param_value import ICacheParam, ICacheParamValue
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
 from sys_services.log_pool import LogPool
 from sys_services.read_config.config_provider import EnvConfigProvider

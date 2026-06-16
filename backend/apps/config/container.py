@@ -3,6 +3,7 @@ from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
 from backend.apps.core.normalize.normalize import Normalize
+from backend.apps.llm.llm_prompt_structure import LLMPromptStructure
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.job.message_job import MessageJob
 from backend.apps.job.conversation_job import ConversationJob
@@ -55,9 +56,15 @@ class BackendContainer(containers.DeclarativeContainer):
     config_provider = providers.Singleton(EnvConfigProvider)
     logger = providers.Singleton(Logger, LOGS_DIR)
     log_pool = providers.Singleton(LogPool, LOGS_DIR)
+    llm_prompt_structure = providers.Singleton(LLMPromptStructure)
+    llm_provider_factory = providers.Singleton(
+        LLMProviderFactory,
+        config_provider=config_provider,
+        logger=log_pool,
+    )
 
     # Storage
-    llm_ocr_factory = providers.Factory(LLMOCRFactory, config_provider=config_provider, logger=log_pool)
+    llm_ocr_factory = providers.Singleton(LLMOCRFactory, config_provider=config_provider, logger=log_pool)
     llm_uploader = providers.Factory(MistralUploader, logger=log_pool)
     file_storage = providers.Factory(
         FileStorageService,
@@ -88,12 +95,6 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
     )
 
-    llm_provider_factory = providers.Factory(
-        LLMProviderFactory,
-        config_provider=config_provider,
-        logger=log_pool,
-    )
-
     # Locate
     locate_service = providers.Factory(
         LocateService,
@@ -102,15 +103,15 @@ class BackendContainer(containers.DeclarativeContainer):
     )
 
     neo4j_node_labels_config = providers.Singleton(Neo4jNodeLabelsConfig, logger=log_pool)
-    
-    neo4j_session = providers.Singleton(
+
+    neo4j_session = providers.Factory(
         Neo4jSession,
         config_provider=config_provider,
         metadata_dir=providers.Object(METADATA_DIR),
         node_labels_config=neo4j_node_labels_config,
         logger=log_pool
     )
-    
+
     neo4j_service = providers.Factory(
         lambda session: session.connect(file_caller="DI_Container"),
         session=neo4j_session
@@ -155,5 +156,3 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
     )
-
-    

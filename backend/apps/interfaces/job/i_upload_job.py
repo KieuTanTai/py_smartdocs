@@ -4,10 +4,11 @@ Interface for Upload Job module.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import List
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
-from backend.apps.core.interfaces.tasks.i_embed_and_save_response import IEmbedAndSaveResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, ISaveResponse
 
 class IUploadJob(ABC):
     """
@@ -53,14 +54,28 @@ class IUploadJob(ABC):
         pass
 
     @abstractmethod
-    def step_embed_and_save(self, chunk_data: IChunkAndCacheResponse, provider: EProviderName, file_caller: str = "") -> IEmbedAndSaveResponse:
+    def step_embed(self, chunk_and_cache_response: IChunkAndCacheResponse, provider: EProviderName, file_caller: str = "") -> IEmbedResponse:
         """
-            embed chunked text and save it
+            embed chunked data and save to vector store
             Args:
-                chunk_data: data containing chunked and cached information
-                provider: provider name to use for embedding
+                chunk_and_cache_response: response containing chunked and cached data
+                provider: provider name to use for embedding (for example: different embedding model may be used for different provider)
                 file_caller: function name of caller for logging
             Returns:
-                response containing embedding and saving information
+                response containing embedded data
+        """
+        pass
+
+
+    @abstractmethod
+    def step_build_knowledge_graph(self, document_id: str, extracted_texts: List[str], provider: EProviderName, model_name: str, file_caller: str = "") -> None:
+        """
+            build knowledge graph for document
+            Args:
+                document_id: ID of the document
+                extracted_texts: texts extracted from the document
+                provider: provider name to use for building knowledge graph
+                model_name: model name to use for building knowledge graph
+                file_caller: function name of caller for logging
         """
         pass

@@ -3,8 +3,8 @@ import os
 import ssl
 import httpx
 import numpy as np
-from mistralai import Mistral
-from backend.apps.core.interfaces.core.i_dataclass_transaction import (
+from mistralai.client import Mistral
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
     IEmbeddingResponse,
 )

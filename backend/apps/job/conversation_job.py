@@ -5,9 +5,9 @@ from pathlib import Path
 
 # Import Interfaces
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
-from backend.apps.core.interfaces.response.i_conversation_job_response import IConversationJobResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService

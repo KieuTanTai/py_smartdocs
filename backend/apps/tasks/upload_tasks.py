@@ -11,7 +11,7 @@ from celery import Task
 from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.tasks.i_embed_and_save_response import IEmbedAndSaveResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedAndSaveResponse
 from backend.apps.services.chat.models import DocumentModel
 from backend.apps.interfaces.task.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob

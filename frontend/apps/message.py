@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from backend.apps.core.interfaces.request.i_chat_message import IChatMessage
-from backend.apps.core.interfaces.request.i_chat_metrics import IChatMetrics
-from backend.apps.core.interfaces.response.i_chat_response import IChatResponse
+from backend.apps.core.interfaces.dataclass.request.i_chat_message import IChatMessage
+from backend.apps.core.interfaces.dataclass.request.i_chat_metrics import IChatMetrics
+from backend.apps.core.interfaces.dataclass.response.i_chat_response import IChatResponse
 from sys_services.api_client import ApiClient, ApiError
 
 

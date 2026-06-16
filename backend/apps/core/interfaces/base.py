@@ -13,7 +13,7 @@ from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_servic
 # LLM provider interfaces
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
-from backend.apps.core.interfaces.core.i_dataclass_transaction import (
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
     ICompletionResponse,
 )
@@ -35,7 +35,6 @@ from backend.apps.interfaces.services.chat.i_message import IMessageService
 from backend.apps.core.interfaces.services.rag_base.storage.i_storage import IFileStorage
 
 # Graph and background job interfaces
-from backend.apps.core.interfaces.services.graph_rag.i_graph import IGraphService
 from backend.apps.interfaces.job.i_job_management import IJobManagement
 
 __all__ = [
@@ -59,6 +58,5 @@ __all__ = [
     "IMessageService",
     "IFileStorage",
     # Graph and job interfaces
-    "IGraphService",
     "IJobManagement",
 ]

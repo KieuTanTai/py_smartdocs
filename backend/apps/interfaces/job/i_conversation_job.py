@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.job.i_conversation_job import IConversationJobResponse
+from backend.apps.core.interfaces.dataclass.job.i_conversation_job import IConversationJobResponse
 
 class IConversationJob(ABC):
     """Contract for Conversation Preparation Processing."""

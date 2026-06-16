@@ -10,7 +10,7 @@ from celery import Task
 
 from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.job.i_conversation_job import IConversationJobResponse
+from backend.apps.core.interfaces.dataclass.job.i_conversation_job import IConversationJobResponse
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.exceptions.exceptions import DocumentsNotReadyError
 from backend.apps.interfaces.job.i_conversation_job import IConversationJob

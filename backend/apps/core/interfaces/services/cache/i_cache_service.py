@@ -4,7 +4,7 @@ from typing import Any, List
 import numpy as np
 from redis import Redis
 
-from backend.apps.core.interfaces.services.cache.i_cache_param_value import ICacheParam
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
 
 class ICacheService(ABC):
     """

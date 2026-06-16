@@ -14,7 +14,7 @@ from backend.apps.core.interfaces.services.repository.i_connect_graph_db_session
 )
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.core.i_dataclass_transaction import (
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
     ICompletionResponse,
     IEmbeddingResponse,
@@ -187,8 +187,8 @@ def test_ollama():
 async def run_all_tests():
     await asyncio.gather(
         asyncio.to_thread(test_gemini),
-        # asyncio.to_thread(test_mistral),
-        # asyncio.to_thread(test_ollama),
+        asyncio.to_thread(test_mistral),
+        asyncio.to_thread(test_ollama),
     )
 
 
@@ -273,7 +273,7 @@ async def test_neo4j_service_search():
         retriever = await service.execute_file_to_kg_pipeline(
             retrieval_query=build_template,
             index_name=name,
-            file_paths=PATHS,
+            extracted_texts=RETRIEVED_CHUNKS,
             llm_model=llm_models["gemini"],
             embedder=embedder_model["gemini"],
             file_caller="test_neo4j_service_search",
@@ -296,15 +296,15 @@ async def test_neo4j_service_search():
 
 if __name__ == "__main__":
     asyncio.run(run_all_tests())
-    # for provider in generate_results.keys():
-    #     save_results(
-    #         name=provider.capitalize(),
-    #         result=generate_results[provider],
-    #         embedding_result=str(embed_results[provider]),
-    #         error=errors[provider],
-    #         embedder_model_result=str(embedder_model[provider]),
-    #         llm_model_result=str(llm_models[provider]),
-    #     )
+    for provider in generate_results.keys():
+        save_results(
+            name=provider.capitalize(),
+            result=generate_results[provider],
+            embedding_result=str(embed_results[provider]),
+            error=errors[provider],
+            embedder_model_result=str(embedder_model[provider]),
+            llm_model_result=str(llm_models[provider]),
+        )
     # Run Neo4j tests
     print(f"Ex: {ERExtractionTemplate().DEFAULT_TEMPLATE}")
     try:

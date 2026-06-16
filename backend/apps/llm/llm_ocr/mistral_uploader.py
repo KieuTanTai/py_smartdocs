@@ -1,11 +1,13 @@
 from pathlib import Path
+from typing import cast
+
+from mistralai.client import Mistral
 
 from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
 from backend.apps.core.interfaces.services.rag_base.storage.i_get_file_response import IGetFileResponse
-from mistralai.client import Mistral, cast
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from backend.apps.core.interfaces.system.i_logging import ILogger
 
@@ -94,9 +96,9 @@ class MistralUploader(ILLMUploader):
         try:
             response = self.client.files.retrieve(file_id=file_id)
             self.logger.info(f"File with id '{file_id}' exists in Mistral",
-                Path(__file__).name, Path(__file__).name)
+                source=Path(__file__).name, call_by=str(self.is_file_exists.__name__), method_call="retrieve")
             return cast(IGetFileResponse, response)
         except Exception as e:
             self.logger.info(f"File with id '{file_id}' does not exist in Mistral. Error: {e}",
-                Path(__file__).name, Path(__file__).name)
+                source=Path(__file__).name, call_by=str(self.is_file_exists.__name__), method_call="retrieve")
             raise FileNotFoundError(f"File with id '{file_id}' does not exist in Mistral. Error: {e}")

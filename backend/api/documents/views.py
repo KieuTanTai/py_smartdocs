@@ -17,7 +17,7 @@ from backend.apps.services.chat.models import DocumentModel
 from backend.apps.core.normalize.normalize import Normalize
 from backend.apps.core.chunk.chunker import Chunker
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionRequest
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.services.rag_base.locate.locate_service import LocateService

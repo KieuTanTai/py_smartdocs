@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from backend.apps.core.interfaces.response.i_vector_db_response import IVectorDBDeleteResponse, IVectorDBLoadResponse, IVectorDBQueryResponse, IVectorDBUpsertResponse
+from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBDeleteResponse, IVectorDBLoadResponse, IVectorDBQueryResponse, IVectorDBUpsertResponse
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
 
 

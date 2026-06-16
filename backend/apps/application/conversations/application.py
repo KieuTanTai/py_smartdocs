@@ -8,7 +8,7 @@ from uuid import UUID
 import logging
 
 from backend.apps.services.chat.models import ConversationModel, DocumentModel, ConversationFilesModel, MessageModel
-from backend.apps.core.interfaces.core.i_dataclass_transaction import ICompletionInfo
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionInfo
 from backend.apps.core.enums.e_provider_name import EProviderName
 
 logger = logging.getLogger(__name__)

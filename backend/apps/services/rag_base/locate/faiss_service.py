@@ -9,7 +9,7 @@ from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_servic
     IVectorStoreService,
 )
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.response.i_vector_db_response import (
+from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import (
     IVectorDBDeleteResponse,
     IVectorDBLoadResponse,
     IVectorDBQueryResponse,

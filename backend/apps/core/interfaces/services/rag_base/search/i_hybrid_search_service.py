@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from backend.apps.core.interfaces.job.i_message_job import IMessageJobContextHit
+from backend.apps.core.interfaces.dataclass.job.i_message_job import IMessageJobContextHit
 
 class IHybridSearchService(ABC):
     """Contract cho dịch vụ Tìm kiếm Lai (Hybrid Search Fusion)."""

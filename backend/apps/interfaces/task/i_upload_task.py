@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.tasks.i_embed_and_save_response import IEmbedAndSaveResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedAndSaveResponse
 
 class IUploadTask(ABC):
     """Contract for Celery Upload Processing Task."""
