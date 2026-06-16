@@ -3,6 +3,7 @@ from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
 from backend.apps.core.normalize.normalize import Normalize
+from backend.apps.job.delete_job import DeleteJob
 from backend.apps.llm.llm_prompt_structure import LLMPromptStructure
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.job.message_job import MessageJob
@@ -135,6 +136,14 @@ class BackendContainer(containers.DeclarativeContainer):
         config_provider=config_provider,
         logger=log_pool,
         neo4j_service=neo4j_service,
+    )
+    
+    delete_job = providers.Factory(
+        DeleteJob,
+        locate_service=locate_service,
+        neo4j_service=neo4j_service,
+        cache_session=cache_service,
+        logger=log_pool,
     )
 
     message_job = providers.Factory(
