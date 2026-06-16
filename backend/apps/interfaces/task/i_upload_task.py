@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedAndSaveResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse
 
 class IUploadTask(ABC):
     """Contract for Celery Upload Processing Task."""
@@ -17,7 +17,7 @@ class IUploadTask(ABC):
         pass
 
     @abstractmethod
-    def run(self, document_id: str, provider_name: EProviderName, file_caller:str = "") -> IEmbedAndSaveResponse:
+    def run(self, document_id: str, provider_name: EProviderName, file_caller:str = "") -> IEmbedResponse:
         """
         Executes document RAG pipeline via UploadJob.
         Must return a JSON-serializable dictionary.

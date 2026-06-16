@@ -60,22 +60,38 @@ class UploadJob(IUploadJob):
         self.neo4j_service = neo4j_service
         self.llm_prompt_structure = llm_prompt_structure
 
-    def step_extract(self, file_path: Path, provider: EProviderName, file_caller: str = "") -> str:
-        extracted_text = self.extract_service.extract_from_file_text(file_path, provider)
-        self.logger.info(f"Extracted text from {file_path.name} with provider {provider}, some value return: {extracted_text[0][:100]}", Path(__file__).name, file_caller, self.step_extract.__name__)
-        if not extracted_text:
-            self.logger.error(f"Extracted text from {file_path.name} is empty.", Path(__file__).name, file_caller, self.step_extract.__name__)
-            raise ValueError(f"Extracted text from {file_path.name} is empty.")
-        return extracted_text
+    def step_extract(self, file_paths: List[Path], provider: EProviderName, file_caller: str = "") -> str:
+        extracted_texts = []
+        for path in file_paths:
+            text = self.extract_service.extract_from_file_text(path, provider)
+            if not text:
+                self.logger.warning(f"Extracted text from {path.name} is empty.", Path(__file__).name, file_caller, self.step_extract.__name__)
+                continue
+            
+            text_str = text[0] if isinstance(text, list) else text
+            extracted_texts.append(text_str)
+            self.logger.info(f"Extracted text from {path.name}, length: {len(text_str)}", Path(__file__).name, file_caller, self.step_extract.__name__)
+        
+        if not extracted_texts:
+            raise ValueError(f"All extracted texts from {len(file_paths)} files are empty.")
+            
+        return extracted_texts
 
-    def step_normalize(self, raw_text: str, file_caller: str = "") -> str:
-        self.logger.info(f"Normalizing text, some value return: {raw_text[:100]}", Path(__file__).name, file_caller, self.step_normalize.__name__)
-        return self.normalize.normalize(raw_text)
+    def step_normalize(self, raw_text: List[str], file_caller: str = "") -> str:
+        normalized_text = []
+        for raw in raw_text:
+            normalized = self.normalize.normalize(raw)
+            normalized_text.append(normalized)
+        
+        self.logger.info(f"Normalized {len(normalized_text)} texts.", Path(__file__).name, file_caller, self.step_normalize.__name__)
+        return normalized_text
 
-    def step_chunk_and_cache(self, document_id: str, normalized_text: str, file_caller: str = "") -> IChunkAndCacheResponse:
-        chunk_texts = self.chunker.create_chunks(normalized_text)
-        self.logger.info(f"Chunked text, some value return: {chunk_texts[0][:100]}", Path(__file__).name, file_caller, self.step_chunk_and_cache.__name__)
-        # * NOTE: change chunk keys to tuple[np.int64, str] to store in cache and using for ids in faiss service
+    def step_chunk_and_cache(self, document_id: str, normalized_text: List[str], file_caller: str = "") -> IChunkAndCacheResponse:
+        combined_text = "\n\n".join(normalized_text)
+        
+        chunk_texts = self.chunker.create_chunks(combined_text)
+        self.logger.info(f"Chunked combined text into {len(chunk_texts)} chunks", Path(__file__).name, file_caller, self.step_chunk_and_cache.__name__)        # * NOTE: change chunk keys to tuple[np.int64, str] to store in cache and using for ids in faiss service
+        
         chunk_keys_tuples = self.__build_chunk_keys(document_id, chunk_texts)
         path_cache = self.__cache_chunk_data(document_id, chunk_keys_tuples, file_caller=file_caller)
 

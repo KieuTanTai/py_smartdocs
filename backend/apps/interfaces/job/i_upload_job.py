@@ -16,11 +16,11 @@ class IUploadJob(ABC):
     """
     
     @abstractmethod
-    def step_extract(self, file_path: Path, provider: EProviderName, file_caller: str = "") -> str:
+    def step_extract(self, file_paths: List[Path], provider: EProviderName, file_caller: str = "") -> str:
         """
             extract text from file
             Args:
-                file_path: real path of file to extract
+                file_paths: list of real paths of files to extract
                 provider: provider name to use when extract (for example: google drive file may need google provider to extract)
                 file_caller: function name of caller for logging
             Returns:
@@ -29,7 +29,7 @@ class IUploadJob(ABC):
         pass
 
     @abstractmethod
-    def step_normalize(self, raw_text: str, file_caller: str = "") -> str:
+    def step_normalize(self, raw_text: List[str], file_caller: str = "") -> str:
         """
             normalize extracted text
             Args:
@@ -41,7 +41,7 @@ class IUploadJob(ABC):
         pass
 
     @abstractmethod
-    def step_chunk_and_cache(self, document_id: str, normalized_text: str, file_caller: str = "") -> IChunkAndCacheResponse:
+    def step_chunk_and_cache(self, document_id: str, normalized_text: List[str], file_caller: str = "") -> IChunkAndCacheResponse:
         """
             chunk text and cache it
             Args:

@@ -8,7 +8,7 @@ from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content im
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import INeo4jService
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 from backend.apps.interfaces.job.i_message_job import IMessageJob
-from backend.apps.core.interfaces.job.i_message_job import IMessageJobResponse, IMessageJobContextHit
+from backend.apps.core.interfaces.dataclass.job.i_message_job import IMessageJobResponse, IMessageJobContextHit
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
