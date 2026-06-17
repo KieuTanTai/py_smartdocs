@@ -6,7 +6,7 @@ Abstract interface for file content extraction orchestration.
 from abc import ABC, abstractmethod
 from pathlib import Path
 from backend.apps.core.enums.e_provider_name import EProviderName
-
+from mistralai.client.models import OCRResponse
 
 class IExtractContent(ABC):
     """
@@ -15,37 +15,20 @@ class IExtractContent(ABC):
     """
 
     @abstractmethod
-    def extract_from_file_text(
+    def extract(
         self,
         file_path: Path,
         provider: EProviderName,
-    ) -> str:
+    ) -> OCRResponse:
         """
-        Extract content from document file.
+        Extract content from file.
 
         Args:
-            file_path: Path to document file
+            file_path: Path to file
             provider: LLM provider to use for OCR extraction
 
         Returns:
-            ICompletionResponse: Response object with extracted text and metadata
+            OCRResponse: Response object with extracted text and metadata
         """
         pass
 
-    @abstractmethod
-    def extract_from_file_image(
-        self,
-        file_path: Path,
-        provider: EProviderName,
-    ) -> str:
-        """
-        Extract image content.
-
-        Args:
-            file_path: Path to image file
-            provider: LLM provider to use for OCR extraction
-
-        Returns:
-            ICompletionResponse: Response object with extracted text and metadata
-        """
-        pass

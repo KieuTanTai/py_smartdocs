@@ -63,7 +63,7 @@ class UploadJob(IUploadJob):
     def step_extract(self, file_paths: List[Path], provider: EProviderName, file_caller: str = "") -> str:
         extracted_texts = []
         for path in file_paths:
-            text = self.extract_service.extract_from_file_text(path, provider)
+            text = self.extract_service.extract(path, provider) #type OCRResponse now: have id, pages (using .join to combine all page markdown to one string for further processing)
             if not text:
                 self.logger.warning(f"Extracted text from {path.name} is empty.", Path(__file__).name, file_caller, self.step_extract.__name__)
                 continue

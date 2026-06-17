@@ -7,7 +7,7 @@ from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.utils.is_content_empty import check_empty_content
-
+from mistralai.client.models import OCRResponse
 
 class MistralLLMOCR(ILLMOCR):
     provider_name = EProviderName.MISTRAL.value
@@ -31,17 +31,19 @@ class MistralLLMOCR(ILLMOCR):
 
     # region - Public Methods
     def process_ocr(
-        self, uploaded_pdf: ICreateFileResponse
-    ) -> str:
+        self, uploaded_pdf: ICreateFileResponse, call_by: str = ""
+    ) -> OCRResponse:
         # Implementation for processing OCR on the uploaded PDF
         self.logger.info(
             f"Starting OCR process for file ID: {uploaded_pdf.id}",
             source=str(self.__class__),
+            call_by=call_by,
+            method_call=self.process_ocr.__name__,
         )
         try:
             source_log = f"{Path(__file__).parent.absolute()}/{Path(__file__).name}"
             signed_url = self.client.files.get_signed_url(file_id=uploaded_pdf.id)
-            mime_type = self.__get_mime_type(uploaded_pdf)
+            mime_type = self.__get_mime_type(uploaded_pdf, call_by=call_by)
             document = self.__get_document_object_by_mime_type(
                 mime_type, signed_url.url
             )  # This will raise ValueError if MIME type is unsupported, otherwise it will return the appropriate document object for Mistral OCR processing
@@ -56,40 +58,48 @@ class MistralLLMOCR(ILLMOCR):
             )
 
             extracted_text = "\n".join([page.markdown for page in ocr_response.pages])
-            if self.__validate_response_text(extracted_text, source_log) is False:
+            if self.__validate_response_text(extracted_text, source_log, call_by) is False:
+                self.logger.warning(
+                    f"Extracted text is empty or contains only whitespace. Source log: {source_log}",
+                    source=str(self.__class__), call_by=call_by, method_call=self.process_ocr.__name__
+                )
                 raise ValueError("Extracted text is empty or contains only whitespace.")
-            return extracted_text
+            self.logger.info(
+                f"OCR process completed successfully for file ID: {uploaded_pdf.id}",
+                source=str(self.__class__), call_by=call_by, method_call=self.process_ocr.__name__
+            )
+            return ocr_response
             
         except ValueError as ve:
             self.logger.error(
                 f"Value error during OCR processing for file ID: {uploaded_pdf.id} - {ve}",
-                source=str(self.__class__),
+                source=str(self.__class__),call_by=call_by, method_call=self.process_ocr.__name__
             )
             raise ve
         except Exception as e:
             self.logger.error(
                 f"Error during OCR processing for file ID: {uploaded_pdf.id} - {e}",
-                source=str(self.__class__),
+                source=str(self.__class__), call_by=str(self.__class__), method_call=self.process_ocr.__name__
             )
             raise e
 
 
-    def __validate_response_text(self, text: str, source_log: str) -> bool:
+    def __validate_response_text(self, text: str, source_log: str, call_by: str = "") -> bool:
         if check_empty_content(text, source_log, self.logger) is False:
             self.logger.warning(
                 f"Extracted text is empty or contains only whitespace. Source log: {source_log}",
-                source=str(self.__class__),
+                source=str(self.__class__), call_by=call_by, method_call=self.__validate_response_text.__name__
             )
             return False
         return True
 
-    def __get_mime_type(self, file_response: ICreateFileResponse) -> str:
+    def __get_mime_type(self, file_response: ICreateFileResponse, call_by: str = "") -> str:
         if hasattr(file_response, "mimetype"):
             return str(file_response.mimetype)
         else:
             self.logger.warning(
                 f"File response does not have 'mimetype' attribute. Defaulting to 'application/pdf'.",
-                source=str(self.__class__),
+                source=str(self.__class__), call_by=call_by, method_call=self.__get_mime_type.__name__
             )
             return "application/pdf"
 
