@@ -25,8 +25,6 @@ from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.services.rag_base.locate.locate_service import LocateService
 from backend.apps.application.conversations.application import ConversationApplication
-from backend.apps.services.llm_retry import call_llm_with_resilience
-from sys_services.logging import DEFAULT_LOGGER
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from sys_services.system_dirs import METADATA_DIR
 
