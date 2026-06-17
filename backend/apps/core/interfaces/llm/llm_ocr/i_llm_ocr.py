@@ -1,10 +1,9 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
-from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionResponse
 from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-
+from mistralai.client.models import OCRResponse
 
 class ILLMOCR(ABC):
     """
@@ -14,7 +13,7 @@ class ILLMOCR(ABC):
 
     @abstractmethod
     def process_ocr(
-        self, uploaded_pdf: ICreateFileResponse
-    ) -> str:
+        self, uploaded_pdf: ICreateFileResponse, call_by: str = ""
+    ) -> OCRResponse:
         """Process OCR on the uploaded PDF file and return extracted text."""
         pass

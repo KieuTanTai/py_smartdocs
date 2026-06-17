@@ -63,12 +63,12 @@ class UploadJob(IUploadJob):
     def step_extract(self, file_paths: List[Path], provider: EProviderName, file_caller: str = "") -> str:
         extracted_texts = []
         for path in file_paths:
-            text = self.extract_service.extract_from_file_text(path, provider)
-            if not text:
+            response = self.extract_service.extract(path, provider) #type IExtractResponse {document_id: str, extracted_text: str, model: str, pages_processed: int, doc_size_bytes: OptionalNullable[int] = UNSET (from mistralai.client.types)}
+            if not response.extracted_text:
                 self.logger.warning(f"Extracted text from {path.name} is empty.", Path(__file__).name, file_caller, self.step_extract.__name__)
                 continue
             
-            text_str = text[0] if isinstance(text, list) else text
+            text_str = response.extracted_text
             extracted_texts.append(text_str)
             self.logger.info(f"Extracted text from {path.name}, length: {len(text_str)}", Path(__file__).name, file_caller, self.step_extract.__name__)
         
