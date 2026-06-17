@@ -144,6 +144,7 @@ class BackendContainer(containers.DeclarativeContainer):
         neo4j_service=neo4j_service,
         cache_session=cache_service,
         logger=log_pool,
+        file_storage=file_storage,
     )
 
     message_job = providers.Factory(
