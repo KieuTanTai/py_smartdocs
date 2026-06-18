@@ -1,29 +1,36 @@
 from dataclasses import dataclass
 from typing import Any
 
+import faiss
+
+from backend.apps.core.enums.e_provider_name import EProviderName
+
 @dataclass
-class IConversationResponse:
-    id: str
-    title: str
-    provider: str
-    model: str
-    system_prompt: str
-    mode: str
+class IConversationPostResponse:
+    index: faiss.IndexFlatL2 | faiss.IndexIDMap
+    info: IConversationInfoResponse
+    time_counter: IConversationPostTimeCounterResponse
 
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> IConversationResponse:
-        data = payload.get("data", payload)
+@dataclass
+class IConversationGetResponse:
+    index: faiss.IndexFlatL2 | faiss.IndexIDMap
+    info: IConversationInfoResponse
 
-        return cls(
-            id=str(
-                data.get("id")
-                or data.get("conversation_id")
-                or data.get("uuid")
-                or ""
-            ),
-            title=data.get("title", ""),
-            provider=data.get("provider", ""),
-            model=data.get("model", ""),
-            system_prompt=data.get("system_prompt", ""),
-            mode=data.get("mode", ""),
-        )
+@dataclass
+class IConversationPostTimeCounterResponse:
+    upload_time: float
+    embedding_time: float
+    index_time: float
+    query_time: float
+    response_time: float
+    total_time: float
+
+@dataclass
+class IConversationInfoResponse:
+    conversation_id: str
+    provider: EProviderName
+    model_name: str
+    document_urls: list[str]
+    document_paths: list[str]
+    type: str = "normal" or "graph"
+    create_at: Any = None

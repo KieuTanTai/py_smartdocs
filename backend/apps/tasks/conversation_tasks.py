@@ -11,15 +11,17 @@ from celery import Task
 from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.job.i_conversation_job import IConversationJobResponse
+from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.exceptions.exceptions import DocumentsNotReadyError
 from backend.apps.interfaces.job.i_conversation_job import IConversationJob
-from backend.apps.interfaces.task.i_conversation_task import IConversationTask
+from backend.apps.interfaces.tasks.i_conversation_task import IConversationTask
 from backend.apps.job.conversation_job import ConversationJob
 
 class ConversationTask(Task, IConversationTask):
-    def __init__(self, conversation_job: IConversationJob, logger: ILogger):
+    def __init__(self, conversation_job: IConversationJob, faiss_memory_pool: IFaissMemoryPool, logger: ILogger):
         self.conversation_job = conversation_job
+        self.faiss_memory_pool = faiss_memory_pool
         self.logger = logger
 
     # --- SINGLE RESPONSIBILITY METHODS ---
@@ -39,6 +41,8 @@ class ConversationTask(Task, IConversationTask):
 
     # --- MAIN ENTRY POINT ---
 
+    #! NOTE: get faiss index from memory pool, if not exist then create new index and add to memory pool, 
+    #! this is to avoid create multiple index for the same conversation, and to improve the performance of locate service by caching the index in memory.
     def run(self, conversation_id: str, provider_name: EProviderName, model_name: str | None = None, file_caller: str = "") -> IConversationJobResponse:
         self.logger.info(
             f"Starting ConversationTask for conversation_id: {conversation_id} with provider: {provider_name} and model: {model_name}",

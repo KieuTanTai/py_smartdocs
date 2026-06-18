@@ -9,17 +9,19 @@ from pathlib import Path
 from celery import Task
 
 from backend.apps.core.enums.e_provider_name import EProviderName
+from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse
 from backend.apps.services.chat.models import DocumentModel
-from backend.apps.interfaces.task.i_upload_task import IUploadTask
+from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
 
 class UploadTask(Task, IUploadTask):
 
-    def __init__(self, upload_job: IUploadJob, logger: ILogger):
+    def __init__(self, upload_job: IUploadJob, logger: ILogger, faiss_memory_pool: IFaissMemoryPool):
         self.upload_job = upload_job
         self.logger = logger
+        self.faiss_memory_pool = faiss_memory_pool
 
     # --- SINGLE RESPONSIBILITY METHODS ---
 
@@ -92,6 +94,9 @@ class UploadTask(Task, IUploadTask):
         self.logger.info(f"Retrieving task name for routing", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.name)
         return Path(__file__).stem  # Dynamic name based on filename
 
+    #! NOTE: Save faiss index to memory pool after saving to vector store, to 
+    #! improve performance of locate service by avoiding loading index from disk multiple times. 
+    #! The memory pool will be used by locate service to get the index for searching, and it will also handle the eviction of old indexes when the pool size exceeds the limit.
     def run(self, document_id: str, provider_name: EProviderName, file_caller: str = "") -> IEmbedResponse:
         """Run the upload task."""
         self.logger.info(f"Starting UploadTask for document {document_id} with provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run.__name__)

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, List
+import faiss
 import numpy as np
 from redis import Redis
 

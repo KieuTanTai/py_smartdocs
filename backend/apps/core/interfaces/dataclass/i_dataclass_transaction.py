@@ -4,7 +4,6 @@ import numpy as np
 
 from backend.apps.core.enums.e_provider_name import EProviderName
 
-
 @dataclass
 class ICompletionRequest:
     provider: EProviderName
