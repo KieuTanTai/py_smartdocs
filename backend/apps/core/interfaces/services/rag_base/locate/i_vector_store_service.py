@@ -75,7 +75,7 @@ class IVectorStoreService(IVectorDBService, ABC):
 
         Args:
             index: Provider-specific index object or identifier
-            vector_id: Unique identifier for the vector to search within (id for searching datablocks on cache)
+            vector_id: Unique identifier use like name of faiss file (id for searching datablocks on cache)
             query_vector: Query embedding vector
             limit: Maximum number of results
             allow_ids: Optional set of allowed vector IDs

@@ -10,7 +10,7 @@ from celery import Task
 import numpy as np
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IExtractMapping, IGraphRagUploadResponse, IUploadResponse
@@ -102,7 +102,7 @@ class UploadTask(Task, IUploadTask):
 
 
         # * Step 2: Chunk and cache the normalized text
-        chunk_responses, chunk_texts = self.__chunk_and_cache(contents)
+        chunk_responses, chunk_texts = self.__chunk(contents)
         chunk_batches = [chunk_response.chunk_texts for chunk_response in chunk_responses]
 
         # * Step 3: Create graph retriever
@@ -135,14 +135,18 @@ class UploadTask(Task, IUploadTask):
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
         contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_base_pipeline_with_paths.__name__)
 
-        # * Step 2: Chunk and cache the normalized text
-        chunk_responses, chunk_texts = self.__chunk_and_cache(contents)
-        chunk_paths = [chunk_response.path for chunk_response in chunk_responses if chunk_response.path is not None]
+        # * Step 2: Chunk the normalized text
+        chunk_responses, chunk_texts = self.__chunk(contents)
+        
         # * Step 3: Embed the chunks
         embed_responses, embeddings = self.__embed_chunks(chunk_responses, provider)
         ids = np.concatenate([chunk_response.chunk_keys for chunk_response in chunk_responses]) if chunk_responses else np.array([], dtype=np.int64)
 
-        # * Step 4: Save the embeddings to vector store
+        #* Step 4: Cache the chunks and embeddings, and get the cache paths
+        cache_responses = self.__cache(chunk_responses, embed_responses)
+        chunk_paths = [cache_response.path for cache_response in cache_responses]
+
+        # * Step 5: Save the embeddings to vector store
         upload_response = self.upload_job.step_save(provider, document_ids, embeddings, chunk_texts, chunk_paths, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
         if upload_response is None:
             raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
@@ -156,22 +160,29 @@ class UploadTask(Task, IUploadTask):
             raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
         return upload_response
 
-    def __embed_chunks(self, chunk_responses: List[IChunkAndCacheResponse], provider: EProviderName) -> Tuple[List[IEmbedResponse], List[np.ndarray]]:
+    def __embed_chunks(self, chunk_responses: List[IChunkResponse], provider: EProviderName) -> Tuple[List[IEmbedResponse], List[np.ndarray]]:
         embed_responses = list[IEmbedResponse]()
         for chunk_response in chunk_responses:
             embed_response = self.upload_job.step_embed(chunk_response, provider, file_caller=self.__embed_chunks.__name__)
             embed_responses.append(embed_response)
         return embed_responses, [embed.embeddings for embed in embed_responses]
 
-    def __chunk_and_cache(self, contents: List[IExtractMapping]) -> Tuple[List[IChunkAndCacheResponse], List[str]]:
-        chunk_responses = list[IChunkAndCacheResponse]()
+    def __chunk(self, contents: List[IExtractMapping]) -> Tuple[List[IChunkResponse], List[str]]:
+        chunk_responses = list[IChunkResponse]()
         texts = []
         for content in contents:
             id = content.extract_content.document_id
             texts.append(content.extract_content.extracted_text)
-            chunk_response = self.upload_job.step_chunk_and_cache(id, texts[-1], file_caller=self.__chunk_and_cache.__name__)
+            chunk_response = self.upload_job.step_chunk(id, texts[-1], file_caller=self.__chunk.__name__)
             chunk_responses.append(chunk_response)
         return chunk_responses, texts
+
+    def __cache(self, chunk_responses: List[IChunkResponse], embedding_responses: List[IEmbedResponse]) -> List[IChunkAndCacheResponse]:
+        cache_responses = []
+        for chunk_response, embedding_response in zip(chunk_responses, embedding_responses):
+            cache_response = self.upload_job.step_cache(chunk_response, embedding_response, file_caller=self.__cache.__name__)
+            cache_responses.append(cache_response)
+        return cache_responses
 
     def __extract_contents_and_get_document_ids(self, file_paths: list[Path], provider: EProviderName, file_caller: str = "") -> Tuple[List[IExtractMapping], List[str]]:
         contents = list[IExtractMapping]()

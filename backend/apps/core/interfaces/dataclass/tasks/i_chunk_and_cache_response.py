@@ -4,10 +4,17 @@ from typing import List
 
 import numpy as np
 
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
+
 
 @dataclass
 class IChunkAndCacheResponse:
-    document_id: str
-    chunk_keys: List[np.int64] #* NOTE: this list should be use on np.array(chunk_keys, dtype=np.int64) before use for example in faiss index, because faiss index require int64 type for ids
-    chunk_texts: List[str] 
+    chunk_response: IChunkResponse
+    cache_param: ICacheParam
     path: Path # path of cached file if needed for some cache service, for example: redis cache may not need this but file system cache may need this
+
+@dataclass
+class IChunkResponse:
+    document_id: str
+    chunk_keys: List[np.int64]
+    chunk_texts: List[str]

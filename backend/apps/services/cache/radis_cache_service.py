@@ -69,11 +69,11 @@ class RedisCacheService(ICacheService):
         return destination_path
 
     def __convert_to_serializable(self, value_key: str, value: List[ICacheParamValue], expire: int | None = None) -> str:
-        return json.dumps({"key": value_key, "value": self.__normalize_value(value), "expire": expire})
+        return json.dumps({"key": value_key, "values": self.__normalize_value(value), "expire": expire})
     
     def __normalize_value(self, values: List[ICacheParamValue]):
         result = [
-            {"index": int(value.index), "text_value": value.text_value} for value in values
+            {"index": int(value.index), "text_value": value.text_value, "embedding": value.embedding} for value in values
         ]
         return result
 
@@ -84,7 +84,7 @@ class RedisCacheService(ICacheService):
                 return None
             return ICacheParam(
                 key=loads["key"],
-                values=[ICacheParamValue(index=np.int64(item["index"]), text_value=item["text_value"]) for item in loads["value"]]
+                values=[ICacheParamValue(index=np.int64(item["index"]), text_value=item["text_value"], embedding=item["embedding"]) for item in loads["values"]]
             )
         except json.JSONDecodeError as e:
             self.logger.error(f"Error decoding cache value: {e}", Path(__file__).name, Path(__file__).name, self.__convert_to_origin_type.__name__)

@@ -34,6 +34,7 @@ class IUploadResponse:
 class IDocumentResponse:
     document_id: str
     path: Path
+    summary: str = ""
 
 @dataclass
 class IGraphRagUploadResponse:

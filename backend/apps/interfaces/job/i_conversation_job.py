@@ -17,13 +17,14 @@ class IConversationJob(ABC):
         pass
 
     @abstractmethod
-    def generate_bootstrap_message(self, conversation_key: str, provider: EProviderName, model_name: str) -> IConversationJobResponse:
+    def generate_bootstrap_message(self, conversation_key: str, provider: EProviderName, model_name: str, prompt: str) -> IConversationJobResponse:
         """
         Generates the initial assistant message for a conversation based on the attached documents and the specified LLM provider/model.
         Args:
             conversation_key (str): The key of the conversation for which to generate the bootstrap message.
             provider (EProviderName): The LLM provider to use for generating the message.
             model_name (str): The specific model name to use for generation.
+            prompt (str): The prompt to use for generating the bootstrap message.
         Returns:
             IConversationJobResponse: The response containing the generated bootstrap message and related metadata.
         """

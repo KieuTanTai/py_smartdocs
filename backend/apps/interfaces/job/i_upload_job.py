@@ -11,7 +11,7 @@ import numpy as np
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from neo4j_graphrag.retrievers import VectorCypherRetriever
@@ -64,35 +64,53 @@ class IUploadJob(ABC):
         pass
 
     @abstractmethod
-    def step_chunk_and_cache(
+    def step_chunk(
         self, document_id: str, normalized_text: str, file_caller: str = ""
-    ) -> IChunkAndCacheResponse:
+    ) -> IChunkResponse:
         """
-        chunk text and cache it
+        chunk text into smaller pieces for embedding
         Args:
             document_id: ID of the document
             normalized_text: normalized text to chunk and cache
             file_caller: function name of caller for logging
         Returns:
-            response containing chunked and cached data
+            response containing chunked data
         """
         pass
 
     @abstractmethod
     def step_embed(
         self,
-        chunk_and_cache_response: IChunkAndCacheResponse,
+        chunk_response: IChunkResponse,
         provider: EProviderName,
         file_caller: str = "",
     ) -> IEmbedResponse:
         """
         embed chunked data and save to vector store
         Args:
-            chunk_and_cache_response: response containing chunked and cached data
+            chunk_response: response containing chunked data
             provider: provider name to use for embedding (for example: different embedding model may be used for different provider)
             file_caller: function name of caller for logging
         Returns:
             response containing embedded data
+        """
+        pass
+
+    @abstractmethod
+    def step_cache(
+        self,
+        chunk_response: IChunkResponse,
+        embedding_response: IEmbedResponse,
+        file_caller: str = "",
+    ) -> IChunkAndCacheResponse:
+        """
+        cache chunked data
+        Args:
+            chunk_response: response containing chunked data
+            embedding_response: response containing embedded data
+            file_caller: function name of caller for logging
+        Returns:
+            response containing cached data
         """
         pass
 

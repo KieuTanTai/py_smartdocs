@@ -7,6 +7,7 @@ import numpy as np
 @dataclass
 class ICacheParamValue:
     index: np.int64
+    embedding: np.ndarray
     text_value: str
 
 @dataclass

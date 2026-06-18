@@ -9,6 +9,24 @@ CURRENT_DIR = Path(__file__).parent.resolve()
 OUTPUT_DIR = CURRENT_DIR / "output"
 CSV_FILE = OUTPUT_DIR / "test_embedding.csv"
 
+"2 first vectors are file A, 2 second vectors are file B, 2 last vectors are file C, "
+"the distance between vector in the same file is smaller than the distance between vector in different file"
+
+mock_real_texts = {
+    "file_A": [
+        "This is the first vector of file A.",
+        "This is the second vector of file A."
+    ],
+    "file_B": [
+        "This is the first vector of file B.",
+        "This is the second vector of file B."
+    ],
+    "file_C": [
+        "This is the first vector of file C.",
+        "This is the second vector of file C."
+    ]
+}
+
 demo_vectors = np.vstack([
     np.array([0.1, 0.2, 0.3], dtype=np.float32),
     np.array([0.4, 0.5, 0.6], dtype=np.float32),

@@ -7,6 +7,7 @@ from pathlib import Path
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
+from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
@@ -16,8 +17,9 @@ from backend.apps.services.chat.models import ConversationFilesModel, Conversati
 
 class ConversationJob(IConversationJob):
 
-    def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, logger: ILogger, hybrid_search_service: IHybridSearchService | None = None):
+    def __init__(self, llm_provider_factory: ILLMProviderFactory, llm_prompt_structure: ILLMPromptStructure, config_provider: IConfigProvider, logger: ILogger, hybrid_search_service: IHybridSearchService | None = None):
         self.llm_provider_factory = llm_provider_factory
+        self.llm_prompt_structure = llm_prompt_structure
         self.config_provider = config_provider
         self.logger = logger
         self.hybrid_search_service = hybrid_search_service
@@ -50,17 +52,16 @@ class ConversationJob(IConversationJob):
         conversation_key: str,
         provider: EProviderName,
         model_name: str,
+        prompt: str
     ) -> IConversationJobResponse:
         try:
             conversation = ConversationModel.objects.get(pk=conversation_key)
         except ConversationModel.DoesNotExist:
             raise ValueError(f"Conversation not found: {conversation_key}")
 
-        prompt = "Vui lòng chào người dùng và tóm tắt ngắn gọn các tài liệu đính kèm để bắt đầu hội thoại."
-        model = model_name or "gemini-2.5-flash"
 
         # Sinh câu trả lời bằng LLM
-        assistant_message = self._generate_assistant_response(prompt, provider, model)
+        assistant_message = self._generate_assistant_response(prompt, provider, model_name)
 
         # Lưu vào Database
         self._save_message(conversation, is_user_send=False, content=assistant_message)

@@ -18,7 +18,7 @@ from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICa
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IDocumentResponse, IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
@@ -113,45 +113,41 @@ class UploadJob(IUploadJob):
         )
         return self.normalize.normalize(raw_text)
 
-    def step_chunk_and_cache(
+    def step_chunk(
         self, document_id: str, normalized_text: str, file_caller: str = ""
-    ) -> IChunkAndCacheResponse:
+    ) -> IChunkResponse:
         chunk_texts = self.chunker.create_chunks(normalized_text)
         self.logger.info(
             f"Chunked text, some value return: {chunk_texts[0][:100]}, total chunks: {len(chunk_texts)}",
             Path(__file__).name,
             file_caller,
-            self.step_chunk_and_cache.__name__,
+            self.step_chunk.__name__,
         )
         # * NOTE: change chunk keys to tuple[np.int64, str] to store in cache and using for ids in faiss service
         chunk_keys_tuples = self.__build_chunk_keys(document_id, chunk_texts, file_caller=file_caller)
-        path_cache = self.__cache_chunk_data(
-            document_id, chunk_keys_tuples, file_caller=file_caller
-        )
 
         # * NOTE: change field chunk_keys from List[str] to List[np.int64] to store the hashed keys for faiss ids, the original keys are stored in cache with the hashed keys as reference
-        response = IChunkAndCacheResponse(
+        response = IChunkResponse(
             document_id=document_id,
             chunk_keys=[k for k, _ in chunk_keys_tuples],
             chunk_texts=chunk_texts,
-            path=path_cache,
         )
         self.logger.info(
-            f"Chunk and cache step completed for document {document_id} with response: {response}",
+            f"Chunk step completed for document {document_id} with response: {response}",
             Path(__file__).name,
             file_caller,
-            self.step_chunk_and_cache.__name__,
+            self.step_chunk.__name__,
         )
         return response
 
     def step_embed(
         self,
-        chunk_and_cache_response: IChunkAndCacheResponse,
+        chunk_response: IChunkResponse,
         provider: EProviderName,
         file_caller: str = "",
     ) -> IEmbedResponse:
-        chunk_texts = chunk_and_cache_response.chunk_texts
-        document_id = chunk_and_cache_response.document_id
+        chunk_texts = chunk_response.chunk_texts
+        document_id = chunk_response.document_id
         self.logger.info(
             f"Embedding chunk texts for document {document_id} with provider {provider}",
             Path(__file__).name,
@@ -200,6 +196,95 @@ class UploadJob(IUploadJob):
             bm25_upsert=bm25_response,
             crated_at= np.datetime64("now"),
         )
+
+    def summarize_document(self, 
+                            faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
+                            faiss_file_name: str,
+                            embeddings: np.ndarray,
+                            cached_chunk_responses: List[IChunkResponse],
+                            file_caller: str = "") -> str:
+        faiss_service = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
+        if not isinstance(faiss_service, IVectorStoreService) or faiss_service is None:
+            self.logger.error(
+                f"Vector store service for FAISS is not properly initialized",
+                Path(__file__).name,
+                self.step_embed.__name__,
+            )
+            raise ValueError(
+                "Vector store service for FAISS is not properly initialized"
+            )
+        response = faiss_service.search(faiss_index, faiss_file_name, embeddings, limit=5, file_caller=self.summarize_document.__name__)
+        indices = response.indices
+        document_ids = response.id.split("_")  # Assuming the document_id is the first part of the vector_id before the first "_"
+        # * because this sumarization is not filter any document, so we must bruteforce search all document by document_ids
+        # * in other cases, we have to filter document_ids before search to improve the performance
+        # * get chunk texts from cached_chunk_responses by document_ids and indices with format {document_id}:{chunk_index}
+        bruteforce_keys = [f"{doc_id}:{idx}" for doc_id in document_ids for idx in indices]
+        service = self.cache_session.connect(file_caller=self.summarize_document.__name__)
+        if service is None or not isinstance(service, ICacheService):
+            self.logger.error(
+                f"Cache service is not properly initialized",
+                Path(__file__).name,
+                self.summarize_document.__name__,
+            )
+            raise ValueError(
+                "Cache service is not properly initialized"
+            )
+        service.get
+
+    def step_cache(
+        self,
+        chunk_response: IChunkResponse,
+        embedding_response: IEmbedResponse,
+        file_caller: str = "",
+    ) -> IChunkAndCacheResponse:
+        self.logger.info(
+            f"Creating cache for document {chunk_response.document_id}",
+            Path(__file__).name,
+            file_caller,
+            self.step_cache.__name__,
+        )
+        try:
+            cache_service = self.cache_session.connect(
+                file_caller=self.step_cache.__name__
+            )
+            if not isinstance(cache_service, ICacheService):
+                raise ValueError("Cache service is not properly initialized")
+            # * NOTE: convert chunk and embedding responses to ICacheParamValue list to store in cache, because cache only accept string key and ICacheParamValue list as value, the original chunk keys are stored in cache with the hashed keys as reference, so when get from cache, we can use the hashed keys to get the original chunk keys and chunk texts for further processing
+            cache_param = ICacheParam(
+                key=chunk_response.document_id,
+                values=self.__convert_to_cache_param_value(chunk_response, embedding_response, file_caller=file_caller),
+            )
+            path = cache_service.set(
+                cache_param, file_caller=self.step_cache.__name__
+            )
+            if path is None:
+                self.logger.error(
+                    f"Failed to cache chunked data for document {chunk_response.document_id}",
+                    Path(__file__).name,
+                    file_caller,
+                    self.step_cache.__name__,
+                )
+                raise ValueError(
+                    f"Failed to cache chunked data for document {chunk_response.document_id}"
+                )
+            self.logger.info(
+                f"Chunked data cached for document {chunk_response.document_id} at '{path}'",
+                Path(__file__).name,
+                file_caller,
+                self.step_cache.__name__,
+            )
+        finally:
+            self.logger.info(
+                f"Disconnecting cache session for document {chunk_response.document_id}",
+                Path(__file__).name,
+                file_caller,
+                self.step_cache.__name__,
+            )
+            self.cache_session.disconnect(
+                file_caller=self.step_cache.__name__
+            )
+        return IChunkAndCacheResponse(chunk_response, cache_param, path)
 
     async def step_build_knowledge_graph(
         self,
@@ -422,60 +507,6 @@ class UploadJob(IUploadJob):
         )
         return upsert_response
 
-    def __cache_chunk_data(
-        self,
-        document_id: str,
-        chunk_keys_tuples: List[Tuple[np.int64, str]],
-        file_caller: str = "",
-    ) -> Path:
-        self.logger.info(
-            f"Creating cache for document {document_id}",
-            Path(__file__).name,
-            file_caller,
-            self.step_chunk_and_cache.__name__,
-        )
-        try:
-            cache_service = self.cache_session.connect(
-                file_caller=self.step_chunk_and_cache.__name__
-            )
-            if not isinstance(cache_service, ICacheService):
-                raise ValueError("Cache service is not properly initialized")
-            # * NOTE: convert chunk_keys_tuples to ICacheParamValue list to store in cache, because cache only accept string key and ICacheParamValue list as value, the original chunk keys are stored in cache with the hashed keys as reference, so when get from cache, we can use the hashed keys to get the original chunk keys and chunk texts for further processing
-            cache_params = ICacheParam(
-                key=document_id,
-                values=self.__convert_to_cache_param_value(chunk_keys_tuples),
-            )
-            path = cache_service.set(
-                cache_params, file_caller=self.step_chunk_and_cache.__name__
-            )
-            if path is None:
-                self.logger.error(
-                    f"Failed to cache chunked data for document {document_id}",
-                    Path(__file__).name,
-                    file_caller,
-                    self.step_chunk_and_cache.__name__,
-                )
-                raise ValueError(
-                    f"Failed to cache chunked data for document {document_id}"
-                )
-            self.logger.info(
-                f"Chunked data cached for document {document_id} at '{path}'",
-                Path(__file__).name,
-                file_caller,
-                self.step_chunk_and_cache.__name__,
-            )
-        finally:
-            self.logger.info(
-                f"Disconnecting cache session for document {document_id}",
-                Path(__file__).name,
-                file_caller,
-                self.step_chunk_and_cache.__name__,
-            )
-            self.cache_session.disconnect(
-                file_caller=self.step_chunk_and_cache.__name__
-            )
-        return path
-
     def build_name(self, document_ids: List[str], split_by: str = "_",file_caller: str = "") -> str:
         sorted_ids = sorted(document_ids)
         name = split_by.join(sorted_ids)
@@ -488,13 +519,14 @@ class UploadJob(IUploadJob):
         return name
 
     def __convert_to_cache_param_value(
-        self, chunk_keys_tuples: List[Tuple[np.int64, str]]
+        self, chunk_response: IChunkResponse, embedding_response: IEmbedResponse, file_caller: str = ""
     ) -> List[ICacheParamValue]:
-        """Convert list of tuples (chunk_key, chunk_text) to list of ICacheParamValue"""
+        """Convert chunk and embedding responses to list of ICacheParamValue"""
         return [
-            ICacheParamValue(index=chunk_key, text_value=chunk_text)
-            for chunk_key, chunk_text in chunk_keys_tuples
+            ICacheParamValue(index=chunk_key, text_value=chunk_text, embedding=embedding)
+            for chunk_key, chunk_text, embedding in zip(chunk_response.chunk_keys, chunk_response.chunk_texts, embedding_response.embeddings.tolist())
         ]
+
 
     def __build_chunk_keys(
         self, file_id: str, chunk_texts: List[str], file_caller: str = ""
