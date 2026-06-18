@@ -11,7 +11,7 @@ from celery import Task
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IUploadResponse
 from backend.apps.services.chat.models import DocumentModel
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
@@ -87,6 +87,22 @@ class UploadTask(Task, IUploadTask):
 
         return save_res
 
+    #* New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
+    def __execute_pipeline_with_paths(self, upload_job: IUploadJob, file_paths: list[Path], provider: EProviderName) -> IUploadResponse:
+        """Run the Upload pipeline with file paths."""
+        ext_text = upload_job.step_extract_with_paths(file_paths, provider, file_caller=self.__execute_pipeline_with_paths.__name__)
+        norm_text = upload_job.step_normalize(ext_text, file_caller=self.__execute_pipeline_with_paths.__name__)
+        chunk_data = upload_job.step_chunk_and_cache_with_paths(norm_text, file_caller=self.__execute_pipeline_with_paths.__name__)
+        embed_res = upload_job.step_embed(chunk_data, provider, file_caller=self.__execute_pipeline_with_paths.__name__)
+        save_res = upload_job.step_save(
+            provider=provider,
+            document_ids=[str(i) for i in range(len(file_paths))],
+            embed_responses=embed_res.embeded_metadata,
+            chunk_texts=chunk_data.chunk_texts,
+            file_caller=self.__execute_pipeline_with_paths.__name__
+        )
+        return save_res
+
     # --- MAIN ENTRY POINT ---
     @property
     def name(self) -> str:
@@ -94,9 +110,29 @@ class UploadTask(Task, IUploadTask):
         self.logger.info(f"Retrieving task name for routing", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.name)
         return Path(__file__).stem  # Dynamic name based on filename
 
+    #* New run method to handle for new interface with file paths, 
+    #* this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
+    def run_with_paths(self, file_paths: list[Path], provider_name: EProviderName, file_caller: str = "") -> IUploadResponse:
+        """Run the upload task with file paths."""
+        self.logger.info(f"Starting UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
+        try:
+            # Chạy luồng lõi
+            result_dataclass = self.__execute_pipeline_with_paths(self.upload_job, file_paths, provider_name)
+
+            # Lưu index vào memory pool
+            self.faiss_memory_pool.add_to_pool(result_dataclass.faiss_file_name , result_dataclass.faiss_index, file_caller)
+
+            return result_dataclass
+            
+        except Exception as exc:
+            self.logger.error(f"Error processing file paths {file_paths}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
+            raise exc
+    
+
     #! NOTE: Save faiss index to memory pool after saving to vector store, to 
     #! improve performance of locate service by avoiding loading index from disk multiple times. 
-    #! The memory pool will be used by locate service to get the index for searching, and it will also handle the eviction of old indexes when the pool size exceeds the limit.
+    #! The memory pool will be used by locate service to get the index for searching, and 
+    #! it will also handle the eviction of old indexes when the pool size exceeds the limit.
     def run(self, document_id: str, provider_name: EProviderName, file_caller: str = "") -> IEmbedResponse:
         """Run the upload task."""
         self.logger.info(f"Starting UploadTask for document {document_id} with provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run.__name__)

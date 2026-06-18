@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
 
+import numpy as np
+
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, ISaveResponse
@@ -14,7 +16,7 @@ class IUploadJob(ABC):
     """
     Contract for Document Upload Processing.
     """
-    
+
     @abstractmethod
     def step_extract(self, file_paths: List[Path], provider: EProviderName, file_caller: str = "") -> str:
         """
@@ -66,6 +68,26 @@ class IUploadJob(ABC):
         """
         pass
 
+    @abstractmethod
+    def step_save(
+        self,
+        provider: EProviderName,
+        document_ids: List[str],
+        embed_responses: List[np.ndarray],
+        chunk_texts: List[str] = [],
+        ids: np.ndarray = np.ndarray([], dtype=np.int64),
+        file_caller: str = "",
+    ) -> ISaveResponse:
+        """
+            save embedded data to vector store
+            Args:
+                provider: provider name to use for saving (for example: different vector store may be used for different provider)
+                embed_response: response containing embedded data
+                file_caller: function name of caller for logging
+            Returns:
+                response containing saved data
+        """
+        pass
 
     @abstractmethod
     def step_build_knowledge_graph(self, document_id: str, extracted_texts: List[str], provider: EProviderName, model_name: str, file_caller: str = "") -> None:

@@ -119,7 +119,7 @@ class UploadJob(IUploadJob):
         faiss_upsert_response, faiss_index = self.__save_to_faiss(provider, embed_stack, faiss_file_name, ids, file_caller=file_caller)
 
         bm25_response = self.__save_to_bm25(provider, chunk_texts, faiss_file_name, file_caller=file_caller)
-        return ISaveResponse(faiss_index=faiss_index, faiss_file_name=faiss_file_name, vector_ids=ids.tolist(), faiss_upsert=faiss_upsert_response, bm25_upsert=bm25_response)
+        return ISaveResponse(faiss_index=faiss_index, faiss_file_name=faiss_file_name, vector_ids=ids.tolist(), faiss_upsert=faiss_upsert_response, bm25_upsert=bm25_response, crate_at=faiss_upsert_response.create_at)
 
     def step_build_knowledge_graph(
         self,
@@ -260,28 +260,6 @@ class UploadJob(IUploadJob):
             )
             list_embeddings.append(embedding)
         return list_embeddings
-    
-    def step_build_knowledge_graph(self, document_id: str, extracted_text: str, provider = EProviderName, file_caller: str = ""):
-        """Bước kích hoạt Neo4j chạy ngầm để bóc tách thực thể từ văn bản"""
-        self.logger.info(f"Khởi tạo Graph RAG cho tài liệu {document_id}", Path(__file__).name, file_caller, self.step_build_knowledge_graph.__name__)
-        index_name = f"graph_index_{document_id}"
-        try:
-            self.neo4j_service.create_vector_index(index_name=index_name, dimension=768, label="Chunk")
-        except Exception as e:
-            self.logger.error(f"Failed to create vector index for document {document_id} with error: {str(e)}", Path(__file__).name, file_caller, self.step_build_knowledge_graph.__name__)
-        
-        llm_client = self.llm_provider_factory.get_provider(provider)
-        embedder = self.__embed_chunk_texts([extracted_text], provider)
-
-        asyncio.run(self._run_kg_pipeline_async(
-            index_name=index_name,
-            extracted_text=extracted_text,
-            llm_client=llm_client,
-            embedder=embedder,
-            file_caller=file_caller
-        ))
-        
-        self.logger.info(f"Đã xây dựng xong Knowledge Graph cho {document_id}")
     
     async def _run_kg_pipeline_async(self, index_name: str, extracted_text: str, llm_client, embedder, file_caller: str):
         """Hàm bất đồng bộ chạy ngầm để đẩy Text vào Neo4j Pipeline"""

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import faiss
@@ -9,7 +10,7 @@ from backend.apps.core.enums.e_provider_name import EProviderName
 class IConversationPostResponse:
     index: faiss.IndexFlatL2 | faiss.IndexIDMap
     info: IConversationInfoResponse
-    time_counter: IConversationPostTimeCounterResponse
+    time_counter: ITimeCounterResponse | None = None
 
 @dataclass
 class IConversationGetResponse:
@@ -17,13 +18,14 @@ class IConversationGetResponse:
     info: IConversationInfoResponse
 
 @dataclass
-class IConversationPostTimeCounterResponse:
-    upload_time: float
+class ITimeCounterResponse:
+    extract_time: float
+    normalize_time: float
+    chunk_time: float
     embedding_time: float
-    index_time: float
-    query_time: float
-    response_time: float
+    save_time: float
     total_time: float
+    query_time: float = 0.0 # OPTIONAL, this will be used when the conversation is used to chat, and the time_counter will be updated with the query_time, this is for future implementation of time_counter in chat application
 
 @dataclass
 class IConversationInfoResponse:
@@ -31,6 +33,6 @@ class IConversationInfoResponse:
     provider: EProviderName
     model_name: str
     document_urls: list[str]
-    document_paths: list[str]
+    document_paths: list[Path]
     type: str = "normal" or "graph"
-    create_at: Any = None
+    create_at: Any = None 
