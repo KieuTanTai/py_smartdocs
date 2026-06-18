@@ -52,7 +52,7 @@ class UploadTask(Task, IUploadTask):
     def run_graph_pipeline_with_paths(self, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
         self.logger.info(f"Starting Graph RAG UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
         try:
-            responses = self.__execute_pipeline_create_retriever_with_paths(file_paths, provider_name, embed_model_name, file_caller)
+            responses = self.__execute_pipeline_create_retriever_with_paths(file_paths, provider_name, model_name, embed_model_name)
             self.logger.info(f"Successfully completed Graph RAG UploadTask for file paths {file_paths} and provider {provider_name}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
             return responses
         except Exception as exc:

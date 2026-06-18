@@ -31,7 +31,7 @@ class ConversationModel(models.Model):
 
 class ConversationFilesModel(models.Model):
     conversation_files_id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    conversation_files_cloud_id = models.CharField(max_length=255, null=False, blank=False, db_index=True, db_column="conversation_files_cloud_id")
+    conversation_files_cloud_id = models.CharField(max_length=255, null=False, blank=False, db_index=True, db_column="conversation_files_cloud_id") # equal to document_id on dataclass
     conversation_files_uploaded_at = models.DateTimeField(auto_now_add=True)
     conversation = models.ForeignKey(ConversationModel, on_delete=models.CASCADE, db_column="conversation_files_conversation_id")
     class Meta:
@@ -39,7 +39,9 @@ class ConversationFilesModel(models.Model):
 
 class MessageModel(models.Model):
     message_id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    message_conversation = models.ForeignKey(ConversationModel, on_delete=models.CASCADE, db_column="message_conversation_id")
+    message_conversation = models.ForeignKey(
+        ConversationModel, on_delete=models.CASCADE, db_column="message_conversation_id"
+    )
     message_is_user_send = models.BooleanField()
     message_content = models.TextField()
     message_created_at = models.DateTimeField(auto_now_add=True)
