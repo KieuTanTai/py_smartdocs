@@ -35,13 +35,14 @@ class IUploadTask(ABC):
     #     pass
 
     @abstractmethod
-    def run_with_paths(self, file_paths: list[Path], provider_name: EProviderName, file_caller:str = "") -> IUploadResponse:
+    def run_with_paths(self, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller:str = "") -> IUploadResponse:
         """
         Executes document RAG pipeline via UploadJob.
         Must return a JSON-serializable dictionary.
         Args:
             file_paths: List of file paths to process
             provider_name: Name of the LLM provider to use for embedding
+            model_name: Name of the model to use for embedding
             file_caller: Name of the file caller (for logging purposes)
         Returns:
             A dictionary containing embedding results and metadata

@@ -24,17 +24,18 @@ class IUploadResponse:
     faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap
     faiss_file_name: str
     vector_ids: List[int]
+    embeddings_stack: np.ndarray
     documents: List[IDocumentResponse]
     faiss_upsert: IVectorDBUpsertResponse
     bm25_upsert: IVectorDBUpsertResponse | None = None
     time_counter: ITimeCounterResponse | None = None
+    summarize: str = ""
     crated_at: Any = None
 
 @dataclass
 class IDocumentResponse:
     document_id: str
     path: Path
-    summary: str = ""
 
 @dataclass
 class IGraphRagUploadResponse:

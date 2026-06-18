@@ -48,6 +48,10 @@ from neo4j_graphrag.llm.base import LLMInterface
 from neo4j_graphrag.embeddings import Embedder
 from neo4j_graphrag.embeddings.google_genai import GeminiEmbedder
 from neo4j_graphrag.retrievers import VectorCypherRetriever
+from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
+    ICompletionRequest,
+    IEmbeddingResponse,
+)
 
 class UploadJob(IUploadJob):
     def __init__(
@@ -191,6 +195,7 @@ class UploadJob(IUploadJob):
             faiss_index=faiss_index,
             faiss_file_name=faiss_file_name,
             vector_ids=ids.tolist(),
+            embeddings_stack=embed_stack,
             documents=documents,
             faiss_upsert=faiss_upsert_response,
             bm25_upsert=bm25_response,
@@ -200,8 +205,10 @@ class UploadJob(IUploadJob):
     def summarize_document(self, 
                             faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
                             faiss_file_name: str,
-                            embeddings: np.ndarray,
-                            cached_chunk_responses: List[IChunkResponse],
+                            embeddings_stack: np.ndarray,
+                            cache_params: List[ICacheParam],
+                            provider: EProviderName,
+                            model_name: str,
                             file_caller: str = "") -> str:
         faiss_service = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
         if not isinstance(faiss_service, IVectorStoreService) or faiss_service is None:
@@ -213,24 +220,12 @@ class UploadJob(IUploadJob):
             raise ValueError(
                 "Vector store service for FAISS is not properly initialized"
             )
-        response = faiss_service.search(faiss_index, faiss_file_name, embeddings, limit=5, file_caller=self.summarize_document.__name__)
-        indices = response.indices
-        document_ids = response.id.split("_")  # Assuming the document_id is the first part of the vector_id before the first "_"
-        # * because this sumarization is not filter any document, so we must bruteforce search all document by document_ids
-        # * in other cases, we have to filter document_ids before search to improve the performance
-        # * get chunk texts from cached_chunk_responses by document_ids and indices with format {document_id}:{chunk_index}
-        bruteforce_keys = [f"{doc_id}:{idx}" for doc_id in document_ids for idx in indices]
-        service = self.cache_session.connect(file_caller=self.summarize_document.__name__)
-        if service is None or not isinstance(service, ICacheService):
-            self.logger.error(
-                f"Cache service is not properly initialized",
-                Path(__file__).name,
-                self.summarize_document.__name__,
-            )
-            raise ValueError(
-                "Cache service is not properly initialized"
-            )
-        service.get
+        original_texts = self.__get_orriginal_texts(faiss_service, faiss_index, faiss_file_name, embeddings_stack, cache_params, file_caller)
+
+        llm_client = self.llm_provider_factory.get_provider(provider)
+        template = self.llm_prompt_structure.build_summary_prompt(original_texts)
+        request = ICompletionRequest(provider, model_name, template)
+        return llm_client.generate(request, file_caller=self.summarize_document.__name__)
 
     def step_cache(
         self,
@@ -253,7 +248,7 @@ class UploadJob(IUploadJob):
             # * NOTE: convert chunk and embedding responses to ICacheParamValue list to store in cache, because cache only accept string key and ICacheParamValue list as value, the original chunk keys are stored in cache with the hashed keys as reference, so when get from cache, we can use the hashed keys to get the original chunk keys and chunk texts for further processing
             cache_param = ICacheParam(
                 key=chunk_response.document_id,
-                values=self.__convert_to_cache_param_value(chunk_response, embedding_response, file_caller=file_caller),
+                values=self.__convert_to_cache_param_value(chunk_response, embedding_response),
             )
             path = cache_service.set(
                 cache_param, file_caller=self.step_cache.__name__
@@ -519,7 +514,7 @@ class UploadJob(IUploadJob):
         return name
 
     def __convert_to_cache_param_value(
-        self, chunk_response: IChunkResponse, embedding_response: IEmbedResponse, file_caller: str = ""
+        self, chunk_response: IChunkResponse, embedding_response: IEmbedResponse
     ) -> List[ICacheParamValue]:
         """Convert chunk and embedding responses to list of ICacheParamValue"""
         return [
@@ -527,6 +522,41 @@ class UploadJob(IUploadJob):
             for chunk_key, chunk_text, embedding in zip(chunk_response.chunk_keys, chunk_response.chunk_texts, embedding_response.embeddings.tolist())
         ]
 
+    def __get_orriginal_texts(
+        self,
+        faiss_service: IVectorStoreService,
+        faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap,
+        faiss_file_name: str,
+        embeddings_stack: np.ndarray,
+        cache_params: List[ICacheParam],
+        file_caller: str = "",
+    ) -> str:
+        response = faiss_service.search(
+            faiss_index,
+            faiss_file_name,
+            embeddings_stack,
+            limit=5,
+            file_caller=self.summarize_document.__name__,
+        )
+        indices = response.indices
+        rows_by_id = {
+            int(value.index): value for param in cache_params for value in param.values
+        }
+
+        filtered_cache_values = [
+            rows_by_id[int(index)] for index in indices if int(index) in rows_by_id
+        ]
+
+        original_texts = [value.text_value for value in filtered_cache_values]
+        self.logger.info(
+            "Retrieved original texts for summarization: {}".format(
+                original_texts[:100]
+            ),
+            Path(__file__).name,
+            file_caller,
+            self.summarize_document.__name__,
+        )
+        return "\n".join(original_texts)
 
     def __build_chunk_keys(
         self, file_id: str, chunk_texts: List[str], file_caller: str = ""

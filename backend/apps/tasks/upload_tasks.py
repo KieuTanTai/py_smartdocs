@@ -35,11 +35,11 @@ class UploadTask(Task, IUploadTask):
 
     # * New run method to handle for new interface with file paths,
     # * this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def run_with_paths(self, file_paths: list[Path], provider_name: EProviderName, file_caller: str = "") -> IUploadResponse:
+    def run_with_paths(self, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller: str = "") -> IUploadResponse:
         self.logger.info(f"Starting UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
         try:
             # Chạy luồng lõi
-            result_dataclass = self.__execute_base_pipeline_with_paths(file_paths, provider_name)
+            result_dataclass = self.__execute_base_pipeline_with_paths(file_paths, provider_name, model_name)
             # Lưu index vào memory pool
             self.logger.info(f"Adding FAISS index to memory pool with file name {result_dataclass.faiss_file_name} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             self.faiss_memory_pool.add_to_pool(result_dataclass.faiss_file_name , result_dataclass.faiss_index, file_caller)
@@ -100,7 +100,6 @@ class UploadTask(Task, IUploadTask):
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents
         contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
 
-
         # * Step 2: Chunk and cache the normalized text
         chunk_responses, chunk_texts = self.__chunk(contents)
         chunk_batches = [chunk_response.chunk_texts for chunk_response in chunk_responses]
@@ -129,7 +128,7 @@ class UploadTask(Task, IUploadTask):
 
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     def __execute_base_pipeline_with_paths(
-        self, file_paths: list[Path], provider: EProviderName
+        self, file_paths: list[Path], provider: EProviderName, model_name: str
     ) -> IUploadResponse:
 
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
@@ -145,11 +144,17 @@ class UploadTask(Task, IUploadTask):
         #* Step 4: Cache the chunks and embeddings, and get the cache paths
         cache_responses = self.__cache(chunk_responses, embed_responses)
         chunk_paths = [cache_response.path for cache_response in cache_responses]
+        cache_params = [cache_response.cache_param for cache_response in cache_responses]
 
         # * Step 5: Save the embeddings to vector store
         upload_response = self.upload_job.step_save(provider, document_ids, embeddings, chunk_texts, chunk_paths, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
         if upload_response is None:
             raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
+        
+        #* Step 6: Sumarize the document and get the summary text
+        summarize = self.upload_job.summarize_document(upload_response.faiss_index, upload_response.faiss_file_name, 
+                                                       upload_response.embeddings_stack, cache_params, provider, model_name, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+        upload_response.summarize = summarize
         return upload_response
 
     # * Mini step on pipeline

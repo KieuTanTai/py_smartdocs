@@ -6,10 +6,12 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
 
+import faiss
 import numpy as np
 
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
@@ -138,6 +140,32 @@ class IUploadJob(ABC):
             response containing save results and metadata, or None if saving is not applicable for the provider
         """
         pass
+
+    @abstractmethod
+    def summarize_document(self, 
+                            faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
+                            faiss_file_name: str,
+                            embeddings_stack: np.ndarray,
+                            cache_params: List[ICacheParam],
+                            provider: EProviderName,
+                            model_name: str,
+                            file_caller: str = "") -> str:
+        """
+        summarize document based on original texts retrieved from vector store, this is used to improve the quality of summary by providing more context to LLM.
+        Args:
+            faiss_index: the FAISS index containing the embedded vectors for the document
+            faiss_file_name: the name of the FAISS file where the index is stored
+            embeddings_stack: the stack of embedded vectors for the document
+            cache_params: list of cache parameters used for retrieving original texts
+            provider: provider name to use for summarization (for example: different LLM provider may be used for different provider)
+            model_name: model name to use for summarization
+            file_caller: function name of caller for logging
+        Returns:
+            summarized text for the document
+        Raises:
+            ValueError: If provider is invalid or document is not found
+            Exception: For any other processing errors
+        """
 
     @abstractmethod
     async def step_build_knowledge_graph(
