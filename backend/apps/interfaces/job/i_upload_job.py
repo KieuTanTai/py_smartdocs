@@ -101,8 +101,9 @@ class IUploadJob(ABC):
         provider: EProviderName,
         document_ids: List[str],
         embedding_batches: List[np.ndarray],
-        chunk_texts: List[str] = [],
-        ids: np.ndarray = np.ndarray([], dtype=np.int64),
+        chunk_texts: List[str],
+        paths: List[Path],
+        ids: np.ndarray,
         file_caller: str = "",
     ) -> IUploadResponse | None:
         """
@@ -110,9 +111,10 @@ class IUploadJob(ABC):
         Args:
             provider: provider name to use for saving (for example: different vector store may be used for different provider)
             document_ids: list of document IDs corresponding to the embedded data
-            embed_responses: list of embedded vectors to save
-            chunk_texts: list of original chunk texts (optional, used for metadata)
-            ids: list of IDs corresponding to the embedded vectors (optional, used for upsert operations)
+            embedding_batches: list of embedded vectors to save
+            chunk_texts: list of original chunk texts
+            paths: list of paths where the documents are cached
+            ids: list of IDs corresponding to the embedded vectors
             file_caller: function name of caller for logging
         Returns:
             response containing save results and metadata, or None if saving is not applicable for the provider

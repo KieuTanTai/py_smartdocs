@@ -39,39 +39,12 @@ class MistralUploader(ILLMUploader):
             )
             raise e
 
-    def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
-        file_id = getattr(file_info, "id", None)
-        if not file_id:
+    def load_file(self, file_id: str) -> IGetFileResponse:
+        if file_id is None or file_id.strip() == "":
             message = "File id is missing for load_file."
             self.logger.error(message, source=str(self.__class__))
             raise ValueError(message)
-
-        metadata_path = Path("media") / "metadata" / f"{file_id}.md"
-        if not metadata_path.exists():
-            message = f"Metadata file not found: '{metadata_path}'"
-            self.logger.error(message, source=str(self.__class__))
-            raise FileNotFoundError(message)
-
-        try:
-            stored_path = metadata_path.read_text(encoding="utf-8").strip()
-            if not stored_path:
-                self.logger.warning(
-                    f"Metadata file is empty: '{metadata_path}'",
-                    source=str(self.__class__),
-                )
-
-            retrieved_file = self.client.files.retrieve(file_id=file_id)
-            self.logger.info(
-                f"Retrieved file from Mistral: '{file_id}' (stored path: '{stored_path}')",
-                source=str(self.__class__),
-            )
-            return cast(IGetFileResponse, retrieved_file)
-        except Exception as e:
-            self.logger.error(
-                f"Failed to retrieve file: '{file_id}'. Error: {e}",
-                source=str(self.__class__),
-            )
-            raise e
+        return self.__is_file_exists(file_id)
 
     def delete_file(self, file_id: str) -> bool:
         if not file_id:
@@ -92,13 +65,13 @@ class MistralUploader(ILLMUploader):
             )
             raise e
 
-    def is_file_exists(self, file_id: str) -> IGetFileResponse:
+    def __is_file_exists(self, file_id: str) -> IGetFileResponse:
         try:
             response = self.client.files.retrieve(file_id=file_id)
             self.logger.info(f"File with id '{file_id}' exists in Mistral",
-                source=Path(__file__).name, call_by=str(self.is_file_exists.__name__), method_call="retrieve")
+                source=Path(__file__).name, call_by=str(self.__is_file_exists.__name__), method_call="retrieve")
             return cast(IGetFileResponse, response)
         except Exception as e:
             self.logger.info(f"File with id '{file_id}' does not exist in Mistral. Error: {e}",
-                source=Path(__file__).name, call_by=str(self.is_file_exists.__name__), method_call="retrieve")
+                source=Path(__file__).name, call_by=str(self.__is_file_exists.__name__), method_call="retrieve")
             raise FileNotFoundError(f"File with id '{file_id}' does not exist in Mistral. Error: {e}")

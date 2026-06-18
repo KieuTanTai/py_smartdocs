@@ -23,12 +23,17 @@ class IEmbedResponse:
 class IUploadResponse:
     faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap
     faiss_file_name: str
-    document_ids: List[str]
     vector_ids: List[int]
+    documents: List[IDocumentResponse]
     faiss_upsert: IVectorDBUpsertResponse
     bm25_upsert: IVectorDBUpsertResponse | None = None
     time_counter: ITimeCounterResponse | None = None
     crated_at: Any = None
+
+@dataclass
+class IDocumentResponse:
+    document_id: str
+    path: Path
 
 @dataclass
 class IGraphRagUploadResponse:

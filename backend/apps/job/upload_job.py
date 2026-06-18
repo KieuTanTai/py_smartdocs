@@ -19,7 +19,7 @@ from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IE
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IDocumentResponse, IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
@@ -166,11 +166,12 @@ class UploadJob(IUploadJob):
         provider: EProviderName,
         document_ids: List[str],
         embedding_batches: List[np.ndarray],
-        chunk_texts: List[str] = [],
-        ids: np.ndarray = np.ndarray([], dtype=np.int64),
+        chunk_texts: List[str],
+        paths: List[Path],
+        ids: np.ndarray,
         file_caller: str = "",
     ) -> IUploadResponse | None:
-        self.__validate_before_save(embedding_batches, ids, document_ids, provider, file_caller=file_caller)
+        self.__validate_before_save(embedding_batches, ids, document_ids, paths, chunk_texts, provider, file_caller=file_caller)
         faiss_file_name = self.build_name(document_ids, file_caller=file_caller)
         embed_stack = np.vstack(embedding_batches)
         self.logger.info(
@@ -187,11 +188,14 @@ class UploadJob(IUploadJob):
         bm25_response = self.__save_to_bm25(
             provider, chunk_texts, faiss_file_name, file_caller=file_caller
         )
+
+        documents = [IDocumentResponse(document_id=doc_id, path=path) for doc_id, path in zip(document_ids, paths)]
+
         return IUploadResponse(
             faiss_index=faiss_index,
             faiss_file_name=faiss_file_name,
             vector_ids=ids.tolist(),
-            document_ids=document_ids,
+            documents=documents,
             faiss_upsert=faiss_upsert_response,
             bm25_upsert=bm25_response,
             crated_at= np.datetime64("now"),
@@ -273,7 +277,7 @@ class UploadJob(IUploadJob):
         finally:
             self.session_provider.disconnect(file_caller=self.step_build_knowledge_graph.__name__)
 
-    def __validate_before_save(self, embedding_batches: List[np.ndarray], ids: np.ndarray, document_ids: List[str], provider: EProviderName, file_caller: str = "") -> None:
+    def __validate_before_save(self, embedding_batches: List[np.ndarray], ids: np.ndarray, document_ids: List[str], chunk_paths: List[Path], chunk_texts: List[str], provider: EProviderName, file_caller: str = "") -> None:
         if embedding_batches is None or len(embedding_batches) == 0:
             self.logger.error(
                 f"No embeddings to save for provider {provider} for document ids: {document_ids}",
@@ -285,15 +289,48 @@ class UploadJob(IUploadJob):
                 f"No embeddings to save for provider {provider} for document ids: {document_ids}"
             )
 
-        if len(ids) > 0 and len(ids) != sum(len(batch) for batch in embedding_batches):
+        if chunk_texts is None or len(chunk_texts) == 0:
             self.logger.error(
-                f"Length of ids {len(ids)} does not match total number of embeddings {sum(len(batch) for batch in embedding_batches)} for provider {provider} and document ids: {document_ids}",
+                f"No chunk texts to save for provider {provider} for document ids: {document_ids}",
                 Path(__file__).name,
                 file_caller,
                 self.step_save.__name__,
             )
             raise ValueError(
-                f"Length of ids {len(ids)} does not match total number of embeddings {sum(len(batch) for batch in embedding_batches)} for provider {provider} and document ids: {document_ids}"
+                f"No chunk texts to save for provider {provider} for document ids: {document_ids}"
+            )
+
+        if chunk_paths is None or len(chunk_paths) == 0:
+            self.logger.error(
+                f"No chunk paths provided for provider {provider} for document ids: {document_ids}",
+                Path(__file__).name,
+                file_caller,
+                self.step_save.__name__,
+            )
+            raise ValueError(
+                f"No chunk paths provided for provider {provider} for document ids: {document_ids}"
+            )        
+
+        if len(chunk_paths) != len(document_ids):
+            self.logger.error(
+                f"Length of chunk paths {len(chunk_paths)} does not match length of document ids {len(document_ids)} for provider {provider} and document ids: {document_ids}",
+                Path(__file__).name,
+                file_caller,
+                self.step_save.__name__,
+            )
+            raise ValueError(
+                f"Length of chunk paths {len(chunk_paths)} does not match length of document ids {len(document_ids)} for provider {provider} and document ids: {document_ids}"
+            )
+
+        if len(chunk_texts) != len(ids):
+            self.logger.error(
+                f"Length of chunk texts {len(chunk_texts)} does not match length of ids {len(ids)} for provider {provider} for document ids: {document_ids}",
+                Path(__file__).name,
+                file_caller,
+                self.step_save.__name__,
+            )
+            raise ValueError(
+                f"Length of chunk texts {len(chunk_texts)} does not match length of ids {len(ids)} for provider {provider} for document ids: {document_ids}"
             )
 
     def __save_to_faiss(

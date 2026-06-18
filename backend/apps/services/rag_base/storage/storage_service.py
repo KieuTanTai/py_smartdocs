@@ -35,14 +35,11 @@ class FileStorageService(IFileStorage):
         new_file_path = self.__check_all(file_path=file_path)
         return self.uploader.upload_file(new_file_path)
 
-    def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
-        return self.uploader.load_file(file_info)
+    def load_file(self, file_id: str) -> IGetFileResponse:
+        return self.uploader.load_file(file_id)
 
     def delete_file(self, file_id: str) -> bool:
         return self.uploader.delete_file(file_id)
-    
-    def is_file_existed(self, file_id: str) -> IGetFileResponse:
-        return self.uploader.is_file_exists(file_id)
 
 
     # This method is to get file size in bytes, which can be used for logging, validation, etc.

@@ -137,21 +137,21 @@ class UploadTask(Task, IUploadTask):
 
         # * Step 2: Chunk and cache the normalized text
         chunk_responses, chunk_texts = self.__chunk_and_cache(contents)
-
+        chunk_paths = [chunk_response.path for chunk_response in chunk_responses if chunk_response.path is not None]
         # * Step 3: Embed the chunks
         embed_responses, embeddings = self.__embed_chunks(chunk_responses, provider)
         ids = np.concatenate([chunk_response.chunk_keys for chunk_response in chunk_responses]) if chunk_responses else np.array([], dtype=np.int64)
 
         # * Step 4: Save the embeddings to vector store
-        upload_response = self.upload_job.step_save(provider, document_ids, embeddings, chunk_texts, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+        upload_response = self.upload_job.step_save(provider, document_ids, embeddings, chunk_texts, chunk_paths, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
         if upload_response is None:
             raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
         return upload_response
 
     # * Mini step on pipeline
     def __upload_to_vector_store(self, provider: EProviderName, document_ids: List[str], 
-                                 embedding_batches: List[np.ndarray], chunk_texts: List[str] = [], ids: np.ndarray = np.ndarray([], dtype=np.int64), file_caller: str = "") -> IUploadResponse:
-        upload_response = self.upload_job.step_save(provider, document_ids, embedding_batches, chunk_texts, ids, file_caller=self.__upload_to_vector_store.__name__)
+                                 embedding_batches: List[np.ndarray], chunk_texts: List[str] = [], ids: np.ndarray = np.ndarray([], dtype=np.int64), chunk_paths: List[Path] = [], file_caller: str = "") -> IUploadResponse:
+        upload_response = self.upload_job.step_save(provider, document_ids, embedding_batches, chunk_texts, chunk_paths, ids, file_caller=self.__upload_to_vector_store.__name__)
         if upload_response is None:
             raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
         return upload_response
@@ -183,5 +183,5 @@ class UploadTask(Task, IUploadTask):
                 method_call=self.__extract_contents_and_get_document_ids.__name__,
             )
             extracted_text = self.upload_job.step_extract_and_normalize(file_path, provider, file_caller=self.__extract_contents_and_get_document_ids.__name__)
-            contents.append(IExtractMapping(document_path=file_path, extract_content=extracted_text))
+            contents.append(IExtractMapping(file_path, extracted_text))
         return contents, [content.extract_content.document_id for content in contents]
