@@ -69,7 +69,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     status = reactive.Value(
         {"label": "Idle", "detail": "No requests yet", "kind": "idle"}
     )
-    conversation_id = reactive.Value(None)
+    conversation_name = reactive.Value(None)
     api_base_url = reactive.Value(INITIAL_API_BASE_URL)
     provider = reactive.Value("auto")
     current_model = reactive.Value("auto")
@@ -145,7 +145,7 @@ def server(input: Any, output: Any, session: Any) -> None:
 
     @render.ui
     def history_list() -> ui.Tag:
-        return history_ui(history.get(), conversation_id.get())
+        return history_ui(history.get(), conversation_name.get())
 
     @render.ui
     def doc_selector() -> ui.Tag:
@@ -490,12 +490,12 @@ def server(input: Any, output: Any, session: Any) -> None:
         current = current + [build_message("user", text)]
         messages.set(current)
 
-        was_new = conversation_id.get() is None
-        #? NOTE: explain flow if conversation_id is None, create new conversation, else send message to existing conversation.
+        was_new = conversation_name.get() is None
+        #? NOTE: explain flow if conversation_name is None, create new conversation, else send message to existing conversation.
         #! NOTE: RECOMMEND CHANGE RESPONSE FROM send_message to dataclass type instead of dict[str, Any] to make it more clear and type safe.
         response = send_message(
             client(),
-            conversation_id.get(),
+            conversation_name.get(),
             text,
             selected,
             provider.get(),
@@ -504,12 +504,12 @@ def server(input: Any, output: Any, session: Any) -> None:
             current_mode.get(),
             allow_mock=mock_on_fail.get(),
         )
-        conversation_id.set(response.get("conversation_id"))
-        if was_new and response.get("conversation_id"):
+        conversation_name.set(response.get("conversation_name"))
+        if was_new and response.get("conversation_name"):
             history.set(
                 [
                     {
-                        "id": response.get("conversation_id"),
+                        "id": response.get("conversation_name"),
                         "title": text[:42],
                         "when": time.strftime("%H:%M"),
                     }
@@ -541,13 +541,13 @@ def server(input: Any, output: Any, session: Any) -> None:
     def _clear_chat() -> None:
         messages.set([])
         metrics.set({})
-        conversation_id.set(None)
+        conversation_name.set(None)
         set_status("Chat cleared", "Ready for a new session", "info")
 
     @reactive.effect
     @reactive.event(input.remove_conversation)
     def _remove_conversation() -> None:
-        active_id = conversation_id.get()
+        active_id = conversation_name.get()
         if not active_id:
             set_status("No active session", "Nothing to remove.", "warning")
             return
@@ -557,7 +557,7 @@ def server(input: Any, output: Any, session: Any) -> None:
         history.set(current_history)
         messages.set([])
         metrics.set({})
-        conversation_id.set(None)
+        conversation_name.set(None)
         set_status("Session removed", "Conversation removed from list.", "success")
 
     @reactive.effect

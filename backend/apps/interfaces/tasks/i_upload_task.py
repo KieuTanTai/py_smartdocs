@@ -52,7 +52,7 @@ class IUploadTask(ABC):
         pass
 
     @abstractmethod
-    def run_graph_pipeline_with_paths(self, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller:str = "") -> List[IGraphRagUploadResponse]:
+    def run_graph_pipeline_with_paths(self, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller:str = "") -> IGraphRagUploadResponse:
         """
         Executes document RAG pipeline with graph retriever via UploadJob.
         Must return a JSON-serializable dictionary.
@@ -63,7 +63,7 @@ class IUploadTask(ABC):
             model_name: Name of the LLM model to use for creating graph retriever
             file_caller: Name of the file caller (for logging purposes)
         Returns:
-            A list of graph retriever responses containing retriever instances and metadata
+            A dictionary containing graph retriever results and metadata
         Raises:
             ValueError: If provider_name is invalid or document is not found
             Exception: For any other processing errors

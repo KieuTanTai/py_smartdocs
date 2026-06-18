@@ -12,7 +12,7 @@ from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 
@@ -50,7 +50,6 @@ class IUploadJob(ABC):
             extracted text from file or list of files
         """
         pass
-
 
     @abstractmethod
     def step_normalize(self, raw_text: str, file_caller: str = "") -> str:
@@ -120,7 +119,6 @@ class IUploadJob(ABC):
         """
         pass
 
-
     @abstractmethod
     async def step_build_knowledge_graph(
         self,
@@ -131,7 +129,7 @@ class IUploadJob(ABC):
         provider: EProviderName = EProviderName.GEMINI,
         similarity_fn: ESimilarityFn = ESimilarityFn.COSINE,
         file_caller: str = "",
-    ) -> IGraphRagUploadResponse:
+    ) -> IGraphRagUploadResponseWithTimeCounter:
         """
         build knowledge graph for document
         Args:
@@ -142,9 +140,22 @@ class IUploadJob(ABC):
             similarity_fn: function to use for calculating similarity
             file_caller: function name of caller for logging
         Returns:
-            VectorCypherRetriever: the created graph retriever
+            IGraphRagUploadResponseWithTimeCounter: the created graph retriever with time counter
         Raises:
             ValueError: If provider is invalid or document is not found
             Exception: For any other processing errors
         """
+        pass
+
+    @abstractmethod
+    def build_name(self, document_ids: List[str], split_by: str = "-", file_caller: str = "") -> str:
+        """
+        build file name for saving vector store files and this also use for conversation name
+        Args:
+            document_ids: list of document IDs to include in the file name
+            split_by: string to use for splitting document IDs in the file name
+            file_caller: function name of caller for logging
+        Returns:
+            file name built from document IDs
+        """        
         pass

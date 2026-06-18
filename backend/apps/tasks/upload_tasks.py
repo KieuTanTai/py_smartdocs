@@ -49,7 +49,7 @@ class UploadTask(Task, IUploadTask):
             self.logger.error(f"Error processing file paths {file_paths}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             raise exc
 
-    def run_graph_pipeline_with_paths(self, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> List[IGraphRagUploadResponse]:
+    def run_graph_pipeline_with_paths(self, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
         self.logger.info(f"Starting Graph RAG UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
         try:
             responses = self.__execute_pipeline_create_retriever_with_paths(file_paths, provider_name, embed_model_name, file_caller)
@@ -96,7 +96,7 @@ class UploadTask(Task, IUploadTask):
         return paths
 
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def __execute_pipeline_create_retriever_with_paths(self, file_paths: list[Path], provider: EProviderName, model_name: str, embed_model_name: str, file_caller: str = "") -> List[IGraphRagUploadResponse]:
+    def __execute_pipeline_create_retriever_with_paths(self, file_paths: list[Path], provider: EProviderName, model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents
         contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
 
@@ -106,10 +106,10 @@ class UploadTask(Task, IUploadTask):
         chunk_batches = [chunk_response.chunk_texts for chunk_response in chunk_responses]
 
         # * Step 3: Create graph retriever
-        responses = self.__crate_graph_retriever(provider, document_ids, chunk_batches, model_name, embed_model_name, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
+        responses = self.__crate_graph_retriever(provider, document_ids, chunk_batches, model_name, embed_model_name)
         return responses
 
-    def __crate_graph_retriever(self, provider: EProviderName, document_ids: List[str], chunks_batches: List[List[str]], model_name: str, embed_model_name: str, file_caller: str = "") -> List[IGraphRagUploadResponse]:
+    def __crate_graph_retriever(self, provider: EProviderName, document_ids: List[str], chunks_batches: List[List[str]], model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
         responses = []
         for document_id, chunk_texts in zip(document_ids, chunks_batches):
             graph_retriever = self.upload_job.step_build_knowledge_graph(
@@ -121,7 +121,11 @@ class UploadTask(Task, IUploadTask):
                 file_caller=self.__crate_graph_retriever.__name__,
             )
             responses.append(graph_retriever)
-        return responses
+        return IGraphRagUploadResponse(
+            conversation_name=self.upload_job.build_name(document_ids, file_caller=self.__crate_graph_retriever.__name__),
+            responses=responses,
+            crated_at=np.datetime64("now"),
+        )
 
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     def __execute_base_pipeline_with_paths(

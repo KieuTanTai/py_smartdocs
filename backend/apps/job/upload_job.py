@@ -19,7 +19,7 @@ from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IE
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
@@ -171,7 +171,7 @@ class UploadJob(IUploadJob):
         file_caller: str = "",
     ) -> IUploadResponse | None:
         self.__validate_before_save(embedding_batches, ids, document_ids, provider, file_caller=file_caller)
-        faiss_file_name = self.__build_file_name(document_ids, file_caller=file_caller)
+        faiss_file_name = self.build_name(document_ids, file_caller=file_caller)
         embed_stack = np.vstack(embedding_batches)
         self.logger.info(
             f"Stacked embeddings shape: {embed_stack.shape} for provider {provider}",
@@ -206,7 +206,7 @@ class UploadJob(IUploadJob):
         provider: EProviderName = EProviderName.GEMINI,
         similarity_fn: ESimilarityFn = ESimilarityFn.COSINE,
         file_caller: str = "",
-    ) -> IGraphRagUploadResponse:
+    ) -> IGraphRagUploadResponseWithTimeCounter:
         self.logger.info(
             f"Create a knowledge graph for the given document {document_id}",
             Path(__file__).name,
@@ -217,13 +217,17 @@ class UploadJob(IUploadJob):
         llm_model = provider_client.get_llm_model(model_name, file_caller)
         embedder = provider_client.get_embedder_model(embedding_model_name, file_caller)
         template = self.llm_prompt_structure.build_prompt_for_retrieval_query()
-        return IGraphRagUploadResponse(
+        return IGraphRagUploadResponseWithTimeCounter(
             document_id=document_id,
-            graph_retriever= await self.__run_pipeline_create_retriever(
-                document_id, embedder, llm_model, template, extracted_texts, similarity_fn, 
-                file_caller=file_caller
+            graph_retriever=await self.__run_pipeline_create_retriever(
+                document_id,
+                embedder,
+                llm_model,
+                template,
+                extracted_texts,
+                similarity_fn,
+                file_caller=file_caller,
             ),
-            crated_at=np.datetime64("now")
         )
 
     ## ------------------- PRIVATE METHODS -------------------
@@ -435,13 +439,14 @@ class UploadJob(IUploadJob):
             )
         return path
 
-    def __build_file_name(self, document_ids: List[str], file_caller: str = "") -> str:
-        name = "_".join(document_ids)
+    def build_name(self, document_ids: List[str], split_by: str = "_",file_caller: str = "") -> str:
+        sorted_ids = sorted(document_ids)
+        name = split_by.join(sorted_ids)
         self.logger.info(
             f"Built file name '{name}' from document IDs: {document_ids}",
             Path(__file__).name,
             file_caller,
-            self.__build_file_name.__name__,
+            self.build_name.__name__,
         )
         return name
 

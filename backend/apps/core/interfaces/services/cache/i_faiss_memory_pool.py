@@ -7,14 +7,14 @@ class IFaissMemoryPool(ABC):
     @abstractmethod
     def add_to_pool(
         self,
-        conversation_id: str,
+        key: str,
         index: faiss.IndexFlatL2 | faiss.IndexIDMap,
         file_caller: str = "",
     ) -> dict[str, faiss.IndexFlatL2 | faiss.IndexIDMap | Any]:
         """
         Adds a document to the Faiss memory pool.
         Args:
-            conversation_id (str): The unique identifier of the conversation.
+            key (str): The unique identifier of the conversation.
             index (faiss.IndexFlatL2 | faiss.IndexIDMap): The Faiss index to be added to the pool.
             file_caller (str): The file name of the caller (for logging purposes).
         Returns:
@@ -23,11 +23,11 @@ class IFaissMemoryPool(ABC):
         pass
 
     @abstractmethod
-    def get_from_pool(self, conversation_id: str, file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap | None:
+    def get_from_pool(self, key: str, file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap | None:
         """
         Retrieves documents from the Faiss memory pool based on the conversation ID.
         Args:
-            conversation_id (str): The unique identifier of the conversation for which to retrieve documents.
+            key (str): The unique identifier of the conversation for which to retrieve documents.
             file_caller (str): The file name of the caller (for logging purposes).
         Returns:
             faiss.IndexFlatL2 | faiss.IndexIDMap: The Faiss index associated with the given conversation ID.
@@ -35,11 +35,11 @@ class IFaissMemoryPool(ABC):
         pass
 
     @abstractmethod
-    def remove_from_pool(self, conversation_id: str, file_caller: str = "") -> bool:
+    def remove_from_pool(self, key: str, file_caller: str = "") -> bool:
         """
         Removes a document from the Faiss memory pool based on the conversation ID.
         Args:
-            conversation_id (str): The unique identifier of the conversation for which to remove documents.
+            key (str): The unique identifier of the conversation for which to remove documents.
             file_caller (str): The file name of the caller (for logging purposes).
         Returns:
             bool: True if the document was successfully removed, False otherwise.

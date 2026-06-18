@@ -5,7 +5,7 @@ import faiss
 import numpy as np
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import IEmbeddingResponse
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import ITimeCounterResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IGraphTimeCounterResponse, ITimeCounterResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 
@@ -32,6 +32,12 @@ class IUploadResponse:
 
 @dataclass
 class IGraphRagUploadResponse:
+    conversation_name: str
+    responses: List[IGraphRagUploadResponseWithTimeCounter]
+    crated_at: Any = None
+
+@dataclass
+class IGraphRagUploadResponseWithTimeCounter:
     document_id: str
     graph_retriever: VectorCypherRetriever
-    crated_at: Any = None
+    time_counter: IGraphTimeCounterResponse | None = None
