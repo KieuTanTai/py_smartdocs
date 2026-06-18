@@ -32,7 +32,7 @@ class DocumentApplication(IDocumentApplication):
         provider = request.provider
         response = self.upload_task.run_with_paths(paths, provider)
         metadata = IConversationInfoResponse(
-            conversation_id=response.faiss_file_name,
+            conversation_id=response.document_id,
             provider=provider,
             model_name=request.model_name,
             document_urls=request.document_urls,

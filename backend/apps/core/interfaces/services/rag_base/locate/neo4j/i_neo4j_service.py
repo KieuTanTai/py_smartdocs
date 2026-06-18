@@ -18,18 +18,7 @@ class INeo4jService(ABC):
     third: create a retriever using create_graph_retriever, and then use the search method to perform queries against the graph database and generate responses using the LLM, without necessarily running the file to knowledge graph pipeline or creating a RAG template, depending on the use case and requirements of the application.
     after that: you can use the search method to perform queries against the graph database and generate responses using the LLM, leveraging the created retriever and RAG template as needed for the specific query and response generation process.
     """
-
-    @abstractmethod
-    def __create_graph_retriever(
-        self,
-        template: str,
-        embedder: Embedder,
-        index_name: str,
-        file_caller="",
-    ) -> VectorCypherRetriever:
-        """This method creates a graph retriever that can be used to retrieve relevant information from the Neo4j"""
-        pass
-
+    
     @abstractmethod
     # def get_simple_KG_pipeline(self, llm_model: LLMInterface, embedder: Embedder) -> SimpleKGPipeline:
     #     pass
@@ -54,6 +43,23 @@ class INeo4jService(ABC):
         :return: VectorCypherRetriever instance
         """
 
+        pass
+
+    @abstractmethod
+    def get_vector_cypher_retriever(
+        self,
+        embedder: Embedder,
+        index_name: str,
+        file_caller="",
+    ) -> VectorCypherRetriever:
+        """
+        Creates and returns a VectorCypherRetriever based on the provided embedder and index name.
+        This method can be used to create a retriever for performing search operations against the Neo4j graph database, leveraging the specified vector index and embedding strategy.
+        :param embedder: Embedder to use for creating the retriever
+        :param index_name: Name of the vector index to use for retrieval
+        :param file_caller: Optional string to identify the caller of this method for logging purposes
+        :return: VectorCypherRetriever instance
+        """
         pass
 
     @abstractmethod

@@ -4,17 +4,20 @@ Handles the execution flow for uploaded files via background workers.
 """
 
 from dataclasses import asdict
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from pathlib import Path
 from celery import Task
+import numpy as np
 
 from backend.apps.core.enums.e_provider_name import EProviderName
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
 from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IExtractMapping, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.services.chat.models import DocumentModel
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
+from neo4j_graphrag.retrievers import VectorCypherRetriever
 
 class UploadTask(Task, IUploadTask):
 
@@ -23,86 +26,6 @@ class UploadTask(Task, IUploadTask):
         self.logger = logger
         self.faiss_memory_pool = faiss_memory_pool
 
-    # --- SINGLE RESPONSIBILITY METHODS ---
-
-    def __update_document_status(self, document_id: str, status: str) -> DocumentModel:
-        """Update status of a document."""
-        document = DocumentModel.objects.get(pk=document_id)
-        document.status = status
-        document.save(update_fields=["status"])
-        self.logger.info(f"Document {document_id} status updated to {status}", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__update_document_status.__name__)
-        return document
-
-    def __get_valid_file_path(self, document: DocumentModel) -> List[Path]:
-        """Validate and get paths of a document. Supports multiple files."""
-        if not document.file_path:
-            self.logger.error(f"Document {document.pk} has no stored file path", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__get_valid_file_path.__name__)
-            raise ValueError(f"Document {document.pk} has no stored file path")
-        paths = []
-        
-        if isinstance(document.file_path, list):
-            paths = [Path(p) for p in document.file_path]
-        elif isinstance(document.file_path, str):
-            paths = [Path(p.strip()) for p in document.file_path.split(',')]
-            
-        if not paths:
-            raise ValueError(f"Document {document.pk} has invalid file paths")
-        
-        return paths
-
-    def __execute_pipeline(self, upload_job: IUploadJob, document_id: str, file_path: List[Path], provider: EProviderName) -> IEmbedResponse:
-        """Run the Upload pipeline."""
-        
-        ext_text = upload_job.step_extract(file_path, provider, file_caller=self.__execute_pipeline.__name__)
-        self.logger.info(f"Document {document_id} extracted text successfully with {len(ext_text)} characters", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__execute_pipeline.__name__)
-        
-        norm_text = upload_job.step_normalize(ext_text, file_caller=self.__execute_pipeline.__name__)
-        self.logger.info(f"Document {document_id} normalized text successfully with {len(norm_text)} characters", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__execute_pipeline.__name__)
-        
-        chunk_data = upload_job.step_chunk_and_cache(document_id, norm_text, file_caller=self.__execute_pipeline.__name__)
-        self.logger.info(f"Document {document_id} chunked into {len(chunk_data.chunk_texts)} chunks", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__execute_pipeline.__name__)
-        
-        embed_res = upload_job.step_embed(chunk_data, provider, file_caller=self.__execute_pipeline.__name__)
-        self.logger.info(f"Document {document_id} embedded successfully with {len(embed_res.embeded_metadata)} embeddings", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__execute_pipeline.__name__)
-        
-        save_res = upload_job.step_save(
-            provider=provider,
-            document_ids=[document_id],
-            embed_responses=embed_res.embeded_metadata,
-            chunk_texts=chunk_data.chunk_texts,
-            file_caller=self.__execute_pipeline.__name__
-        )
-        self.logger.info(f"Document {document_id} saved to vector store successfully", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.__execute_pipeline.__name__)
-        
-        try:
-            upload_job.step_build_knowledge_graph(
-                document_id=document_id,
-                extracted_texts=ext_text,
-                provider=provider,
-                model_name="qwen2.5:1.5b-instruct",
-                file_caller=self.__execute_pipeline.__name__
-            )
-        except Exception as e:
-            self.logger.error(f"Graph RAG failed but vector search saved. Error: {e}", source=Path(__file__).name, call_by=Path(__file__).name)
-
-        return save_res
-
-    #* New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def __execute_pipeline_with_paths(self, upload_job: IUploadJob, file_paths: list[Path], provider: EProviderName) -> IUploadResponse:
-        """Run the Upload pipeline with file paths."""
-        ext_text = upload_job.step_extract_with_paths(file_paths, provider, file_caller=self.__execute_pipeline_with_paths.__name__)
-        norm_text = upload_job.step_normalize(ext_text, file_caller=self.__execute_pipeline_with_paths.__name__)
-        chunk_data = upload_job.step_chunk_and_cache_with_paths(norm_text, file_caller=self.__execute_pipeline_with_paths.__name__)
-        embed_res = upload_job.step_embed(chunk_data, provider, file_caller=self.__execute_pipeline_with_paths.__name__)
-        save_res = upload_job.step_save(
-            provider=provider,
-            document_ids=[str(i) for i in range(len(file_paths))],
-            embed_responses=embed_res.embeded_metadata,
-            chunk_texts=chunk_data.chunk_texts,
-            file_caller=self.__execute_pipeline_with_paths.__name__
-        )
-        return save_res
-
     # --- MAIN ENTRY POINT ---
     @property
     def name(self) -> str:
@@ -110,43 +33,151 @@ class UploadTask(Task, IUploadTask):
         self.logger.info(f"Retrieving task name for routing", source=Path(__file__).name, call_by=Path(__file__).name, method_call=self.name)
         return Path(__file__).stem  # Dynamic name based on filename
 
-    #* New run method to handle for new interface with file paths, 
-    #* this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
+    # * New run method to handle for new interface with file paths,
+    # * this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     def run_with_paths(self, file_paths: list[Path], provider_name: EProviderName, file_caller: str = "") -> IUploadResponse:
-        """Run the upload task with file paths."""
         self.logger.info(f"Starting UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
         try:
             # Chạy luồng lõi
-            result_dataclass = self.__execute_pipeline_with_paths(self.upload_job, file_paths, provider_name)
-
+            result_dataclass = self.__execute_base_pipeline_with_paths(file_paths, provider_name)
             # Lưu index vào memory pool
+            self.logger.info(f"Adding FAISS index to memory pool with file name {result_dataclass.faiss_file_name} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             self.faiss_memory_pool.add_to_pool(result_dataclass.faiss_file_name , result_dataclass.faiss_index, file_caller)
-
+            self.logger.info(f"Successfully completed UploadTask for file paths {file_paths} and provider {provider_name}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             return result_dataclass
-            
         except Exception as exc:
             self.logger.error(f"Error processing file paths {file_paths}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             raise exc
-    
 
-    #! NOTE: Save faiss index to memory pool after saving to vector store, to 
-    #! improve performance of locate service by avoiding loading index from disk multiple times. 
-    #! The memory pool will be used by locate service to get the index for searching, and 
-    #! it will also handle the eviction of old indexes when the pool size exceeds the limit.
-    def run(self, document_id: str, provider_name: EProviderName, file_caller: str = "") -> IEmbedResponse:
-        """Run the upload task."""
-        self.logger.info(f"Starting UploadTask for document {document_id} with provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run.__name__)
+    def run_graph_pipeline_with_paths(self, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> List[IGraphRagUploadResponse]:
+        self.logger.info(f"Starting Graph RAG UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
         try:
-            document = self.__update_document_status(document_id, "processing")
-            file_paths = self.__get_valid_file_path(document)
-            # Chạy luồng lõi
-            self.logger.info(f"Executing RAG pipeline for document {document_id}", source=Path(__file__).name, call_by=file_caller, method_call=self.run.__name__)
-            result_dataclass = self.__execute_pipeline(self.upload_job, document_id, file_paths, provider_name)
-
-            self.__update_document_status(document_id, "indexed")
-            return result_dataclass
-            
+            responses = self.__execute_pipeline_create_retriever_with_paths(file_paths, provider_name, embed_model_name, file_caller)
+            self.logger.info(f"Successfully completed Graph RAG UploadTask for file paths {file_paths} and provider {provider_name}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
+            return responses
         except Exception as exc:
-            self.logger.error(f"Error processing document {document_id}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run.__name__)
-            self.__update_document_status(document_id, "failed")
+            self.logger.error(f"Error processing file paths {file_paths} for graph pipeline: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
             raise exc
+
+    # --- SINGLE RESPONSIBILITY METHODS ---
+
+    def __update_document_status(self, document_id: str, status: str) -> DocumentModel:
+        """Update status of a document."""
+        document = DocumentModel.objects.get(pk=document_id)
+        document.status = status
+        document.save(update_fields=["status"])
+        self.logger.info(
+            f"Document {document_id} status updated to {status}",
+            source=Path(__file__).name,
+            call_by=Path(__file__).name,
+            method_call=self.__update_document_status.__name__,
+        )
+        return document
+
+    def __get_valid_file_path(self, document: DocumentModel) -> List[Path]:
+        """Validate and get paths of a document. Supports multiple files."""
+        if not document.file_path:
+            self.logger.error(
+                f"Document {document.pk} has no stored file path",
+                source=Path(__file__).name,
+                call_by=Path(__file__).name,
+                method_call=self.__get_valid_file_path.__name__,
+            )
+            raise ValueError(f"Document {document.pk} has no stored file path")
+        paths = []
+
+        if isinstance(document.file_path, list):
+            paths = [Path(p) for p in document.file_path]
+        elif isinstance(document.file_path, str):
+            paths = [Path(p.strip()) for p in document.file_path.split(",")]
+
+        if not paths:
+            raise ValueError(f"Document {document.pk} has invalid file paths")
+        return paths
+
+    # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
+    def __execute_pipeline_create_retriever_with_paths(self, file_paths: list[Path], provider: EProviderName, model_name: str, embed_model_name: str, file_caller: str = "") -> List[IGraphRagUploadResponse]:
+        # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents
+        contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
+
+
+        # * Step 2: Chunk and cache the normalized text
+        chunk_responses, chunk_texts = self.__chunk_and_cache(contents)
+        chunk_batches = [chunk_response.chunk_texts for chunk_response in chunk_responses]
+
+        # * Step 3: Create graph retriever
+        responses = self.__crate_graph_retriever(provider, document_ids, chunk_batches, model_name, embed_model_name, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
+        return responses
+
+    def __crate_graph_retriever(self, provider: EProviderName, document_ids: List[str], chunks_batches: List[List[str]], model_name: str, embed_model_name: str, file_caller: str = "") -> List[IGraphRagUploadResponse]:
+        responses = []
+        for document_id, chunk_texts in zip(document_ids, chunks_batches):
+            graph_retriever = self.upload_job.step_build_knowledge_graph(
+                document_id,
+                chunk_texts,
+                model_name,
+                embed_model_name,
+                provider,
+                file_caller=self.__crate_graph_retriever.__name__,
+            )
+            responses.append(graph_retriever)
+        return responses
+
+    # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
+    def __execute_base_pipeline_with_paths(
+        self, file_paths: list[Path], provider: EProviderName
+    ) -> IUploadResponse:
+
+        # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
+        contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+
+        # * Step 2: Chunk and cache the normalized text
+        chunk_responses, chunk_texts = self.__chunk_and_cache(contents)
+
+        # * Step 3: Embed the chunks
+        embed_responses, embeddings = self.__embed_chunks(chunk_responses, provider)
+        ids = np.concatenate([chunk_response.chunk_keys for chunk_response in chunk_responses]) if chunk_responses else np.array([], dtype=np.int64)
+
+        # * Step 4: Save the embeddings to vector store
+        upload_response = self.upload_job.step_save(provider, document_ids, embeddings, chunk_texts, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+        if upload_response is None:
+            raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
+        return upload_response
+
+    # * Mini step on pipeline
+    def __upload_to_vector_store(self, provider: EProviderName, document_ids: List[str], 
+                                 embedding_batches: List[np.ndarray], chunk_texts: List[str] = [], ids: np.ndarray = np.ndarray([], dtype=np.int64), file_caller: str = "") -> IUploadResponse:
+        upload_response = self.upload_job.step_save(provider, document_ids, embedding_batches, chunk_texts, ids, file_caller=self.__upload_to_vector_store.__name__)
+        if upload_response is None:
+            raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
+        return upload_response
+
+    def __embed_chunks(self, chunk_responses: List[IChunkAndCacheResponse], provider: EProviderName) -> Tuple[List[IEmbedResponse], List[np.ndarray]]:
+        embed_responses = list[IEmbedResponse]()
+        for chunk_response in chunk_responses:
+            embed_response = self.upload_job.step_embed(chunk_response, provider, file_caller=self.__embed_chunks.__name__)
+            embed_responses.append(embed_response)
+        return embed_responses, [embed.embeddings for embed in embed_responses]
+
+    def __chunk_and_cache(self, contents: List[IExtractMapping]) -> Tuple[List[IChunkAndCacheResponse], List[str]]:
+        chunk_responses = list[IChunkAndCacheResponse]()
+        texts = []
+        for content in contents:
+            id = content.extract_content.document_id
+            texts.append(content.extract_content.extracted_text)
+            chunk_response = self.upload_job.step_chunk_and_cache(id, texts[-1], file_caller=self.__chunk_and_cache.__name__)
+            chunk_responses.append(chunk_response)
+        return chunk_responses, texts
+
+    def __extract_contents_and_get_document_ids(self, file_paths: list[Path], provider: EProviderName, file_caller: str = "") -> Tuple[List[IExtractMapping], List[str]]:
+        contents = list[IExtractMapping]()
+        for file_path in file_paths:
+            self.logger.info(
+                f"Extracting text from file {file_path}",
+                source=Path(__file__).name,
+                call_by=file_caller,
+                method_call=self.__extract_contents_and_get_document_ids.__name__,
+            )
+            extracted_text = self.upload_job.step_extract_and_normalize(file_path, provider, file_caller=self.__extract_contents_and_get_document_ids.__name__)
+            contents.append(IExtractMapping(document_path=file_path, extract_content=extracted_text))
+        return contents, [content.extract_content.document_id for content in contents]
