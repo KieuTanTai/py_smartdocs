@@ -6,8 +6,9 @@ from backend.api.documents.views import (
     DocumentDetailView,
     DocumentStatusView,
     DocumentIndexView,
+    DocumentBulkIndexView,
 )
-from backend.api.documents.bulk_index import DocumentBulkIndexView
+# from backend.api.documents.bulk_index import DocumentBulkIndexView
 
 urlpatterns = [
     # Specific routes MUST come before the catch-all "" to avoid 405 errors

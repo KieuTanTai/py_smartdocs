@@ -89,25 +89,22 @@ class ApiClient:
     def list_conversations(self) -> Dict[str, Any]:
         return self._request("GET", "/api/conversations/")
 
-    #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    # def create_conversation(
-    #     self,
-    #     title: str,
-    #     provider: str,
-    #     model: str,
-    #     system_prompt: str,
-    #     document_ids: list[str],
-    #     mode: str,
-    # ) -> Dict[str, Any]:
-    #     payload = ICreateConversationRequest(
-    #         title=title,
-    #         provider=provider,
-    #         model=model,
-    #         system_prompt=system_prompt,
-    #         document_ids=document_ids,
-    #         mode=mode,
-    #     )
-    #     return self._request("POST", "/api/conversations/", json=payload)
+    def create_conversation(
+        self,
+        title: str,
+        provider: str,
+        model: str,
+        system_prompt: str,
+        document_ids: list,
+        mode: str,
+    ) -> Dict[str, Any]:
+        payload = ICreateConversationRequest(
+            provider=provider,
+            model_name=model,
+            document_urls=document_ids,
+            type=mode,
+        )
+        return self._request("POST", "/api/conversations/", json=payload.to_dict() if hasattr(payload, 'to_dict') else payload)
 
     def send_message(
         self,
