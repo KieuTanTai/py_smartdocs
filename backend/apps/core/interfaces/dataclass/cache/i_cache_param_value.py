@@ -1,6 +1,7 @@
 from typing import Any, List
 from dataclasses import dataclass
 
+import faiss
 import numpy as np
 
 @dataclass

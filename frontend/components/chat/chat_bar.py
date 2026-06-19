@@ -1,9 +1,12 @@
+from typing import List
+
 from shiny import ui
 
+from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
 from components.settings.model_settings import model_settings_ui
 
 
-def chat_bar_ui(models: list[str]) -> ui.Tag:
+def chat_bar_ui(object_providers: List[IProvider]) -> ui.Tag:
     return ui.tags.div(
         ui.tags.div(
             ui.input_text_area(
@@ -14,7 +17,7 @@ def chat_bar_ui(models: list[str]) -> ui.Tag:
             ),
             ui.tags.div(
                 ui.tags.div(
-                    model_settings_ui(models),
+                    model_settings_ui(object_providers),
                     ui.tags.img(src="separator.png", class_="separator-icon"),
                     ui.input_action_button(
                         "send_message",

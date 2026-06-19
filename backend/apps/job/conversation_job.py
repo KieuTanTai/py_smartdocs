@@ -11,6 +11,7 @@ from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
+from backend.apps.interfaces.job.i_conversation_job import IConversationJob
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
 
 class ConversationJob(IConversationJob):

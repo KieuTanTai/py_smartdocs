@@ -119,7 +119,7 @@ class UploadJob(IUploadJob):
         faiss_upsert_response, faiss_index = self.__save_to_faiss(provider, embed_stack, faiss_file_name, ids, file_caller=file_caller)
 
         bm25_response = self.__save_to_bm25(provider, chunk_texts, faiss_file_name, file_caller=file_caller)
-        return ISaveResponse(faiss_index=faiss_index, faiss_file_name=faiss_file_name, vector_ids=ids.tolist(), faiss_upsert=faiss_upsert_response, bm25_upsert=bm25_response)
+        return ISaveResponse(faiss_index=faiss_index, faiss_file_name=faiss_file_name, vector_ids=ids.tolist(), faiss_upsert=faiss_upsert_response, bm25_upsert=bm25_response, crate_at=faiss_upsert_response.create_at)
 
     def step_build_knowledge_graph(self, document_id: str, extracted_text: str, provider = EProviderName, file_caller: str = ""):
         """Bước kích hoạt Neo4j chạy ngầm để bóc tách thực thể từ văn bản"""
@@ -249,6 +249,5 @@ class UploadJob(IUploadJob):
             )
             list_embeddings.append(embedding)
         return list_embeddings
-    
     
 

@@ -1,14 +1,12 @@
+from typing import List
+
 from shiny import ui
-from sys_services.read_config.read_list_provider import LIST_PROVIDERS
+from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
 
-
-def model_settings_ui(models: list[str]) -> ui.Tag:
-    # Build choices from LIST_PROVIDERS for the model select dropdown
-    model_choices: list[str] = []
-    for p in LIST_PROVIDERS:
-        model_choices.append(p.model_name)
-
-    mode_choices = ["normal", "graph rag"]
+#* NOTE: using List[IProvider] instead of List[str] because we need to get the model name and provider name to display in the UI, and also to send the request to the backend when create conversation, if we only use List[str], 
+#* we will lose the provider name information, and we need to do extra work to get the provider name from the model name, which is not efficient and also not necessary because we can get the provider name directly from the IProvider object. So using List[IProvider] is more convenient and efficient in this case.
+def model_settings_ui(object_providers: List[IProvider]) -> ui.Tag:
+    mode_choices = ["normal", "graph"]
 
     return ui.tags.div(
         ui.tags.div(
@@ -28,8 +26,8 @@ def model_settings_ui(models: list[str]) -> ui.Tag:
                 ui.input_select(
                     "model_select",
                     "Model",
-                    choices={c: c for c in model_choices},
-                    selected=model_choices[0] if model_choices else "auto",
+                    choices={object_provider.provider_name.value: object_provider.model_name for object_provider in object_providers},
+                    selected=object_providers[0].model_name if object_providers else "auto",
                 ),
                 class_="button-select-wrap",
             ),

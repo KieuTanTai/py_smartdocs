@@ -1,29 +1,38 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
+import faiss
+
+from backend.apps.core.enums.e_provider_name import EProviderName
+
 @dataclass
-class IConversationResponse:
-    id: str
-    title: str
-    provider: str
-    model: str
-    system_prompt: str
-    mode: str
+class IConversationPostResponse:
+    index: faiss.IndexFlatL2 | faiss.IndexIDMap
+    info: IConversationInfoResponse
+    time_counter: ITimeCounterResponse | None = None
 
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> IConversationResponse:
-        data = payload.get("data", payload)
+@dataclass
+class IConversationGetResponse:
+    index: faiss.IndexFlatL2 | faiss.IndexIDMap
+    info: IConversationInfoResponse
 
-        return cls(
-            id=str(
-                data.get("id")
-                or data.get("conversation_id")
-                or data.get("uuid")
-                or ""
-            ),
-            title=data.get("title", ""),
-            provider=data.get("provider", ""),
-            model=data.get("model", ""),
-            system_prompt=data.get("system_prompt", ""),
-            mode=data.get("mode", ""),
-        )
+@dataclass
+class ITimeCounterResponse:
+    extract_time: float
+    normalize_time: float
+    chunk_time: float
+    embedding_time: float
+    save_time: float
+    total_time: float
+    query_time: float = 0.0 # OPTIONAL, this will be used when the conversation is used to chat, and the time_counter will be updated with the query_time, this is for future implementation of time_counter in chat application
+
+@dataclass
+class IConversationInfoResponse:
+    conversation_id: str
+    provider: EProviderName
+    model_name: str
+    document_urls: list[str]
+    document_paths: list[Path]
+    type: str = "normal" or "graph"
+    create_at: Any = None 

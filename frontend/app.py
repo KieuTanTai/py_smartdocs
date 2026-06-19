@@ -52,7 +52,7 @@ app_ui = ui.page_fluid(
         ),
         ui.tags.div(
             ui.tags.aside(left_sidebar_ui(), class_="sidebar left"),
-            ui.tags.main(box_chat_ui([provider.model_name for provider in LIST_PROVIDERS]), class_="main"),
+            ui.tags.main(box_chat_ui(LIST_PROVIDERS), class_="main"),
             ui.tags.aside(right_sidebar_ui(), class_="sidebar right"),
             class_="layout",
         ),
@@ -83,11 +83,7 @@ def server(input: Any, output: Any, session: Any) -> None:
         status.set({"label": label, "detail": detail, "kind": kind})
 
     def client() -> ApiClient:
-        c = ApiClient(api_base_url.get())
-        if _auth_tokens.get("access_token"):
-            c._access_token = _auth_tokens["access_token"]
-            c._refresh_token = _auth_tokens.get("refresh_token")
-        return c
+        return ApiClient(api_base_url.get())
 
     def normalize_doc(
         payload: Dict[str, Any], file_info: dict, source: str
@@ -371,15 +367,21 @@ def server(input: Any, output: Any, session: Any) -> None:
         current_docs = docs.get()
         for info in files:
             try:
+                print("Upload modal info:", info)
+                print("Upload modal source:", source)
                 response = client().upload_document(info, source)
+                print("Upload modal response:", response)
                 doc = normalize_doc(response, info, source)
+                print("Upload modal normalized document:", doc)
                 current_docs = current_docs + [doc]
                 try:
                     index_response = client().index_document(doc["id"])
                     doc["status"] = index_response.get("status", "processing")
+                    print("Upload modal indexing response:", index_response)
                 except ApiError:
                     pass
             except ApiError as exc:
+                print("Upload modal error:", exc)
                 current_docs = current_docs + [
                     {
                         "id": f"local-{int(time.time())}",
@@ -437,14 +439,19 @@ def server(input: Any, output: Any, session: Any) -> None:
         file_name = payload.get("name") or "Drive file"
         current_docs = docs.get()
         try:
+            print("Drive upload payload:", payload)
+            print("Drive upload response:", response)
             doc = normalize_doc(response, {"name": file_name}, "drive")
+            print("Drive upload normalized document:", doc)
             current_docs = current_docs + [doc]
             try:
                 index_response = client().index_document(doc["id"])
                 doc["status"] = index_response.get("status", "processing")
+                print("Drive upload indexing response:", index_response)
             except ApiError:
                 pass
         except Exception as exc:
+            print("Drive upload error:", exc)
             set_status("Upload failed", str(exc), "error")
         docs.set(current_docs)
 

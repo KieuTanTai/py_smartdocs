@@ -29,8 +29,7 @@ class RedisCacheService(ICacheService):
         self.pipeline.execute()
         self.logger.info(f"Cache key: {input.key} set", Path(__file__).name, file_caller, self.set.__name__)
         return self.__write_metadata(input.key, value_str)
-
-
+    
     def get(self, key: str, file_caller: str = "") -> ICacheParam | None:
         self.logger.info(f"Getting cache key: {key}", Path(__file__).name, file_caller, self.get.__name__)
         result = self.redis_client.get(key)
