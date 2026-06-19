@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import ITimeCounterResponse
+
 class ITimeCounter(ABC):
     @abstractmethod
     def start(self) -> None:
@@ -23,5 +25,23 @@ class ITimeCounter(ABC):
         call stop() before calling this method to ensure accurate timing. If stop() is not called, this method will call stop() internally to calculate the elapsed time up to the current moment.
         Returns:
             float: The elapsed time in seconds.
+        """
+        pass
+
+    @abstractmethod
+    def reset(self) -> None:
+        """
+        Reset the time counter to its initial state.
+        This can be useful if you want to reuse the same time counter instance for multiple measurements.
+        """
+        pass
+
+    @abstractmethod
+    def mapping_to_time_counter_response(self, extract_time: float, chunk_time: float, embedding_time: float, save_time: float, query_time: float = 0.0) -> ITimeCounterResponse:
+        """
+        Map the recorded time values to an ITimeCounterResponse dataclass instance.
+        This method should take the recorded time values (e.g., extract_time, chunk_time, embedding_time, save_time, query_time) and return an instance of ITimeCounterResponse with these values populated.
+        Returns:
+            ITimeCounterResponse: An instance of ITimeCounterResponse containing the recorded time values.
         """
         pass

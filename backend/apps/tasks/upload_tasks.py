@@ -220,7 +220,7 @@ class UploadTask(Task, IUploadTask):
                          call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
         
         # * Step 7: mapping time counter to response
-        upload_response.time_counter = self.__map_value_to_time_counter(extract_time, chunk_time, embedding_time, save_time, summarize_time)
+        upload_response.time_counter = self.time_counter.mapping_to_time_counter_response(extract_time, chunk_time, embedding_time, save_time, summarize_time)
         return upload_response
 
     # * Mini step on pipeline
@@ -275,13 +275,3 @@ class UploadTask(Task, IUploadTask):
             contents.append(IExtractMapping(file_path, extracted_text))
         return contents, [content.extract_content.document_id for content in contents]
 
-#* Mapping params ITimeCounterResponse
-    def __map_value_to_time_counter(self, extract_time: float, chunk_time: float, embedding_time: float, save_time: float, query_time: float = 0.0) -> ITimeCounterResponse:
-        return ITimeCounterResponse(
-            extract_time=extract_time,
-            chunk_time=chunk_time,
-            embedding_time=embedding_time,
-            save_time=save_time,
-            query_time=query_time,
-            total_time=extract_time + chunk_time + embedding_time + save_time + query_time
-        )
