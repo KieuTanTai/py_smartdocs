@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from backend.apps.core.interfaces.system.i_logging import ILogger
 
@@ -10,7 +11,7 @@ def create_destination_dir_by_time(metadata_dir: Path) -> Path:
     destination_dir.mkdir(parents=True, exist_ok=True)
     return destination_dir
 
-def create_path_file(metadata_dir: Path, name: str, file_type: str, logger: ILogger | None = None) -> Path:
+def create_path_file(metadata_dir: Path, name: Any, file_type: str, logger: ILogger | None = None) -> Path:
     """Create a file path for the given name and file type under a destination directory based on the current date in the metadata directory. It will return the path to the file, but will not create the file itself."""
     destination_dir = create_destination_dir_by_time(metadata_dir)
     destination_file = destination_dir / f"{name}.{file_type}"
@@ -18,7 +19,7 @@ def create_path_file(metadata_dir: Path, name: str, file_type: str, logger: ILog
         logger.info(f"Created file path for '{name}' with type '{file_type}' at '{destination_file}'", Path(__file__).name, method_call=create_path_file.__name__)
     return destination_file
 
-def is_existed_in_metadata(metadata_dir: Path, name: str, file_type: str, logger: ILogger | None = None) -> Path | None:
+def is_existed_in_metadata(metadata_dir: Path, name: Any, file_type: str, logger: ILogger | None = None) -> Path | None:
     """Check if a metadata file with the given name and type exists in the metadata directory. It will log the existence check and return the path if the file exists, or None if it does not."""
 
     metadata_path = metadata_dir / f"{datetime.now().strftime('%Y-%m-%d')}" / f"{name}.{file_type}"
@@ -60,7 +61,7 @@ def clear_all_files_on_path(metadata_dir: Path, logger: ILogger | None = None) -
             logger.warning(f"Metadata directory '{metadata_dir}' does not exist and cannot be cleared", Path(__file__).name, method_call=clear_all_files_on_path.__name__)
     return deleted_count
 
-def delete_file_metadata_with_file_name(metadata_dir: Path, name: str, file_type: str, logger: ILogger | None = None) -> int:
+def delete_file_metadata_with_file_name(metadata_dir: Path, name: Any, file_type: str, logger: ILogger | None = None) -> int:
     """Delete the metadata file with the given name and type in the metadata directory. It will log the deletion process and return 1 if the file was deleted, or 0 if the file did not exist."""
 
     file_path = metadata_dir.glob(f"**/{name}.{file_type}")

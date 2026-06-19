@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
+import uuid
 
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBDeleteResponse, IVectorDBLoadResponse, IVectorDBQueryResponse, IVectorDBUpsertResponse
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
@@ -9,7 +10,7 @@ class ISpareVectorStoreService(IVectorDBService, ABC):
 
     @abstractmethod
     def upsert(
-        self, index: dict[str, str], vector_id: str, file_caller: str = ""
+        self, index: dict[str, str], vector_id: uuid.UUID, file_caller: str = ""
     ) -> IVectorDBUpsertResponse:
         """Insert or update vector in store.
         Requires provider-specific index object or identifier to perform upsert operation, and vector_id for metadata and cache management.
@@ -27,7 +28,7 @@ class ISpareVectorStoreService(IVectorDBService, ABC):
     def search(
         self,
         index: Any,
-        vector_id: str,
+        vector_id: uuid.UUID,
         query_text: str,
         limit: int = 5,
         file_caller: str = "",
@@ -46,9 +47,9 @@ class ISpareVectorStoreService(IVectorDBService, ABC):
         pass
 
     @abstractmethod
-    def load(self, vector_id: str, file_caller: str = "") -> IVectorDBLoadResponse:
+    def load(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBLoadResponse:
         pass
 
     @abstractmethod
-    def delete(self, vector_id: str, file_caller: str = "") -> IVectorDBDeleteResponse:
+    def delete(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:
         pass

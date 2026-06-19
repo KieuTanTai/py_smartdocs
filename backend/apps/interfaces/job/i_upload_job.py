@@ -5,6 +5,7 @@ Interface for Upload Job module.
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
+import uuid
 
 import faiss
 import numpy as np
@@ -119,6 +120,7 @@ class IUploadJob(ABC):
     def step_save(
         self,
         provider: EProviderName,
+        faiss_file_id: uuid.UUID,
         document_ids: List[str],
         embedding_batches: List[np.ndarray],
         chunk_texts: List[str],
@@ -130,6 +132,7 @@ class IUploadJob(ABC):
         save embedded data to vector store
         Args:
             provider: provider name to use for saving (for example: different vector store may be used for different provider)
+            faiss_file_id: the ID of the FAISS file where the index is stored
             document_ids: list of document IDs corresponding to the embedded data
             embedding_batches: list of embedded vectors to save
             chunk_texts: list of original chunk texts
@@ -144,7 +147,7 @@ class IUploadJob(ABC):
     @abstractmethod
     def summarize_document(self, 
                             faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
-                            faiss_file_name: str,
+                            faiss_file_id: uuid.UUID,
                             embeddings_stack: np.ndarray,
                             cache_params: List[ICacheParam],
                             provider: EProviderName,
@@ -154,7 +157,7 @@ class IUploadJob(ABC):
         summarize document based on original texts retrieved from vector store, this is used to improve the quality of summary by providing more context to LLM.
         Args:
             faiss_index: the FAISS index containing the embedded vectors for the document
-            faiss_file_name: the name of the FAISS file where the index is stored
+            faiss_file_id: the ID of the FAISS file where the index is stored
             embeddings_stack: the stack of embedded vectors for the document
             cache_params: list of cache parameters used for retrieving original texts
             provider: provider name to use for summarization (for example: different LLM provider may be used for different provider)

@@ -38,7 +38,7 @@ class DocumentApplication(IDocumentApplication):
             document_urls=request.document_urls,
             document_paths=request.document_paths,
             type=request.type,
-            create_at=response.crated_at
+            create_at=response.created_at
         )
         #! NOTE: time_counter is not implemented yet, so the time_counter in response is None, 
         #! this will be implemented in the future

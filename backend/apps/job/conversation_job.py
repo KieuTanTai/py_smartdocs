@@ -1,7 +1,4 @@
-import time
-from typing import List
-import numpy as np
-from pathlib import Path
+import uuid
 
 # Import Interfaces
 from backend.apps.core.enums.e_provider_name import EProviderName
@@ -13,7 +10,7 @@ from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 from backend.apps.interfaces.job.i_conversation_job import IConversationJob
-from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel, MessageModel
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
 
 class ConversationJob(IConversationJob):
 
@@ -24,9 +21,13 @@ class ConversationJob(IConversationJob):
         self.logger = logger
         self.hybrid_search_service = hybrid_search_service
 
-    def check_documents_ready(self, conversation_key: str) -> bool:
+    def check_documents_ready(self, conversation_key: str | uuid.UUID) -> bool:
         try:
-            conversation = ConversationModel.objects.get(pk=conversation_key)
+            conversation = None
+            if type(conversation_key) is uuid.UUID:
+                conversation = ConversationModel.objects.get(pk=conversation_key)
+            else:
+                conversation = ConversationModel.objects.get(conversation_name=conversation_key)
             faiss_index = conversation.conversation_faiss_index
             documents = ConversationFilesModel.objects.filter(conversation=conversation)
             if not faiss_index or not faiss_index.faiss_index_is_active:
@@ -58,7 +59,6 @@ class ConversationJob(IConversationJob):
             conversation = ConversationModel.objects.get(pk=conversation_key)
         except ConversationModel.DoesNotExist:
             raise ValueError(f"Conversation not found: {conversation_key}")
-
 
         # Sinh câu trả lời bằng LLM
         assistant_message = self._generate_assistant_response(prompt, provider, model_name)

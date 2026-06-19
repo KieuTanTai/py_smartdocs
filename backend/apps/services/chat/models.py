@@ -1,17 +1,19 @@
 import uuid
 from django.db import models
 
+from backend.apps.core.enums.e_document_status import EDocumentStatus
+
 
 class DocumentModel(models.Model):
     faiss_index_id = models.UUIDField(
         primary_key=True, default=uuid.uuid7, editable=False
     )
-    faiss_index_file_name = models.CharField(max_length=255, db_index=True, db_column="faiss_index_file_name")
+    # faiss_index_file_name = models.CharField(max_length=255, db_index=True, db_column="faiss_index_file_name")
     faiss_index_is_active = models.BooleanField(default=True)
     faiss_index_created_at = models.DateTimeField(auto_now_add=True)
     file_path = models.CharField(max_length=512, null=True, blank=True)
     status = models.CharField(
-        max_length=32, default="uploaded"
+        max_length=32, choices=EDocumentStatus.choices, default=EDocumentStatus.UPLOADED, db_column="status"
     )  # uploaded, processing, indexed, failed
     content = models.TextField(null=True, blank=True)
 

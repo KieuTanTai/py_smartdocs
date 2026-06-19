@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 from pathlib import Path
 from typing import List, Tuple
+import uuid
 from venv import create
 import faiss
 from typing import Any
@@ -164,6 +165,7 @@ class UploadJob(IUploadJob):
     def step_save(
         self,
         provider: EProviderName,
+        faiss_file_id: uuid.UUID,
         document_ids: List[str],
         embedding_batches: List[np.ndarray],
         chunk_texts: List[str],
@@ -172,7 +174,6 @@ class UploadJob(IUploadJob):
         file_caller: str = "",
     ) -> IUploadResponse | None:
         self.__validate_before_save(embedding_batches, ids, document_ids, paths, chunk_texts, provider, file_caller=file_caller)
-        faiss_file_name = self.build_name(document_ids, file_caller=file_caller)
         embed_stack = np.vstack(embedding_batches)
         self.logger.info(
             f"Stacked embeddings shape: {embed_stack.shape} for provider {provider}",
@@ -182,29 +183,29 @@ class UploadJob(IUploadJob):
         )
 
         faiss_upsert_response, faiss_index = self.__save_to_faiss(
-            provider, embed_stack, faiss_file_name, ids, file_caller=file_caller
+            provider, embed_stack, faiss_file_id, ids, file_caller=file_caller
         )
 
         bm25_response = self.__save_to_bm25(
-            provider, chunk_texts, faiss_file_name, file_caller=file_caller
+            provider, chunk_texts, faiss_file_id, file_caller=file_caller
         )
 
         documents = [IDocumentResponse(document_id=doc_id, path=path) for doc_id, path in zip(document_ids, paths)]
 
         return IUploadResponse(
             faiss_index=faiss_index,
-            faiss_file_name=faiss_file_name,
+            faiss_file_id=faiss_file_id,
             vector_ids=ids.tolist(),
             embeddings_stack=embed_stack,
             documents=documents,
             faiss_upsert=faiss_upsert_response,
             bm25_upsert=bm25_response,
-            crated_at= np.datetime64("now"),
+            created_at= np.datetime64("now"),
         )
 
     def summarize_document(self, 
                             faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
-                            faiss_file_name: str,
+                            faiss_file_id: uuid.UUID,
                             embeddings_stack: np.ndarray,
                             cache_params: List[ICacheParam],
                             provider: EProviderName,
@@ -220,7 +221,7 @@ class UploadJob(IUploadJob):
             raise ValueError(
                 "Vector store service for FAISS is not properly initialized"
             )
-        original_texts = self.__get_orriginal_texts(faiss_service, faiss_index, faiss_file_name, embeddings_stack, cache_params, file_caller)
+        original_texts = self.__get_orriginal_texts(faiss_service, faiss_index, faiss_file_id, embeddings_stack, cache_params, file_caller)
 
         llm_client = self.llm_provider_factory.get_provider(provider)
         template = self.llm_prompt_structure.build_summary_prompt(original_texts)
@@ -417,7 +418,7 @@ class UploadJob(IUploadJob):
         self,
         provider: EProviderName,
         embed_stack: np.ndarray,
-        file_name: str,
+        file_name: uuid.UUID,
         ids: np.ndarray = np.ndarray([], dtype=np.int64),
         file_caller: str = "",
     ) -> tuple[IVectorDBUpsertResponse, faiss.IndexFlatL2 | faiss.IndexIDMap]:
@@ -461,7 +462,7 @@ class UploadJob(IUploadJob):
         self,
         provider: EProviderName,
         chunk_texts: List[str],
-        file_name: str,
+        file_name: uuid.UUID,
         file_caller: str = "",
     ) -> IVectorDBUpsertResponse | None:
         if chunk_texts is None or len(chunk_texts) == 0:
@@ -526,14 +527,14 @@ class UploadJob(IUploadJob):
         self,
         faiss_service: IVectorStoreService,
         faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap,
-        faiss_file_name: str,
+        faiss_file_id: uuid.UUID,
         embeddings_stack: np.ndarray,
         cache_params: List[ICacheParam],
         file_caller: str = "",
     ) -> str:
         response = faiss_service.search(
             faiss_index,
-            faiss_file_name,
+            faiss_file_id,
             embeddings_stack,
             limit=5,
             file_caller=self.summarize_document.__name__,

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List
+import uuid
 import faiss
 import numpy as np
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
@@ -22,7 +23,7 @@ class IEmbedResponse:
 @dataclass
 class IUploadResponse:
     faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap
-    faiss_file_name: str
+    faiss_file_id: uuid.UUID
     vector_ids: List[int]
     embeddings_stack: np.ndarray
     documents: List[IDocumentResponse]
@@ -30,7 +31,7 @@ class IUploadResponse:
     bm25_upsert: IVectorDBUpsertResponse | None = None
     time_counter: ITimeCounterResponse | None = None
     summarize: str = ""
-    crated_at: Any = None
+    created_at: Any = None
 
 @dataclass
 class IDocumentResponse:
@@ -41,7 +42,7 @@ class IDocumentResponse:
 class IGraphRagUploadResponse:
     conversation_name: str
     responses: List[IGraphRagUploadResponseWithTimeCounter]
-    crated_at: Any = None
+    created_at: Any = None
 
 @dataclass
 class IGraphRagUploadResponseWithTimeCounter:

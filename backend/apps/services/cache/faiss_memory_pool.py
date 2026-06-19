@@ -10,11 +10,11 @@ from backend.apps.core.interfaces.system.i_logging import ILogger
 class FaissMemoryPool(IFaissMemoryPool):
     def __init__(self, logger: ILogger):
         self.logger = logger
-        self.pool = dict[str, faiss.IndexFlatL2 | faiss.IndexIDMap]()
+        self.pool = dict[Any, faiss.IndexFlatL2 | faiss.IndexIDMap]()
 
     def add_to_pool(
         self,
-        key: str,
+        key: Any,
         index: faiss.IndexFlatL2 | faiss.IndexIDMap,
         file_caller: str = "",
     ) -> dict[str, faiss.IndexFlatL2 | faiss.IndexIDMap | Any]:
@@ -27,7 +27,7 @@ class FaissMemoryPool(IFaissMemoryPool):
             self.logger.error(f"Failed to add index to pool for conversation ID {key}: {str(e)}", Path(__file__).name, call_by=file_caller, method_call=self.add_to_pool.__name__)
             return {"status": "error", "message": f"Failed to add index to pool for conversation ID {key}"}
 
-    def get_from_pool(self, key: str, file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap | None:
+    def get_from_pool(self, key: Any, file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap | None:
         try:
             value = self.pool.get(key)
             if value is None:
@@ -39,7 +39,7 @@ class FaissMemoryPool(IFaissMemoryPool):
             self.logger.error(f"Failed to retrieve index from pool for conversation ID {key}: {str(e)}", Path(__file__).name, call_by=file_caller, method_call=self.get_from_pool.__name__)
             return None
 
-    def remove_from_pool(self, key: str, file_caller: str = "") -> bool:
+    def remove_from_pool(self, key: Any, file_caller: str = "") -> bool:
         try:
             result = self.pool.pop(key, None)
             if result is not None:
