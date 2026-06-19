@@ -41,11 +41,7 @@ class IDocumentResponse:
 @dataclass
 class IGraphRagUploadResponse:
     conversation_name: str
-    responses: List[IGraphRagUploadResponseWithTimeCounter]
-    created_at: Any = None
-
-@dataclass
-class IGraphRagUploadResponseWithTimeCounter:
-    document_id: str
+    list_document_ids: List[str]
     graph_retriever: VectorCypherRetriever
+    created_at: Any = None
     time_counter: IGraphTimeCounterResponse | None = None

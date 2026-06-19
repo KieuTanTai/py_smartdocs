@@ -15,7 +15,7 @@ from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 
@@ -180,7 +180,7 @@ class IUploadJob(ABC):
         provider: EProviderName = EProviderName.GEMINI,
         similarity_fn: ESimilarityFn = ESimilarityFn.COSINE,
         file_caller: str = "",
-    ) -> IGraphRagUploadResponseWithTimeCounter:
+    ) -> IGraphRagUploadResponse:
         """
         build knowledge graph for document
         Args:
@@ -191,11 +191,12 @@ class IUploadJob(ABC):
             similarity_fn: function to use for calculating similarity
             file_caller: function name of caller for logging
         Returns:
-            IGraphRagUploadResponseWithTimeCounter: the created graph retriever with time counter
+            IGraphRagUploadResponse: the created graph retriever with time counter
         Raises:
             ValueError: If provider is invalid or document is not found
             Exception: For any other processing errors
         """
+
         pass
 
     @abstractmethod

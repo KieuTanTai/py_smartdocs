@@ -40,6 +40,11 @@ class IConversationFileDatabase(IModelDatabase[ConversationFilesModel]):
         pass
 
     @abstractmethod
+    def get_by_cloud_ids(self, cloud_ids: list[str]) -> QuerySet[ConversationFilesModel]:
+        """Get multiple conversation file instances by cloud IDs."""
+        pass
+
+    @abstractmethod
     def delete_by_conversation(self, conversation: ConversationModel) -> int:
         """Delete all file links attached to the given conversation."""
         pass

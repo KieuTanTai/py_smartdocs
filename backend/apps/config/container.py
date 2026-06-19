@@ -12,7 +12,7 @@ from backend.apps.job.upload_job import UploadJob
 from backend.apps.services.cache.faiss_memory_pool import FaissMemoryPool
 from backend.apps.services.cache.radis_cache_service import RedisCacheService
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
-from backend.apps.services.rag_base.database.database_provider import DatabaseProvider
+from backend.apps.services.database.database_provider import DatabaseProvider
 from backend.apps.services.rag_base.locate.neo4j.neo4j_node_labels_config import Neo4jNodeLabelsConfig
 from backend.apps.services.rag_base.locate.neo4j.neo4j_session import Neo4jSession
 from backend.apps.services.rag_base.storage.storage_service import FileStorageService

@@ -29,16 +29,16 @@ from backend.apps.services.chat.models import (
     DocumentModel,
     MessageModel,
 )
-from backend.apps.services.rag_base.database.conversation_file_database_service import (
+from backend.apps.services.database.conversation_file_database_service import (
     ConversationFileDatabaseService,
 )
-from backend.apps.services.rag_base.database.conversation_database_service import (
+from backend.apps.services.database.conversation_database_service import (
     ConversationDatabaseService,
 )
-from backend.apps.services.rag_base.database.document_database_service import (
+from backend.apps.services.database.document_database_service import (
     DocumentDatabaseService,
 )
-from backend.apps.services.rag_base.database.message_database_service import (
+from backend.apps.services.database.message_database_service import (
     MessageDatabaseService,
 )
 

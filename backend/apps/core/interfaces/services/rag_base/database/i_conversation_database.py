@@ -20,8 +20,8 @@ class IConversationDatabase(IModelDatabase[ConversationModel]):
     @abstractmethod
     def create_conversation(
         self,
-        conversation_name: str,
-        conversation_title: str,
+        conversations_name: str = "",
+        conversations_title: str = "",
         document: DocumentModel | None = None,
         **extra_fields: Any,
     ) -> ConversationModel:
@@ -29,7 +29,7 @@ class IConversationDatabase(IModelDatabase[ConversationModel]):
         pass
 
     @abstractmethod
-    def get_by_name(self, conversation_name: str) -> QuerySet[ConversationModel]:
+    def get_by_name(self, conversations_name: str) -> QuerySet[ConversationModel]:
         """Get conversations by conversation name."""
         pass
 
@@ -40,7 +40,7 @@ class IConversationDatabase(IModelDatabase[ConversationModel]):
 
     @abstractmethod
     def update_title(
-        self, conversation_id: Any, conversation_title: str
+        self, conversations_id: Any, conversations_title: str
     ) -> ConversationModel:
         """Update conversation title."""
         pass

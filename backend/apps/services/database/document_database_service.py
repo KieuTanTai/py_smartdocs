@@ -13,7 +13,7 @@ from backend.apps.core.enums.e_document_status import EDocumentStatus
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import (
     IDocumentDatabase,
 )
-from backend.apps.services.chat.models import DocumentModel
+from backend.apps.services.chat.models import ConversationModel, DocumentModel
 
 
 class DocumentDatabaseService(IDocumentDatabase):
@@ -24,7 +24,7 @@ class DocumentDatabaseService(IDocumentDatabase):
 
     def create_document(
         self,
-        # faiss_index_file_name: str,
+        conversation: ConversationModel,
         file_path: str | Path | None = None,
         status: EDocumentStatus = EDocumentStatus.UPLOADED,
         content: str | None = None,
@@ -32,27 +32,31 @@ class DocumentDatabaseService(IDocumentDatabase):
         **extra_fields: Any,
     ) -> DocumentModel:
         return self.create(
-            # faiss_index_file_name=faiss_index_file_name,
-            file_path=str(file_path) if file_path is not None else None,
-            status=status,
-            content=content,
-            faiss_index_is_active=is_active,
+            documents_conversation=conversation,
+            documents_file_path=str(file_path) if file_path is not None else None,
+            documents_status=status,
+            documents_content=content,
+            documents_is_active=is_active,
             **extra_fields,
         )
 
     def get_by_id(self, model_id: Any) -> DocumentModel:
         return DocumentModel.objects.get(pk=model_id)
 
-    # def get_by_file_name(self, faiss_index_file_name: str) -> QuerySet[DocumentModel]:
-    #     return DocumentModel.objects.filter(
-    #         faiss_index_file_name=faiss_index_file_name
-    #     )
+    def get_by_ids(self, model_ids: list[Any]) -> QuerySet[DocumentModel]:
+        return DocumentModel.objects.filter(pk__in=model_ids)
+
+    def get_by_file_path(self, file_path: Path) -> QuerySet[DocumentModel]:
+        return DocumentModel.objects.filter(documents_file_path=str(file_path))
+
+    def get_by_file_paths(self, file_paths: list[Path]) -> QuerySet[DocumentModel]:
+        return DocumentModel.objects.filter(documents_file_path__in=[str(path) for path in file_paths])
 
     def list(self, **filters: Any) -> QuerySet[DocumentModel]:
         queryset = DocumentModel.objects.all()
         if filters:
             queryset = queryset.filter(**filters)
-        return queryset.order_by("-faiss_index_created_at")
+        return queryset.order_by("-documents_created_at")
 
     @transaction.atomic
     def update(self, model_id: Any, **fields: Any) -> DocumentModel:
@@ -67,10 +71,10 @@ class DocumentDatabaseService(IDocumentDatabase):
         return document
 
     def update_status(self, document_id: Any, status: EDocumentStatus) -> DocumentModel:
-        return self.update(document_id, status=status)
+        return self.update(document_id, documents_status=status)
 
     def deactivate(self, document_id: Any) -> DocumentModel:
-        return self.update(document_id, faiss_index_is_active=False)
+        return self.update(document_id, documents_is_active=False)
 
     @transaction.atomic
     def delete(self, model_id: Any) -> int:

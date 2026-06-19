@@ -12,7 +12,6 @@ import numpy as np
 
 from backend.apps.core.enums.e_document_status import EDocumentStatus
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import ITimeCounterResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
@@ -20,10 +19,9 @@ from backend.apps.core.interfaces.services.rag_base.database.i_document_database
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IExtractMapping, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
-from backend.apps.services.chat.models import DocumentModel
+from backend.apps.services.chat.models import ConversationModel, DocumentModel
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
-from neo4j_graphrag.retrievers import VectorCypherRetriever
 
 class UploadTask(Task, IUploadTask):
 
@@ -51,11 +49,11 @@ class UploadTask(Task, IUploadTask):
 
     # * New run method to handle for new interface with file paths,
     # * this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def run_with_paths(self, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller: str = "") -> IUploadResponse:
+    def run_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller: str = "") -> IUploadResponse:
         self.logger.info(f"Starting UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
         try:
             # Chạy luồng lõi
-            result_dataclass = self.__execute_base_pipeline_with_paths(file_paths, provider_name, model_name)
+            result_dataclass = self.__execute_base_pipeline_with_paths(conversation_model, file_paths, provider_name, model_name)
             # Lưu index vào memory pool
             self.logger.info(f"Adding FAISS index to memory pool with file ID {result_dataclass.faiss_file_id} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             self.faiss_memory_pool.add_to_pool(result_dataclass.faiss_file_id, result_dataclass.faiss_index, file_caller)
@@ -65,10 +63,10 @@ class UploadTask(Task, IUploadTask):
             self.logger.error(f"Error processing file paths {file_paths}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             raise exc
 
-    def run_graph_pipeline_with_paths(self, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
+    def run_graph_pipeline_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
         self.logger.info(f"Starting Graph RAG UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
         try:
-            responses = self.__execute_pipeline_create_retriever_with_paths(file_paths, provider_name, model_name, embed_model_name)
+            responses = self.__execute_pipeline_create_retriever_with_paths(conversation_model, file_paths, provider_name, model_name, embed_model_name)
             self.logger.info(f"Successfully completed Graph RAG UploadTask for file paths {file_paths} and provider {provider_name}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
             return responses
         except Exception as exc:
@@ -87,15 +85,10 @@ class UploadTask(Task, IUploadTask):
             )
             raise ValueError("Document database service is not available")
 
-    def __create_document_model(self, file_path: Path | None = None, content: str | None = None) -> DocumentModel:
+    def __create_document_model(self, conversation_model: ConversationModel, file_path: Path | None = None, content: str | None = None) -> DocumentModel:
         """Create a new document model and set its status."""
         self.__ensure_document_database_exists()
-        response = self.document_database.create_document(
-            file_path=file_path,
-            status=EDocumentStatus.PROCESSING,
-            content=content,
-            is_active=True,
-        )
+        response = self.document_database.create_document(conversation_model, file_path, EDocumentStatus.PROCESSING, content)
         return response
 
     def __update_document_status_and_path(self, document_id: Any, status: EDocumentStatus, file_path: Path | None = None) -> DocumentModel:
@@ -103,45 +96,36 @@ class UploadTask(Task, IUploadTask):
         self.__ensure_document_database_exists()
         document = self.document_database.update_status(document_id, status)
         if file_path:
-            document.file_path = str(file_path)
+            document.documents_file_path = str(file_path)
             document.save(update_fields=["file_path"])
         return document
 
-    def __get_valid_file_path(self, document: DocumentModel) -> List[Path]:
-        """Validate and get paths of a document. Supports multiple files."""
-        if not document.file_path:
-            self.logger.error(
-                f"Document {document.pk} has no stored file path",
-                source=Path(__file__).name,
-                call_by=Path(__file__).name,
-                method_call=self.__get_valid_file_path.__name__,
-            )
-            raise ValueError(f"Document {document.pk} has no stored file path")
-        paths = []
-
-        if isinstance(document.file_path, list):
-            paths = [Path(p) for p in document.file_path]
-        elif isinstance(document.file_path, str):
-            paths = [Path(p.strip()) for p in document.file_path.split(",")]
-
-        if not paths:
-            raise ValueError(f"Document {document.pk} has invalid file paths")
-        return paths
-
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def __execute_pipeline_create_retriever_with_paths(self, file_paths: list[Path], provider: EProviderName, model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
-        # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents
-        contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
+    def __execute_pipeline_create_retriever_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
 
-        # * Step 2: Chunk and cache the normalized text
+        # start extract time counter
+        self.time_counter.start()
+        # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
+        contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
+        extract_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Completed text extraction and normalization for file paths {file_paths} in {extract_time:.2f} seconds", source=Path(__file__).name, 
+                         call_by=self.__execute_pipeline_create_retriever_with_paths.__name__, method_call=self.__execute_pipeline_create_retriever_with_paths.__name__)
+
+        # start chunk time counter
+        self.time_counter.start()
+        # * Step 2: Chunk the normalized text
         chunk_responses, chunk_texts = self.__chunk(contents)
         chunk_batches = [chunk_response.chunk_texts for chunk_response in chunk_responses]
+        chunk_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Completed text chunking for file paths {file_paths} in {chunk_time:.2f} seconds", source=Path(__file__).name, 
+                         call_by=self.__execute_pipeline_create_retriever_with_paths.__name__, method_call=self.__execute_pipeline_create_retriever_with_paths.__name__)
 
+        
         # * Step 3: Create graph retriever
         responses = self.__create_graph_retriever(provider, document_ids, chunk_batches, model_name, embed_model_name)
         return responses
 
-    def __create_graph_retriever(self, provider: EProviderName, document_ids: List[str], chunks_batches: List[List[str]], model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
+    def __create_graph_retriever(self, provider: EProviderName, document_ids: List[str], chunks_batches: List[List[str]], model_name: str, embed_model_name: str) -> IGraphRagUploadResponse: #type: ignore
         responses = []
         for document_id, chunk_texts in zip(document_ids, chunks_batches):
             graph_retriever = self.upload_job.step_build_knowledge_graph(
@@ -153,21 +137,17 @@ class UploadTask(Task, IUploadTask):
                 file_caller=self.__create_graph_retriever.__name__,
             )
             responses.append(graph_retriever)
-        return IGraphRagUploadResponse(
-            conversation_name=self.upload_job.build_name(document_ids, file_caller=self.__create_graph_retriever.__name__),
-            responses=responses,
-            created_at=np.datetime64("now"),
-        )
+            raise ValueError(f"Failed to create graph retriever for document {document_id} with provider {provider}")
 
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     def __execute_base_pipeline_with_paths(
-        self, file_paths: list[Path], provider: EProviderName, model_name: str
+        self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str
     ) -> IUploadResponse:
 
         # start extract time counter
         self.time_counter.start()
         # * Step 0: Create base model and get index on db for using like file name
-        faiss_document = self.__create_document_model()
+        faiss_document = self.__create_document_model(conversation_model)
 
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
         contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_base_pipeline_with_paths.__name__)
@@ -218,7 +198,7 @@ class UploadTask(Task, IUploadTask):
         summarize_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed document summarization for file paths {file_paths} in {summarize_time:.2f} seconds", source=Path(__file__).name, 
                          call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
-        
+
         # * Step 7: mapping time counter to response
         upload_response.time_counter = self.time_counter.mapping_to_time_counter_response(extract_time, chunk_time, embedding_time, save_time, summarize_time)
         return upload_response
@@ -274,4 +254,3 @@ class UploadTask(Task, IUploadTask):
             extracted_text = self.upload_job.step_extract_and_normalize(file_path, provider, file_caller=self.__extract_contents_and_get_document_ids.__name__)
             contents.append(IExtractMapping(file_path, extracted_text))
         return contents, [content.extract_content.document_id for content in contents]
-

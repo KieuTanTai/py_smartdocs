@@ -22,32 +22,35 @@ class ConversationDatabaseService(IConversationDatabase):
 
     def create_conversation(
         self,
-        conversation_name: str,
-        conversation_title: str,
+        conversations_name: str = "",
+        conversations_title: str = "",
         document: DocumentModel | None = None,
         **extra_fields: Any,
     ) -> ConversationModel:
         return self.create(
-            conversation_name=conversation_name,
-            conversation_title=conversation_title,
-            conversation_faiss_index=document,
+            conversations_name=conversations_name,
+            conversations_title=conversations_title,
+            conversations_faiss_index=document,
             **extra_fields,
         )
 
     def get_by_id(self, model_id: Any) -> ConversationModel:
         return ConversationModel.objects.get(pk=model_id)
 
-    def get_by_name(self, conversation_name: str) -> QuerySet[ConversationModel]:
-        return ConversationModel.objects.filter(conversation_name=conversation_name)
+    def get_by_ids(self, model_ids: list[Any]) -> QuerySet[ConversationModel]:
+        return ConversationModel.objects.filter(pk__in=model_ids)
+
+    def get_by_name(self, conversations_name: str) -> QuerySet[ConversationModel]:
+        return ConversationModel.objects.filter(conversations_name=conversations_name)
 
     def get_by_document(self, document: DocumentModel) -> QuerySet[ConversationModel]:
-        return ConversationModel.objects.filter(conversation_faiss_index=document)
+        return ConversationModel.objects.filter(conversations_faiss_index=document)
 
     def list(self, **filters: Any) -> QuerySet[ConversationModel]:
         queryset = ConversationModel.objects.all()
         if filters:
             queryset = queryset.filter(**filters)
-        return queryset.order_by("-conversation_created_at")
+        return queryset.order_by("-conversations_created_at")
 
     @transaction.atomic
     def update(self, model_id: Any, **fields: Any) -> ConversationModel:
@@ -60,11 +63,11 @@ class ConversationDatabaseService(IConversationDatabase):
         return conversation
 
     def update_title(
-        self, conversation_id: Any, conversation_title: str
+        self, conversations_id: Any, conversations_title: str
     ) -> ConversationModel:
         return self.update(
-            conversation_id,
-            conversation_title=conversation_title,
+            conversations_id,
+            conversations_title=conversations_title,
         )
 
     @transaction.atomic

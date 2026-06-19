@@ -27,7 +27,7 @@ class ConversationFileDatabaseService(IConversationFileDatabase):
         **extra_fields: Any,
     ) -> ConversationFilesModel:
         return self.create(
-            conversation=conversation,
+            conversation_files_conversation=conversation,
             conversation_files_cloud_id=cloud_id,
             **extra_fields,
         )
@@ -35,10 +35,16 @@ class ConversationFileDatabaseService(IConversationFileDatabase):
     def get_by_id(self, model_id: Any) -> ConversationFilesModel:
         return ConversationFilesModel.objects.get(pk=model_id)
 
+    def get_by_ids(self, model_ids: list[Any]) -> QuerySet[ConversationFilesModel]:
+        return ConversationFilesModel.objects.filter(pk__in=model_ids)
+
+    def get_by_cloud_ids(self, cloud_ids: list[str]) -> QuerySet[ConversationFilesModel]:
+        return ConversationFilesModel.objects.filter(conversation_files_cloud_id__in=cloud_ids)
+
     def get_by_conversation(
         self, conversation: ConversationModel
     ) -> QuerySet[ConversationFilesModel]:
-        return ConversationFilesModel.objects.filter(conversation=conversation)
+        return ConversationFilesModel.objects.filter(conversation_files_conversation=conversation)
 
     def get_by_cloud_id(self, cloud_id: str) -> QuerySet[ConversationFilesModel]:
         return ConversationFilesModel.objects.filter(conversation_files_cloud_id=cloud_id)
@@ -67,6 +73,6 @@ class ConversationFileDatabaseService(IConversationFileDatabase):
     @transaction.atomic
     def delete_by_conversation(self, conversation: ConversationModel) -> int:
         deleted_count, _ = ConversationFilesModel.objects.filter(
-            conversation=conversation
+            conversation_files_conversation=conversation
         ).delete()
         return deleted_count

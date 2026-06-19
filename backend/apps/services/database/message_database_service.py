@@ -28,37 +28,40 @@ class MessageDatabaseService(IMessageDatabase):
         **extra_fields: Any,
     ) -> MessageModel:
         return self.create(
-            message_conversation=conversation,
-            message_content=content,
-            message_is_user_send=is_user_send,
+            messages_conversation=conversation,
+            messages_content=content,
+            messages_is_user_send=is_user_send,
             **extra_fields,
         )
 
     def get_by_id(self, model_id: Any) -> MessageModel:
         return MessageModel.objects.get(pk=model_id)
 
+    def get_by_ids(self, model_ids: list[Any]) -> QuerySet[MessageModel]:
+        return MessageModel.objects.filter(pk__in=model_ids)
+
     def get_by_conversation(
         self, conversation: ConversationModel
     ) -> QuerySet[MessageModel]:
         return MessageModel.objects.filter(
-            message_conversation=conversation
-        ).order_by("message_created_at")
+            messages_conversation=conversation
+        ).order_by("messages_created_at")
 
     def get_user_messages(
         self, conversation: ConversationModel
     ) -> QuerySet[MessageModel]:
-        return self.get_by_conversation(conversation).filter(message_is_user_send=True)
+        return self.get_by_conversation(conversation).filter(messages_is_user_send=True)
 
     def get_assistant_messages(
         self, conversation: ConversationModel
     ) -> QuerySet[MessageModel]:
-        return self.get_by_conversation(conversation).filter(message_is_user_send=False)
+        return self.get_by_conversation(conversation).filter(messages_is_user_send=False)
 
     def list(self, **filters: Any) -> QuerySet[MessageModel]:
         queryset = MessageModel.objects.all()
         if filters:
             queryset = queryset.filter(**filters)
-        return queryset.order_by("-message_created_at")
+        return queryset.order_by("-messages_created_at")
 
     @transaction.atomic
     def update(self, model_id: Any, **fields: Any) -> MessageModel:
@@ -78,6 +81,6 @@ class MessageDatabaseService(IMessageDatabase):
     @transaction.atomic
     def delete_by_conversation(self, conversation: ConversationModel) -> int:
         deleted_count, _ = MessageModel.objects.filter(
-            message_conversation=conversation
+            messages_conversation=conversation
         ).delete()
         return deleted_count

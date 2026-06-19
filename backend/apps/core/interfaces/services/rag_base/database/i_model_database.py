@@ -25,6 +25,11 @@ class IModelDatabase(ABC, Generic[TModel]):
         """Get one model instance by primary key."""
         pass
 
+    @abstractmethod 
+    def get_by_ids(self, model_ids: list[Any]) -> QuerySet[TModel]:
+        """Get multiple model instances by primary keys."""
+        pass
+
     @abstractmethod
     def list(self, **filters: Any) -> QuerySet[TModel]:
         """List model instances, optionally filtered by model fields."""

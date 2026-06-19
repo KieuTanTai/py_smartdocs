@@ -20,8 +20,7 @@ from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IE
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IDocumentResponse, IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
-from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IDocumentResponse, IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
@@ -51,7 +50,6 @@ from neo4j_graphrag.embeddings.google_genai import GeminiEmbedder
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
-    IEmbeddingResponse,
 )
 
 class UploadJob(IUploadJob):
@@ -291,7 +289,7 @@ class UploadJob(IUploadJob):
         provider: EProviderName = EProviderName.GEMINI,
         similarity_fn: ESimilarityFn = ESimilarityFn.COSINE,
         file_caller: str = "",
-    ) -> IGraphRagUploadResponseWithTimeCounter:
+    ) -> IGraphRagUploadResponse:
         self.logger.info(
             f"Create a knowledge graph for the given document {document_id}",
             Path(__file__).name,
@@ -302,18 +300,7 @@ class UploadJob(IUploadJob):
         llm_model = provider_client.get_llm_model(model_name, file_caller)
         embedder = provider_client.get_embedder_model(embedding_model_name, file_caller)
         template = self.llm_prompt_structure.build_prompt_for_retrieval_query()
-        return IGraphRagUploadResponseWithTimeCounter(
-            document_id=document_id,
-            graph_retriever=await self.__run_pipeline_create_retriever(
-                document_id,
-                embedder,
-                llm_model,
-                template,
-                extracted_texts,
-                similarity_fn,
-                file_caller=file_caller,
-            ),
-        )
+        raise NotImplementedError("The method step_build_knowledge_graph is not implemented yet. Please implement it in the subclass.")
 
     ## ------------------- PRIVATE METHODS -------------------
     async def __run_pipeline_create_retriever(
