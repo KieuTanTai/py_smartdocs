@@ -4,7 +4,7 @@ Interface for Upload Job module.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 import uuid
 
 import faiss
@@ -15,7 +15,7 @@ from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 
@@ -173,8 +173,8 @@ class IUploadJob(ABC):
     @abstractmethod
     async def step_build_knowledge_graph(
         self,
-        document_id: str,
-        extracted_texts: List[str],
+        conversation_id: uuid.UUID,
+        graph_params: List[IGraphRagParam],
         model_name: str,
         embedding_model_name: str,
         provider: EProviderName = EProviderName.GEMINI,
@@ -184,10 +184,10 @@ class IUploadJob(ABC):
         """
         build knowledge graph for document
         Args:
-            document_id: ID of the document
-            extracted_texts: texts extracted from the document
-            provider: provider name to use for building knowledge graph (for example: different LLM provider may be used for different provider)
+            graph_params: list of graph parameters
             model_name: model name to use for building knowledge graph
+            embedding_model_name: embedding model name to use for building knowledge graph
+            provider: provider name to use for building knowledge graph (for example: different LLM provider may be used for different provider)
             similarity_fn: function to use for calculating similarity
             file_caller: function name of caller for logging
         Returns:
@@ -210,4 +210,19 @@ class IUploadJob(ABC):
         Returns:
             file name built from document IDs
         """        
+        pass
+
+    @abstractmethod
+    def build_chunk_keys(
+        self, file_id: str, chunk_texts: List[str], file_caller: str = ""
+    ) -> List[Tuple[np.int64, str]]:
+        """
+        build chunk keys for caching
+        Args:
+            file_id: the ID of the FAISS file where the index is stored
+            chunk_texts: list of original chunk texts
+            file_caller: function name of caller for logging
+        Returns:
+            list of tuples containing chunk IDs and corresponding chunk texts
+        """
         pass

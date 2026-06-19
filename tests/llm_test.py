@@ -5,7 +5,13 @@ Test requests to all 3 LLM providers: Gemini, Mistral, and Ollama
 import asyncio
 import datetime
 from pathlib import Path
+from typing import List
+import uuid
+
+import numpy as np
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
+from backend.apps.core.interfaces.dataclass.locate.i_neo4j_search_request import INeo4jSearchRequest
+from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IGraphRagParam
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import (
     INeo4jService,
 )
@@ -52,6 +58,82 @@ Chúng tôi đã tiến hành kiểm toán theo các chuẩn mực kiểm toán 
 Các chuẩn mực này yêu cầu chúng tôi tuân thủ chuẩn mực và các quy định về đạo đức nghề nghiệp, lập kế hoạch và thực hiện cuộc kiểm toán để đạt được sự đảm bảo hợp lý về việc liệu Báo cáo tài chính của Công ty có còn sai sót trong yếu hay không.
 
 """,
+    """
+    2
+    Automatic Zoom
+    TÀI LIỆU KIẾN TRÚC & TRIỂN KHAI ỨNG 
+    DỤNG RAG PDF (TƯƠNG TỰ 
+    NOTEBOOKLM) 
+    Tài liệu này mô tả chi tiết kiến trúc, công nghệ và luồng xử lý để xây dựng một ứng dụng cho 
+    phép người dùng tải lên file PDF và đặt câu hỏi dựa trên nội dung của file đó. 
+    1. Tổng quan Công nghệ (Tech Stack) 
+    Hệ thống được thiết kế theo hướng Microservices/API-driven, tối giản và dễ dàng triển khai 
+    (Self-hosted). 
+    ●  Trích xuất văn bản (OCR): PaddleOCR (Hoạt động như một API độc lập). 
+    ●  Chia nhỏ văn bản (Chunking): Xử lý tại Backend (VD: dùng LangChain Text Splitter). 
+    ●  Embedding Model: BAAI/bge-m3 (Mô hình đa ngôn ngữ, hỗ trợ tiếng Việt xuất sắc). 
+    ●  Vector Database: Qdrant (Triển khai nội bộ qua Docker Compose). 
+    ●  Local LLM: Qwen 1.5B / Qwen2 1.5B (Chạy qua Ollama, triển khai nội bộ qua Docker 
+    Compose). 
+    ●  Quản lý Session Chat: In-Memory Storage (Lưu trực tiếp trên RAM của Backend). 
+    2. Cấu hình Triển khai Hạ tầng (Docker Compose) 
+    Phần lõi lưu trữ (Qdrant) và xử lý ngôn ngữ tự nhiên (Ollama/Qwen) sẽ được đóng gói chung 
+    trong một mạng lưới Docker nội bộ. 
+    version: '3.8'  services:   # 1. Vector Database   qdrant:     image: qdrant/qdrant:latest     container_name: qdrant_db     ports:       - "6333:6333" # REST API Port     volumes:       - ./qdrant_storage:/qdrant/storage     restart: unless-stopped    # 2. Local LLM Server (Ollama) 
+    ollama:     image: ollama/ollama:latest 
+        container_name: ollama_llm     ports:       - "11434:11434" # Ollama API Port     volumes:       - ./ollama_storage:/root/.ollama     restart: unless-stopped  
+    Lưu ý: Sau khi chạy docker-compose up -d, cần pull model Qwen bằng lệnh: docker exec -it 
+    ollama_llm ollama run qwen2:1.5b 
+    3. Chi tiết Luồng Thực thi (Workflow) 
+    Bước 1: Trích xuất và Xử lý văn bản (Chunking) 
+    Mục đích: Lấy chữ từ file PDF (dạng ảnh scan) và chia nhỏ để model dễ hiểu. 
+    1.  Gọi API OCR: Backend nhận file PDF từ người dùng, gửi đến API PaddleOCR. 
+    2.  Nhận Raw Text: API PaddleOCR trả về tọa độ và các khối chữ. Backend ghép chúng lại 
+    thành một chuỗi văn bản hoàn chỉnh. 
+    3.  Chunking: Đưa chuỗi văn bản qua thuật toán cắt đoạn (VD: 
+    RecursiveCharacterTextSplitter). 
+    ○  Chunk size: 500 - 800 ký tự / đoạn. 
+    ○  Chunk overlap: 100 - 150 ký tự (Giữ lại phần giao nhau để không mất ngữ nghĩa giữa 
+    hai đoạn liên tiếp). 
+    Bước 2: Embedding và Lưu trữ vào Vector Database 
+    Mục đích: Số hóa văn bản thành tọa độ không gian để tìm kiếm tương đồng. 
+    1.  Tạo Vector: Backend đẩy từng chunk qua model BAAI/bge-m3 để nhận lại các vector toán 
+    học. 
+    2.  Lưu vào Qdrant: Ghi dữ liệu vào Qdrant DB. Mỗi bản ghi (point) bắt buộc phải có: 
+    ○  id: UUID tự sinh. 
+    ○  vector: Dữ liệu toán học từ model BGE-M3. 
+    ○  payload (Metadata): 
+    ■  text: Nội dung chữ gốc của chunk. 
+    ■  file_id: Mã định danh duy nhất của file PDF (Bắt buộc để phân biệt các file). 
+    Bước 3: Luồng RAG (Truy xuất dữ liệu) 
+    Mục đích: Tìm đúng đoạn văn bản chứa câu trả lời khi người dùng đặt câu hỏi. 
+    1.  Người dùng gửi câu hỏi và file_id của tài liệu đang mở. 
+    2.  Backend dùng BAAI/bge-m3 chuyển câu hỏi thành "Vector câu hỏi". 
+    3.  Tìm kiếm trên Qdrant (Similarity Search): 
+    ○  Điều kiện lọc (Filter): file_id = ID của file hiện tại. 
+    ○  Lấy ra Top K (VD: 3 - 5) chunks có vector gần giống với câu hỏi nhất. 
+    Bước 4: Gom dữ liệu và Gọi LLM (Ollama) 
+    Mục đích: Tổng hợp thông tin và yêu cầu Qwen 1.5B sinh ra câu trả lời tự nhiên. 
+    1.  Thiết kế System Prompt:"Bạn là một trợ lý ảo thông minh chuyên phân tích tài liệu. Dưới 
+    đây là các đoạn thông tin được trích xuất từ tài liệu. Hãy trả lời câu hỏi CHỈ DỰA VÀO 
+    những thông tin này. Nếu không có đáp án trong tài liệu, hãy nói 'Tài liệu không đề cập đến', 
+    tuyệt đối không tự suy diễn." 
+    2.  Gom Payload: Backend ráp nối chuỗi theo cấu trúc: [System Prompt] + [Top K Chunks 
+    Text] + [Lịch sử Chat] + [Câu hỏi mới]. 
+    3.  Gọi API Ollama: 
+    ○  Endpoint: http://localhost:11434/api/generate 
+    ○  Backend gửi POST request chứa Payload trên đến container Ollama. 
+    4.  Nhận kết quả văn bản từ Qwen và trả về cho Client. 
+    Bước 5: Quản lý Session Chat (In-Memory) 
+    Mục đích: Giúp AI nhớ được các câu hỏi trước đó trong cùng một phiên làm việc. 
+    1.  Sử dụng cấu trúc dữ liệu toàn cục trên RAM của Backend (VD: Dictionary<string, 
+    List<Message>>). 
+    2.  Mỗi phiên chat có một session_id. 
+    3.  Lưu trữ tối đa 5 đến 10 vòng thoại (turn) gần nhất cho mỗi session_id. 
+    4.  Mỗi khi gọi qua Bước 4, trích xuất danh sách lịch sử này và nhét vào Prompt. 
+    5.  Tối ưu: Khi lịch sử vượt quá số lượng tối đa, tự động xóa các tin nhắn cũ nhất (FIFO - First In 
+    First Out) để tránh quá tải RAM và giới hạn Token của LLM. 
+    """,
     """
 Công việc kiểm toán bao gồm thực hiện các thủ tục nhằm thu thập các bằng chứng kiểm toán về các số liệu và thuyết minh trên Báo cáo tài chính.
 
@@ -125,6 +207,21 @@ errors = {
     "ollama": "",
 }
 
+MOCK_IGRAPH_RAG_PARAMS = [
+    IGraphRagParam(document_id="doc1", chunk_id=np.int64(1), 
+                   chunk_content="This is the first chunk of document 1", conversation_id=uuid.uuid7()),
+    IGraphRagParam(document_id="doc1", chunk_id=np.int64(2), 
+                   chunk_content="This is the second chunk of document 1", conversation_id=uuid.uuid7()),
+    IGraphRagParam(document_id="doc2", chunk_id=np.int64(1), 
+                   chunk_content=RETRIEVED_CHUNKS[1], conversation_id=uuid.uuid7()),
+    IGraphRagParam(document_id="doc2", chunk_id=np.int64(2),
+                   chunk_content=RETRIEVED_CHUNKS[2], conversation_id=uuid.uuid7()),
+    IGraphRagParam(document_id="doc3", chunk_id=np.int64(1),
+                     chunk_content=RETRIEVED_CHUNKS[0], conversation_id=uuid.uuid7()),
+    IGraphRagParam(document_id="doc3", chunk_id=np.int64(2),
+                   chunk_content="This is the second chunk of document 3", conversation_id=uuid.uuid7()),
+
+    ]
 
 def test_gemini():
     try:
@@ -187,8 +284,8 @@ def test_ollama():
 async def run_all_tests():
     await asyncio.gather(
         asyncio.to_thread(test_gemini),
-        asyncio.to_thread(test_mistral),
-        asyncio.to_thread(test_ollama),
+        # asyncio.to_thread(test_mistral),
+        # asyncio.to_thread(test_ollama),
     )
 
 
@@ -268,19 +365,30 @@ async def test_neo4j_service_search():
             )
         print(f"llm: {llm_models['gemini']}")
         print(f"embedder: {embedder_model['gemini'].__dict__}")
-        name = service.create_vector_index(index_name="demo", dimension=embedder_model["gemini"].embedding_dim, 
-                                                   label="Chunk", embedding_property="embedding", similarity_fn=ESimilarityFn.COSINE)
+        name = uuid.UUID("019edf75-90fc-768f-8570-60adc5294ffb")
+        service.create_vector_index(
+            index_name=name,
+            dimension=embedder_model["gemini"].embedding_dim,
+            label="Chunk",
+            embedding_property="embedding",
+            similarity_fn=ESimilarityFn.COSINE,
+        )
         retriever = await service.execute_file_to_kg_pipeline(
             retrieval_query=build_template,
             index_name=name,
-            extracted_texts=RETRIEVED_CHUNKS,
+            params=MOCK_IGRAPH_RAG_PARAMS,
             llm_model=llm_models["gemini"],
             embedder=embedder_model["gemini"],
             file_caller="test_neo4j_service_search",
         )
-        result = service.search(
+        search_request = INeo4jSearchRequest(
             query_text=USER_INPUT_2,
-            limit=5,
+            top_k=5,
+            conversation_id=str(uuid.uuid7()),
+            document_ids=[param.document_id for param in MOCK_IGRAPH_RAG_PARAMS][:2]
+        )
+        result = service.search(
+            search_request=search_request,
             llm=llm_models["gemini"],
             retriever=retriever,
             template=llm_structure_model.create_rag_template(),
@@ -296,15 +404,15 @@ async def test_neo4j_service_search():
 
 if __name__ == "__main__":
     asyncio.run(run_all_tests())
-    for provider in generate_results.keys():
-        save_results(
-            name=provider.capitalize(),
-            result=generate_results[provider],
-            embedding_result=str(embed_results[provider]),
-            error=errors[provider],
-            embedder_model_result=str(embedder_model[provider]),
-            llm_model_result=str(llm_models[provider]),
-        )
+    # for provider in generate_results.keys():
+        # save_results(
+        #     name=provider.capitalize(),
+        #     result=generate_results[provider],
+        #     embedding_result=str(embed_results[provider]),
+        #     error=errors[provider],
+        #     embedder_model_result=str(embedder_model[provider]),
+        #     llm_model_result=str(llm_models[provider]),
+        # )
     # Run Neo4j tests
     print(f"Ex: {ERExtractionTemplate().DEFAULT_TEMPLATE}")
     try:

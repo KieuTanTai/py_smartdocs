@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IRetrievalTimeCounterResponse, ITimeCounterResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IGraphTimeCounterResponse, IRetrievalTimeCounterResponse, ITimeCounterResponse
 
 class ITimeCounter(ABC):
     @abstractmethod
@@ -43,6 +43,16 @@ class ITimeCounter(ABC):
         This method should take the recorded time values (e.g., retrieval_time, query_time) and return an instance of IRetrievalTimeCounterResponse with these values populated.
         Returns:
             IRetrievalTimeCounterResponse: An instance of IRetrievalTimeCounterResponse containing the recorded time values.
+        """
+        pass
+
+    @abstractmethod
+    def mapping_to_graph_time_counter_response(self, extract_time: float, chunk_time: float, graph_retriever_time: float, query_time: float = 0.0) -> IGraphTimeCounterResponse:
+        """
+        Map the recorded time values to an IGraphTimeCounterResponse dataclass instance.
+        This method should take the recorded time values (e.g., extract_time, chunk_time, graph_retriever_time, total_time, query_time) and return an instance of IGraphTimeCounterResponse with these values populated.
+        Returns:
+            IGraphTimeCounterResponse: An instance of IGraphTimeCounterResponse containing the recorded time values.
         """
         pass
 

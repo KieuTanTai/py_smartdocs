@@ -20,7 +20,7 @@ from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IE
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IDocumentResponse, IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IDocumentResponse, IEmbedResponse, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
@@ -127,7 +127,7 @@ class UploadJob(IUploadJob):
             self.step_chunk.__name__,
         )
         # * NOTE: change chunk keys to tuple[np.int64, str] to store in cache and using for ids in faiss service
-        chunk_keys_tuples = self.__build_chunk_keys(document_id, chunk_texts, file_caller=file_caller)
+        chunk_keys_tuples = self.build_chunk_keys(document_id, chunk_texts, file_caller=file_caller)
 
         # * NOTE: change field chunk_keys from List[str] to List[np.int64] to store the hashed keys for faiss ids, the original keys are stored in cache with the hashed keys as reference
         response = IChunkResponse(
@@ -282,8 +282,8 @@ class UploadJob(IUploadJob):
 
     async def step_build_knowledge_graph(
         self,
-        document_id: str,
-        extracted_texts: List[str],
+        conversation_id: uuid.UUID,
+        graph_params: List[IGraphRagParam],
         model_name: str,
         embedding_model_name: str,
         provider: EProviderName = EProviderName.GEMINI,
@@ -291,25 +291,83 @@ class UploadJob(IUploadJob):
         file_caller: str = "",
     ) -> IGraphRagUploadResponse:
         self.logger.info(
-            f"Create a knowledge graph for the given document {document_id}",
+            f"Create a knowledge graph for the given documents {', '.join([graph_param.document_id for graph_param in graph_params])}",
             Path(__file__).name,
             file_caller,
             self.step_build_knowledge_graph.__name__,
         )
+
         provider_client = self.llm_provider_factory.get_provider(provider)
         llm_model = provider_client.get_llm_model(model_name, file_caller)
         embedder = provider_client.get_embedder_model(embedding_model_name, file_caller)
         template = self.llm_prompt_structure.build_prompt_for_retrieval_query()
-        raise NotImplementedError("The method step_build_knowledge_graph is not implemented yet. Please implement it in the subclass.")
+        retriever = await self.__run_pipeline_create_retriever(
+            conversation_id=conversation_id,
+            embedder=embedder,
+            llm_model=llm_model,
+            template=template,
+            params=graph_params,
+            similarity_fn=similarity_fn,
+            file_caller=file_caller,
+        )
+        return IGraphRagUploadResponse(
+            conversation_id=conversation_id,
+            list_document_ids=[param.document_id for param in graph_params],
+            graph_param_list=graph_params,
+            graph_retriever=retriever,
+            created_at=np.datetime64("now"),
+        )
+
+    def build_chunk_keys(
+        self, file_id: str, chunk_texts: List[str], file_caller: str = ""
+    ) -> List[Tuple[np.int64, str]]:
+        """create chunk keys based on file_id with structure: file_id:chunk_index
+        after that hashing this key to 64 bit integer for numpy array dtype int64
+        """
+        chunk_keys_tuples = []
+        for idx, chunk in enumerate(chunk_texts):
+            chunk_key_str = f"{file_id}:{idx}"
+            chunk_key_hash = hash_to_numpy_int64_by_str_content(chunk_key_str)
+            chunk_keys_tuples.append((chunk_key_hash, chunk))
+        if not chunk_keys_tuples:
+            self.logger.error(
+                f"Failed to build chunk keys for file_id {file_id} because chunk_keys_tuples is empty",
+                Path(__file__).name,
+                file_caller,
+                self.build_chunk_keys.__name__,
+            )
+            raise ValueError(
+                f"Failed to build chunk keys for file_id {file_id} because chunk_keys_tuples is empty"
+            )
+        self.logger.info(
+            f"Built chunk keys for file_id {file_id} with chunk keys: {[k for k, _ in chunk_keys_tuples]}",
+            Path(__file__).name,
+            file_caller,
+            self.build_chunk_keys.__name__,
+        )
+        return chunk_keys_tuples
+
+    def build_name(
+        self, document_ids: List[str], split_by: str = "_", file_caller: str = ""
+    ) -> str:
+        sorted_ids = sorted(document_ids)
+        name = split_by.join(sorted_ids)
+        self.logger.info(
+            f"Built file name '{name}' from document IDs: {document_ids}",
+            Path(__file__).name,
+            file_caller,
+            self.build_name.__name__,
+        )
+        return name
 
     ## ------------------- PRIVATE METHODS -------------------
     async def __run_pipeline_create_retriever(
         self,
-        document_id: str,
+        conversation_id: uuid.UUID,
         embedder: Embedder,
         llm_model: LLMInterface,
         template: str,
-        extracted_texts: List[str],
+        params: List[IGraphRagParam],
         similarity_fn: ESimilarityFn,
         file_caller: str = "",
     ) -> VectorCypherRetriever:
@@ -318,7 +376,7 @@ class UploadJob(IUploadJob):
             if (service is None) or (not isinstance(service, INeo4jService)):
                 raise ValueError("Failed to get a valid Neo4jService instance from the session")
             service.create_vector_index(
-                index_name=document_id, 
+                index_name=conversation_id, 
                 dimension=embedder.embedding_dim if isinstance(embedder, GeminiEmbedder) else 768,
                 label="Chunk",
                 embedding_property="embedding",
@@ -327,8 +385,8 @@ class UploadJob(IUploadJob):
 
             retriever = await service.execute_file_to_kg_pipeline(
                 retrieval_query=template,
-                index_name=document_id,
-                extracted_texts=extracted_texts,
+                index_name=conversation_id,
+                params=params,
                 llm_model=llm_model,
                 embedder=embedder,
                 file_caller=file_caller,
@@ -336,7 +394,7 @@ class UploadJob(IUploadJob):
             return retriever
         except Exception as e:
             self.logger.error(
-                f"Failed to create vector index for document {document_id} with error: {str(e)}",
+                f"Failed to create vector index for document {conversation_id} with error: {str(e)}",
                 Path(__file__).name,
                 file_caller,
                 self.step_build_knowledge_graph.__name__,
@@ -490,17 +548,6 @@ class UploadJob(IUploadJob):
         )
         return upsert_response
 
-    def build_name(self, document_ids: List[str], split_by: str = "_",file_caller: str = "") -> str:
-        sorted_ids = sorted(document_ids)
-        name = split_by.join(sorted_ids)
-        self.logger.info(
-            f"Built file name '{name}' from document IDs: {document_ids}",
-            Path(__file__).name,
-            file_caller,
-            self.build_name.__name__,
-        )
-        return name
-
     def __convert_to_cache_param_value(
         self, chunk_response: IChunkResponse, embedding_response: IEmbedResponse
     ) -> List[ICacheParamValue]:
@@ -545,35 +592,6 @@ class UploadJob(IUploadJob):
             self.summarize_document.__name__,
         )
         return "\n".join(original_texts)
-
-    def __build_chunk_keys(
-        self, file_id: str, chunk_texts: List[str], file_caller: str = ""
-    ) -> List[Tuple[np.int64, str]]:
-        """create chunk keys based on file_id with structure: file_id:chunk_index
-        after that hashing this key to 64 bit integer for numpy array dtype int64
-        """
-        chunk_keys_tuples = []
-        for idx, chunk in enumerate(chunk_texts):
-            chunk_key_str = f"{file_id}:{idx}"
-            chunk_key_hash = hash_to_numpy_int64_by_str_content(chunk_key_str)
-            chunk_keys_tuples.append((chunk_key_hash, chunk))
-        if not chunk_keys_tuples:
-            self.logger.error(
-                f"Failed to build chunk keys for file_id {file_id} because chunk_keys_tuples is empty",
-                Path(__file__).name,
-                file_caller,
-                self.__build_chunk_keys.__name__,
-            )
-            raise ValueError(
-                f"Failed to build chunk keys for file_id {file_id} because chunk_keys_tuples is empty"
-            )
-        self.logger.info(
-            f"Built chunk keys for file_id {file_id} with chunk keys: {[k for k, _ in chunk_keys_tuples]}",
-            Path(__file__).name,
-            file_caller,
-            self.__build_chunk_keys.__name__,
-        )
-        return chunk_keys_tuples
 
     #! NOTE: ids build by hashing the content to ensure the same content, not by file_id, will have the same id, which is important for deduplication and update scenarios. The hash is truncated to fit within typical ID length limits while minimizing collision risk.
     def __get_embedding_model(self, provider: EProviderName) -> str:

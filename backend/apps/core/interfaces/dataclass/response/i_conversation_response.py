@@ -35,10 +35,8 @@ class IRetrievalTimeCounterResponse:
 @dataclass
 class IGraphTimeCounterResponse:
     extract_time: float
-    normalize_time: float
     chunk_time: float
     graph_retriever_time: float
-    save_time: float
     total_time: float
     query_time: float = 0.0 # OPTIONAL, this will be used when the conversation is used to chat, and the time_counter will be updated with the query_time, this is for future implementation of time_counter in chat application
 

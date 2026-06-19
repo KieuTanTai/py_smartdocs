@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.services.chat.models import ConversationModel
 
 class IUploadTask(ABC):
@@ -38,7 +38,7 @@ class IUploadTask(ABC):
         pass
 
     @abstractmethod
-    def run_graph_pipeline_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller:str = "") -> IGraphRagUploadResponse:
+    async def run_graph_pipeline_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller:str = "") -> IGraphRagUploadResponse:
         """
         Executes document RAG pipeline with graph retriever via UploadJob.
         Must return a JSON-serializable dictionary.

@@ -38,10 +38,19 @@ class IDocumentResponse:
     document_id: str
     path: Path
 
+@dataclass 
+class IGraphRagParam:
+    conversation_id: uuid.UUID
+    document_id: str
+    chunk_content: str
+    chunk_id: np.int64
+
 @dataclass
 class IGraphRagUploadResponse:
-    conversation_name: str
+    conversation_id: uuid.UUID
     list_document_ids: List[str]
+    graph_param_list: List[IGraphRagParam]
     graph_retriever: VectorCypherRetriever
     created_at: Any = None
+    conversation_name: str = ""
     time_counter: IGraphTimeCounterResponse | None = None

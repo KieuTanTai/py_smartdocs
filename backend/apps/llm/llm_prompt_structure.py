@@ -9,7 +9,7 @@ class LLMPromptStructure(ILLMPromptStructure):
     """
     def __init__(self):
         pass
-    
+
     def build_summary_prompt(self, user_input: str) -> str:
         """
         Creates a structured prompt for LLM interactions based on the user input and retrieved chunks of information.
@@ -73,28 +73,36 @@ class LLMPromptStructure(ILLMPromptStructure):
         return prompt.strip()
 
     # * This method is used to build a prompt for a single file, which is then called by the public build_prompt_for_multiple_file method to create prompts for multiple files. It formats the retrieved chunks and user input in a structured way for the LLM to process.
+
+
     def build_prompt_for_retrieval_query(self) -> str:
-        """
-        Creates a structured prompt for LLM interactions based on a retrieval query.
-        This prompt will include instructions for the LLM to generate a Cypher query based on the provided natural language query, along with any necessary constraints or guidelines to ensure the generated query is accurate and relevant.
-        """
         prompt = """
-            //1) Go out 2-3 hops in the entity graph and get relationships
+            // GraphRAG retrieval policy
+
+            // Seed
             WITH node AS chunk
-            MATCH (chunk)<-[:FROM_CHUNK]-(entity)-[relList:!FROM_CHUNK]-{1,2}(nb)
+
+            // Document boundary constraint (optional runtime param)
+            WHERE chunk.document_id IN $document_ids
+
+            // 2-hop entity expansion
+            MATCH (chunk)<-[:FROM_CHUNK]-(entity)-[relList:!FROM_CHUNK]-(nb)
+            WHERE nb.document_id IN $document_ids
+
             UNWIND relList AS rel
 
-            //2) collect relationships and text chunks
-            WITH collect(DISTINCT chunk) AS chunks, collect(DISTINCT rel) AS rels
+            // aggregation
+            WITH collect(DISTINCT chunk) AS chunks,
+                collect(DISTINCT rel) AS rels
 
-            //3) format and return context
-            RETURN apoc.text.join([c in chunks | c.text], '\n') +
+            RETURN
+            apoc.text.join([c in chunks | c.text], '\n') +
             apoc.text.join([r in rels |
-            startNode(r).name+' - '+type(r)+' '+r.details+' -> '+endNode(r).name],
-            '\n') AS info
-            """
+            startNode(r).name + ' - ' + type(r) + ' ' +
+            coalesce(r.details,'') + ' -> ' + endNode(r).name
+            ], '\n') AS info
+        """
         return prompt.strip()
-
     def create_rag_template(self) -> RagTemplate:
         return RagTemplate(
             template="""

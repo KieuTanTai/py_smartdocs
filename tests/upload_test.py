@@ -15,7 +15,7 @@ sys.modules['apps.services.chat.models'] = mock_django_models
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.tasks.upload_tasks import UploadTask
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, ISaveResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, ISaveResponse
 
 # ==========================================
 # BÀI TEST: UPLOAD NHIỀU FILE CÙNG LÚC

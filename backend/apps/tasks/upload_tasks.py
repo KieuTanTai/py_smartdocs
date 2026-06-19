@@ -17,7 +17,7 @@ from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFai
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
 from backend.apps.core.interfaces.system.i_logging import ILogger
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IExtractMapping, IGraphRagUploadResponse, IUploadResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IExtractMapping, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
 from backend.apps.services.chat.models import ConversationModel, DocumentModel
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
@@ -63,10 +63,10 @@ class UploadTask(Task, IUploadTask):
             self.logger.error(f"Error processing file paths {file_paths}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             raise exc
 
-    def run_graph_pipeline_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
+    async def run_graph_pipeline_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
         self.logger.info(f"Starting Graph RAG UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
         try:
-            responses = self.__execute_pipeline_create_retriever_with_paths(conversation_model, file_paths, provider_name, model_name, embed_model_name)
+            responses = await self.__execute_pipeline_create_retriever_with_paths(conversation_model, file_paths, provider_name, model_name, embed_model_name)
             self.logger.info(f"Successfully completed Graph RAG UploadTask for file paths {file_paths} and provider {provider_name}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
             return responses
         except Exception as exc:
@@ -101,7 +101,7 @@ class UploadTask(Task, IUploadTask):
         return document
 
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def __execute_pipeline_create_retriever_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
+    async def __execute_pipeline_create_retriever_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
 
         # start extract time counter
         self.time_counter.start()
@@ -115,30 +115,49 @@ class UploadTask(Task, IUploadTask):
         self.time_counter.start()
         # * Step 2: Chunk the normalized text
         chunk_responses, chunk_texts = self.__chunk(contents)
-        chunk_batches = [chunk_response.chunk_texts for chunk_response in chunk_responses]
         chunk_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed text chunking for file paths {file_paths} in {chunk_time:.2f} seconds", source=Path(__file__).name, 
                          call_by=self.__execute_pipeline_create_retriever_with_paths.__name__, method_call=self.__execute_pipeline_create_retriever_with_paths.__name__)
 
-        
+        # start graph retriever time counter
+        self.time_counter.start()
         # * Step 3: Create graph retriever
-        responses = self.__create_graph_retriever(provider, document_ids, chunk_batches, model_name, embed_model_name)
-        return responses
+        graph_params = self.__build_list_graph_params(conversation_model, chunk_responses)
+        graph_retriever_response = await self.__create_graph_retriever(conversation_model, provider, graph_params, model_name, embed_model_name)
+        graph_retriever_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Completed graph retriever creation for file paths {file_paths} in {graph_retriever_time:.2f} seconds", source=Path(__file__).name,   
+                        call_by=self.__execute_pipeline_create_retriever_with_paths.__name__, method_call=self.__execute_pipeline_create_retriever_with_paths.__name__)
+        graph_retriever_response.time_counter = self.time_counter.mapping_to_graph_time_counter_response(extract_time, chunk_time, graph_retriever_time)
+        return graph_retriever_response
 
-    def __create_graph_retriever(self, provider: EProviderName, document_ids: List[str], chunks_batches: List[List[str]], model_name: str, embed_model_name: str) -> IGraphRagUploadResponse: #type: ignore
-        responses = []
-        for document_id, chunk_texts in zip(document_ids, chunks_batches):
-            graph_retriever = self.upload_job.step_build_knowledge_graph(
-                document_id,
-                chunk_texts,
-                model_name,
-                embed_model_name,
-                provider,
-                file_caller=self.__create_graph_retriever.__name__,
-            )
-            responses.append(graph_retriever)
-            raise ValueError(f"Failed to create graph retriever for document {document_id} with provider {provider}")
+    def __build_list_graph_params(self, conversation_model: ConversationModel, chunk_responses: List[IChunkResponse]) -> List[IGraphRagParam]:
+        graph_params = []
+        for chunk_response in chunk_responses:
+            for chunk_content, chunk_key in zip(chunk_response.chunk_texts, chunk_response.chunk_keys):
+                graph_param = IGraphRagParam(
+                    conversation_id=conversation_model.pk,
+                    document_id=chunk_response.document_id,
+                    chunk_content=chunk_content,
+                    chunk_id=chunk_key
+                )
+                graph_params.append(graph_param)
+        return graph_params
 
+    async def __create_graph_retriever(self, conversation: ConversationModel, provider: EProviderName, list_params: List[IGraphRagParam], model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
+        graph_retriever_response = await self.upload_job.step_build_knowledge_graph(
+            conversation_id=conversation.pk,
+            graph_params=list_params,
+            model_name=model_name,
+            embedding_model_name=embed_model_name,
+            provider=provider,
+            file_caller=self.__create_graph_retriever.__name__
+        )
+        if graph_retriever_response is None or isinstance(graph_retriever_response, IGraphRagUploadResponse) is False:
+            self.logger.error(f"Failed to create graph retriever for conversation {conversation.pk} and provider {provider}", source=Path(__file__).name, call_by=self.__create_graph_retriever.__name__, method_call=self.__create_graph_retriever.__name__)
+            raise ValueError(f"Failed to create graph retriever for conversation {conversation.pk} and provider {provider}")
+        
+        return graph_retriever_response 
+    
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     def __execute_base_pipeline_with_paths(
         self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str
