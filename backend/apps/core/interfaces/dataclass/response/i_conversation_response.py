@@ -20,7 +20,6 @@ class IConversationGetResponse:
 @dataclass
 class ITimeCounterResponse:
     extract_time: float
-    normalize_time: float
     chunk_time: float
     embedding_time: float
     save_time: float

@@ -12,12 +12,14 @@ import numpy as np
 
 from backend.apps.core.enums.e_document_status import EDocumentStatus
 from backend.apps.core.enums.e_provider_name import EProviderName
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import ITimeCounterResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IExtractMapping, IGraphRagUploadResponse, IUploadResponse
+from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
 from backend.apps.services.chat.models import DocumentModel
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
@@ -25,11 +27,19 @@ from neo4j_graphrag.retrievers import VectorCypherRetriever
 
 class UploadTask(Task, IUploadTask):
 
-    def __init__(self, upload_job: IUploadJob, logger: ILogger, faiss_memory_pool: IFaissMemoryPool, database_provider: IDatabaseProvider):
+    def __init__(
+        self,
+        upload_job: IUploadJob,
+        faiss_memory_pool: IFaissMemoryPool,
+        database_provider: IDatabaseProvider,
+        logger: ILogger,
+        time_counter: ITimeCounter,
+    ):
         self.upload_job = upload_job
         self.logger = logger
         self.faiss_memory_pool = faiss_memory_pool
         self.database_provider = database_provider
+        self.time_counter = time_counter
         self.document_database = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
 
     # --- MAIN ENTRY POINT ---
@@ -154,46 +164,66 @@ class UploadTask(Task, IUploadTask):
         self, file_paths: list[Path], provider: EProviderName, model_name: str
     ) -> IUploadResponse:
 
+        # start extract time counter
+        self.time_counter.start()
         # * Step 0: Create base model and get index on db for using like file name
         faiss_document = self.__create_document_model()
 
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
         contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+        extract_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Completed text extraction and normalization for file paths {file_paths} in {extract_time:.2f} seconds", source=Path(__file__).name, 
+                         call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
 
+        # start chunk time counter
+        self.time_counter.start()
         # * Step 2: Chunk the normalized text
         chunk_responses, chunk_texts = self.__chunk(contents)
+        chunk_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Completed text chunking for file paths {file_paths} in {chunk_time:.2f} seconds", source=Path(__file__).name, 
+                         call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
 
+        # start embedding time counter
+        self.time_counter.start()
         # * Step 3: Embed the chunks
         embed_responses, embeddings = self.__embed_chunks(chunk_responses, provider)
         ids = np.concatenate([chunk_response.chunk_keys for chunk_response in chunk_responses]) if chunk_responses else np.array([], dtype=np.int64)
+        embedding_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Completed text embedding for file paths {file_paths} in {embedding_time:.2f} seconds", source=Path(__file__).name, 
+                         call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
 
+        # start save time counter
+        self.time_counter.start()
         # * Step 4: Cache the chunks and embeddings, and get the cache paths
         cache_responses = self.__cache(chunk_responses, embed_responses)
         chunk_paths = [cache_response.path for cache_response in cache_responses]
         cache_params = [cache_response.cache_param for cache_response in cache_responses]
 
-        # * Step 5: Save the embeddings to vector store
-        upload_response = self.upload_job.step_save(
-            provider,
-            faiss_document.faiss_index_id,
-            document_ids,
-            embeddings,
-            chunk_texts,
-            chunk_paths,
-            ids,
-            file_caller=self.__execute_base_pipeline_with_paths.__name__,
-        )
-        if upload_response is None:
-            raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
+        # * Step 5: Save the embeddings to vector store and update document model with file path and status
+        try:
+            upload_response = self.__upload_to_vector_store(provider, document_ids, faiss_document.pk, embeddings, chunk_texts, ids, chunk_paths, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+        except Exception as exc:
+            self.time_counter.stop()
+            raise exc
+        save_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Completed saving embeddings to vector store for file paths {file_paths} in {save_time:.2f} seconds", source=Path(__file__).name, 
+                         call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
 
+        # start summarize time counter
+        self.time_counter.start()
         # * Step 6: Sumarize the document and get the summary text
         summarize = self.upload_job.summarize_document(upload_response.faiss_index, upload_response.faiss_file_id, 
                                                        upload_response.embeddings_stack, cache_params, provider, model_name, file_caller=self.__execute_base_pipeline_with_paths.__name__)
         upload_response.summarize = summarize
+        summarize_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Completed document summarization for file paths {file_paths} in {summarize_time:.2f} seconds", source=Path(__file__).name, 
+                         call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
+        
+        # * Step 7: mapping time counter to response
+        upload_response.time_counter = self.__map_value_to_time_counter(extract_time, chunk_time, embedding_time, save_time, summarize_time)
         return upload_response
 
     # * Mini step on pipeline
-
     def __upload_to_vector_store(self, provider: EProviderName, document_ids: List[str], faiss_file_id: uuid.UUID,
                                  embedding_batches: List[np.ndarray], chunk_texts: List[str] = [], ids: np.ndarray = np.ndarray([], dtype=np.int64), chunk_paths: List[Path] = [], file_caller: str = "") -> IUploadResponse:
         try:            
@@ -244,3 +274,14 @@ class UploadTask(Task, IUploadTask):
             extracted_text = self.upload_job.step_extract_and_normalize(file_path, provider, file_caller=self.__extract_contents_and_get_document_ids.__name__)
             contents.append(IExtractMapping(file_path, extracted_text))
         return contents, [content.extract_content.document_id for content in contents]
+
+#* Mapping params ITimeCounterResponse
+    def __map_value_to_time_counter(self, extract_time: float, chunk_time: float, embedding_time: float, save_time: float, query_time: float = 0.0) -> ITimeCounterResponse:
+        return ITimeCounterResponse(
+            extract_time=extract_time,
+            chunk_time=chunk_time,
+            embedding_time=embedding_time,
+            save_time=save_time,
+            query_time=query_time,
+            total_time=extract_time + chunk_time + embedding_time + save_time + query_time
+        )
