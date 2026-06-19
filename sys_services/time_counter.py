@@ -7,7 +7,7 @@ class TimeCounter(ITimeCounter):
     def __init__(self):
         self.start_time = None
         self.end_time = None
-        
+
     def start(self):
         self.start_time = time.perf_counter()
 
@@ -15,10 +15,14 @@ class TimeCounter(ITimeCounter):
         self.end_time = time.perf_counter()
 
     def get_elapsed_time(self):
-        if self.start_time is None or self.end_time is None:
-            raise ValueError("Timer has not been started and stopped properly.")
-        return self.end_time - self.start_time
-    
+        if self.start_time is None:
+            raise ValueError("Timer has not been started.")
+
+        if self.end_time is not None:
+            return self.end_time - self.start_time
+
+        return time.perf_counter() - self.start_time
+
     def reset(self):
         self.start_time = None
         self.end_time = None
@@ -33,7 +37,7 @@ class TimeCounter(ITimeCounter):
             query_time=query_time,
             total_time=total_time
         )
-    
+
     def mapping_to_graph_time_counter_response(self, extract_time: float, chunk_time: float, graph_retriever_time: float, query_time: float = 0.0) -> IGraphTimeCounterResponse:
         total_time = extract_time + chunk_time + graph_retriever_time + query_time
         return IGraphTimeCounterResponse(
