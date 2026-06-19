@@ -155,7 +155,7 @@ class UploadTask(Task, IUploadTask):
     ) -> IUploadResponse:
 
         # * Step 0: Create base model and get index on db for using like file name
-        document = self.__create_document_model()
+        faiss_document = self.__create_document_model()
 
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
         contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_base_pipeline_with_paths.__name__)
@@ -175,7 +175,7 @@ class UploadTask(Task, IUploadTask):
         # * Step 5: Save the embeddings to vector store
         upload_response = self.upload_job.step_save(
             provider,
-            document.faiss_index_id,
+            faiss_document.faiss_index_id,
             document_ids,
             embeddings,
             chunk_texts,
