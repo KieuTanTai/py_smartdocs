@@ -6,6 +6,7 @@ Abstract interface for vector storage operations.
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
+import uuid
 
 import numpy as np
 
@@ -47,7 +48,7 @@ class IVectorStoreService(IVectorDBService, ABC):
     def upsert(
         self,
         index: Any,
-        vector_id: str,
+        vector_id: uuid.UUID,
         file_caller: str = ""
     ) -> IVectorDBUpsertResponse:
         """
@@ -68,14 +69,14 @@ class IVectorStoreService(IVectorDBService, ABC):
         pass
 
     @abstractmethod
-    def search(self, index: Any, vector_id: str, query_vector: np.ndarray,  limit=5, 
+    def search(self, index: Any, vector_id: uuid.UUID, query_vector: np.ndarray,  limit=5, 
                allow_ids: set | None = None, chunk_file_map: dict | None = None, file_caller: str = "") -> IVectorDBQueryResponse:
         """
         Perform similarity search.
 
         Args:
             index: Provider-specific index object or identifier
-            vector_id: Unique identifier for the vector to search within (id for searching datablocks on cache)
+            vector_id: Unique identifier use like name of faiss file (id for searching datablocks on cache)
             query_vector: Query embedding vector
             limit: Maximum number of results
             allow_ids: Optional set of allowed vector IDs
@@ -89,7 +90,7 @@ class IVectorStoreService(IVectorDBService, ABC):
         pass
 
     @abstractmethod
-    def delete(self, vector_id: str, file_caller: str = "") -> IVectorDBDeleteResponse:
+    def delete(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:
         """
         Delete vector from store.
 
@@ -103,7 +104,7 @@ class IVectorStoreService(IVectorDBService, ABC):
         pass
 
     @abstractmethod
-    def is_existed_in_metadata(self, vector_id: str) -> Path | None:
+    def is_existed_in_metadata(self, vector_id: uuid.UUID) -> Path | None:
         """
         Check if vector_id exists in metadata.
 
@@ -115,7 +116,7 @@ class IVectorStoreService(IVectorDBService, ABC):
         pass
 
     @abstractmethod
-    def load(self, vector_id: str, file_caller: str = "") -> IVectorDBLoadResponse:
+    def load(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBLoadResponse:
         """
         Load vector into store and cache.
 

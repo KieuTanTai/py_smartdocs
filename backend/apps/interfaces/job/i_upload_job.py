@@ -5,12 +5,19 @@ Interface for Upload Job module.
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
+import uuid
 
+import faiss
 import numpy as np
 
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, ISaveResponse
+from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
+from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_embed_and_save_response import IEmbedResponse, IGraphRagUploadResponse, IGraphRagUploadResponseWithTimeCounter, IUploadResponse
+from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
+from neo4j_graphrag.retrievers import VectorCypherRetriever
 
 class IUploadJob(ABC):
     """
@@ -18,86 +25,188 @@ class IUploadJob(ABC):
     """
 
     @abstractmethod
-    def step_extract(self, file_paths: List[Path], provider: EProviderName, file_caller: str = "") -> str:
+    def step_extract_and_normalize(
+        self, file_path: Path, provider: EProviderName, file_caller: str = ""
+    ) -> IExtractResponse:
         """
-            extract text from file
-            Args:
-                file_paths: list of real paths of files to extract
-                provider: provider name to use when extract (for example: google drive file may need google provider to extract)
-                file_caller: function name of caller for logging
-            Returns:
-                extracted text from file
-        """
-        pass
-
-    @abstractmethod
-    def step_normalize(self, raw_text: List[str], file_caller: str = "") -> str:
-        """
-            normalize extracted text
-            Args:
-                raw_text: raw text to normalize
-                file_caller: function name of caller for logging
-            Returns:
-                normalized text
+        extract and normalize text from file
+        Args:
+            file_path: real path of file to extract
+            provider: provider name to use when extract (for example: google drive file may need google provider to extract)
+            file_caller: function name of caller for logging
+        Returns:
+            extracted and normalized text from file
         """
         pass
 
     @abstractmethod
-    def step_chunk_and_cache(self, document_id: str, normalized_text: List[str], file_caller: str = "") -> IChunkAndCacheResponse:
+    def step_extract(
+        self, file_path: Path, provider: EProviderName, file_caller: str = ""
+    ) -> IExtractResponse:
         """
-            chunk text and cache it
-            Args:
-                document_id: ID of the document
-                normalized_text: normalized text to chunk and cache
-                file_caller: function name of caller for logging
-            Returns:
-                response containing chunked and cached data
-        """
-        pass
-
-    @abstractmethod
-    def step_embed(self, chunk_and_cache_response: IChunkAndCacheResponse, provider: EProviderName, file_caller: str = "") -> IEmbedResponse:
-        """
-            embed chunked data and save to vector store
-            Args:
-                chunk_and_cache_response: response containing chunked and cached data
-                provider: provider name to use for embedding (for example: different embedding model may be used for different provider)
-                file_caller: function name of caller for logging
-            Returns:
-                response containing embedded data
+        extract text from file
+        Args:
+            file_path: real path of file or list of files to extract
+            provider: provider name to use when extract (for example: google drive file may need google provider to extract)
+            file_caller: function name of caller for logging
+        Returns:
+            extracted text from file or list of files
         """
         pass
 
     @abstractmethod
+    def step_normalize(self, raw_text: str, file_caller: str = "") -> str:
+        """
+        normalize extracted text
+        Args:
+            raw_text: raw text to normalize
+            file_caller: function name of caller for logging
+        Returns:
+            normalized text
+        """
+        pass
+
+    @abstractmethod
+    def step_chunk(
+        self, document_id: str, normalized_text: str, file_caller: str = ""
+    ) -> IChunkResponse:
+        """
+        chunk text into smaller pieces for embedding
+        Args:
+            document_id: ID of the document
+            normalized_text: normalized text to chunk and cache
+            file_caller: function name of caller for logging
+        Returns:
+            response containing chunked data
+        """
+        pass
+
+    @abstractmethod
+    def step_embed(
+        self,
+        chunk_response: IChunkResponse,
+        provider: EProviderName,
+        file_caller: str = "",
+    ) -> IEmbedResponse:
+        """
+        embed chunked data and save to vector store
+        Args:
+            chunk_response: response containing chunked data
+            provider: provider name to use for embedding (for example: different embedding model may be used for different provider)
+            file_caller: function name of caller for logging
+        Returns:
+            response containing embedded data
+        """
+        pass
+
+    @abstractmethod
+    def step_cache(
+        self,
+        chunk_response: IChunkResponse,
+        embedding_response: IEmbedResponse,
+        file_caller: str = "",
+    ) -> IChunkAndCacheResponse:
+        """
+        cache chunked data
+        Args:
+            chunk_response: response containing chunked data
+            embedding_response: response containing embedded data
+            file_caller: function name of caller for logging
+        Returns:
+            response containing cached data
+        """
+        pass
+
     def step_save(
         self,
         provider: EProviderName,
+        faiss_file_id: uuid.UUID,
         document_ids: List[str],
-        embed_responses: List[np.ndarray],
-        chunk_texts: List[str] = [],
-        ids: np.ndarray = np.ndarray([], dtype=np.int64),
+        embedding_batches: List[np.ndarray],
+        chunk_texts: List[str],
+        paths: List[Path],
+        ids: np.ndarray,
         file_caller: str = "",
-    ) -> ISaveResponse:
+    ) -> IUploadResponse | None:
         """
-            save embedded data to vector store
-            Args:
-                provider: provider name to use for saving (for example: different vector store may be used for different provider)
-                embed_response: response containing embedded data
-                file_caller: function name of caller for logging
-            Returns:
-                response containing saved data
+        save embedded data to vector store
+        Args:
+            provider: provider name to use for saving (for example: different vector store may be used for different provider)
+            faiss_file_id: the ID of the FAISS file where the index is stored
+            document_ids: list of document IDs corresponding to the embedded data
+            embedding_batches: list of embedded vectors to save
+            chunk_texts: list of original chunk texts
+            paths: list of paths where the documents are cached
+            ids: list of IDs corresponding to the embedded vectors
+            file_caller: function name of caller for logging
+        Returns:
+            response containing save results and metadata, or None if saving is not applicable for the provider
         """
         pass
 
     @abstractmethod
-    def step_build_knowledge_graph(self, document_id: str, extracted_texts: List[str], provider: EProviderName, model_name: str, file_caller: str = "") -> None:
+    def summarize_document(self, 
+                            faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
+                            faiss_file_id: uuid.UUID,
+                            embeddings_stack: np.ndarray,
+                            cache_params: List[ICacheParam],
+                            provider: EProviderName,
+                            model_name: str,
+                            file_caller: str = "") -> str:
         """
-            build knowledge graph for document
-            Args:
-                document_id: ID of the document
-                extracted_texts: texts extracted from the document
-                provider: provider name to use for building knowledge graph
-                model_name: model name to use for building knowledge graph
-                file_caller: function name of caller for logging
+        summarize document based on original texts retrieved from vector store, this is used to improve the quality of summary by providing more context to LLM.
+        Args:
+            faiss_index: the FAISS index containing the embedded vectors for the document
+            faiss_file_id: the ID of the FAISS file where the index is stored
+            embeddings_stack: the stack of embedded vectors for the document
+            cache_params: list of cache parameters used for retrieving original texts
+            provider: provider name to use for summarization (for example: different LLM provider may be used for different provider)
+            model_name: model name to use for summarization
+            file_caller: function name of caller for logging
+        Returns:
+            summarized text for the document
+        Raises:
+            ValueError: If provider is invalid or document is not found
+            Exception: For any other processing errors
         """
+
+    @abstractmethod
+    async def step_build_knowledge_graph(
+        self,
+        document_id: str,
+        extracted_texts: List[str],
+        model_name: str,
+        embedding_model_name: str,
+        provider: EProviderName = EProviderName.GEMINI,
+        similarity_fn: ESimilarityFn = ESimilarityFn.COSINE,
+        file_caller: str = "",
+    ) -> IGraphRagUploadResponseWithTimeCounter:
+        """
+        build knowledge graph for document
+        Args:
+            document_id: ID of the document
+            extracted_texts: texts extracted from the document
+            provider: provider name to use for building knowledge graph (for example: different LLM provider may be used for different provider)
+            model_name: model name to use for building knowledge graph
+            similarity_fn: function to use for calculating similarity
+            file_caller: function name of caller for logging
+        Returns:
+            IGraphRagUploadResponseWithTimeCounter: the created graph retriever with time counter
+        Raises:
+            ValueError: If provider is invalid or document is not found
+            Exception: For any other processing errors
+        """
+        pass
+
+    @abstractmethod
+    def build_name(self, document_ids: List[str], split_by: str = "-", file_caller: str = "") -> str:
+        """
+        build file name for saving vector store files and this also use for conversation name
+        Args:
+            document_ids: list of document IDs to include in the file name
+            split_by: string to use for splitting document IDs in the file name
+            file_caller: function name of caller for logging
+        Returns:
+            file name built from document IDs
+        """        
         pass

@@ -25,9 +25,13 @@ class ILLMUploader(ABC):
         pass
 
     @abstractmethod
-    def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
+    def load_file(self, file_id: str) -> IGetFileResponse:
         """
         Load file content metadata from Mistral.
+        Args:
+            file_id: The ID of the file to load.
+        Returns:
+            IGetFileResponse: The response containing file metadata.
         """
         pass
 
@@ -36,17 +40,5 @@ class ILLMUploader(ABC):
         """
         Delete file in Mistral.
         MUST SURE NOT HAVE ANY CONVERSATION REFERENCE THIS FILE, OR THIS METHOD WILL RAISE EXCEPTION OR JUST RETURN FALSE, NOT DELETE THIS FILE IN MISTRAL
-        """
-        pass
-
-    @abstractmethod
-    def is_file_exists(self, file_id: str) -> IGetFileResponse:
-        """
-        Check if file exists in Mistral.
-        Args:
-            file_id: File id in upload cloud
-
-        Returns:
-            IGetFileResponse: Response object with file info if it exists, None otherwise
         """
         pass

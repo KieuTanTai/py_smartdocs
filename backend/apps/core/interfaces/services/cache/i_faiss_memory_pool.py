@@ -4,17 +4,22 @@ from typing import Any
 import faiss
 
 class IFaissMemoryPool(ABC):
+    """
+    Contract for Faiss Memory Pool Service.
+    This service manages the in-memory storage of Faiss indices for active conversations, allowing for efficient retrieval and management of indices during the conversation lifecycle.
+    Key is type Any to allow flexibility in using either conversation_id (str) or faiss_file_id (uuid.UUID) as the key for indexing the Faiss indices in the memory pool.
+    """
     @abstractmethod
     def add_to_pool(
         self,
-        conversation_id: str,
+        key: Any,
         index: faiss.IndexFlatL2 | faiss.IndexIDMap,
         file_caller: str = "",
     ) -> dict[str, faiss.IndexFlatL2 | faiss.IndexIDMap | Any]:
         """
         Adds a document to the Faiss memory pool.
         Args:
-            conversation_id (str): The unique identifier of the conversation.
+            key (Any): The unique identifier of the conversation.
             index (faiss.IndexFlatL2 | faiss.IndexIDMap): The Faiss index to be added to the pool.
             file_caller (str): The file name of the caller (for logging purposes).
         Returns:
@@ -23,11 +28,11 @@ class IFaissMemoryPool(ABC):
         pass
 
     @abstractmethod
-    def get_from_pool(self, conversation_id: str, file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap | None:
+    def get_from_pool(self, key: Any, file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap | None:
         """
         Retrieves documents from the Faiss memory pool based on the conversation ID.
         Args:
-            conversation_id (str): The unique identifier of the conversation for which to retrieve documents.
+            key (Any): The unique identifier of the conversation for which to retrieve documents.
             file_caller (str): The file name of the caller (for logging purposes).
         Returns:
             faiss.IndexFlatL2 | faiss.IndexIDMap: The Faiss index associated with the given conversation ID.
@@ -35,11 +40,11 @@ class IFaissMemoryPool(ABC):
         pass
 
     @abstractmethod
-    def remove_from_pool(self, conversation_id: str, file_caller: str = "") -> bool:
+    def remove_from_pool(self, key: Any, file_caller: str = "") -> bool:
         """
         Removes a document from the Faiss memory pool based on the conversation ID.
         Args:
-            conversation_id (str): The unique identifier of the conversation for which to remove documents.
+            key (Any): The unique identifier of the conversation for which to remove documents.
             file_caller (str): The file name of the caller (for logging purposes).
         Returns:
             bool: True if the document was successfully removed, False otherwise.

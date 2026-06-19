@@ -6,9 +6,6 @@ Handles conversation bootstrapping via background workers.
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict
-from celery import Task
-
-from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.job.i_conversation_job import IConversationJobResponse
 from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
@@ -16,9 +13,8 @@ from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.exceptions.exceptions import DocumentsNotReadyError
 from backend.apps.interfaces.job.i_conversation_job import IConversationJob
 from backend.apps.interfaces.tasks.i_conversation_task import IConversationTask
-from backend.apps.job.conversation_job import ConversationJob
 
-class ConversationTask(Task, IConversationTask):
+class ConversationTask(IConversationTask):
     def __init__(self, conversation_job: IConversationJob, faiss_memory_pool: IFaissMemoryPool, logger: ILogger):
         self.conversation_job = conversation_job
         self.faiss_memory_pool = faiss_memory_pool

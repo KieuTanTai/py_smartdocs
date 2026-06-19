@@ -2,6 +2,7 @@ import datetime
 import pickle
 from pathlib import Path
 from typing import Any, Dict
+import uuid
 import numpy as np
 from rank_bm25 import BM25Okapi
 
@@ -23,7 +24,7 @@ class BM25Service(ISpareVectorStoreService):
         # BM25 không cần init index rỗng bằng np_vectors như FAISS
         return None
 
-    def upsert(self, index: Dict[str, str], vector_id: str, file_caller: str = "") -> IVectorDBUpsertResponse:
+    def upsert(self, index: Dict[str, str], vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBUpsertResponse:
         # Tách từ (tokenize) cho thuật toán BM25
         keys = list(index.keys())
         corpus = list(index.values())
@@ -45,7 +46,7 @@ class BM25Service(ISpareVectorStoreService):
         self.logger.info(f"Upserted BM25 index cho document '{vector_id}'", call_by=file_caller)
         return IVectorDBUpsertResponse(id=vector_id, create_at=datetime.datetime.now(), sumarize_content="", is_success=True)
 
-    def search(self, index: Any, vector_id: str, query_text: str | None = None, limit=5, file_caller: str = "") -> IVectorDBQueryResponse:
+    def search(self, index: Any, vector_id: uuid.UUID, query_text: str | None = None, limit=5, file_caller: str = "") -> IVectorDBQueryResponse:
         if not query_text:
             raise ValueError("BM25 requires 'query_text' to perform lexical search.")
             
@@ -70,7 +71,7 @@ class BM25Service(ISpareVectorStoreService):
         self.logger.info(f"BM25 Search tìm thấy {len(distances)} kết quả", call_by=file_caller)
         return IVectorDBQueryResponse(id=vector_id, distances=distances, indices=indices_keys)
 
-    def load(self, vector_id: str, file_caller: str = "") -> IVectorDBLoadResponse:
+    def load(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBLoadResponse:
         path = self.is_existed_in_metadata(vector_id)
         if not path:
             return IVectorDBLoadResponse(id=vector_id, is_success=False, message="BM25 index not found")
@@ -80,8 +81,8 @@ class BM25Service(ISpareVectorStoreService):
             
         return IVectorDBLoadResponse(id=vector_id, is_success=True, index=index)
 
-    def is_existed_in_metadata(self, vector_id: str) -> Path | None:
+    def is_existed_in_metadata(self, vector_id: uuid.UUID) -> Path | None:
         return is_existed_in_metadata(self.metadata_dir, vector_id, "bm25", self.logger)
     
-    def delete(self, vector_id: str, file_caller: str = "") -> IVectorDBDeleteResponse:
+    def delete(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:
         return None #type:ignore # Implement tương tự như FAISS 

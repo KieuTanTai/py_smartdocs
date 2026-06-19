@@ -34,12 +34,12 @@ class IFileStorage(ABC):
         pass
 
     @abstractmethod
-    def load_file(self, file_info: ICreateFileResponse) -> IGetFileResponse:
+    def load_file(self, file_id: str) -> IGetFileResponse:
         """
         Load file content from storage.
 
         Args:
-            file_info: File response info from upload cloud
+            file_id: ID of the file to load
 
         Returns:
             IGetFileResponse: Response object with file content or None if not found
@@ -69,19 +69,6 @@ class IFileStorage(ABC):
 
         Returns:
             File size in bytes
-        """
-        pass
-
-    @abstractmethod
-    def is_file_existed(self, file_id: str) -> IGetFileResponse:
-        """
-        Check if file exists in storage.
-
-        Args:
-            file_id: File id in upload cloud
-
-        Returns:
-            IGetFileResponse: Response object with file info if it exists, raise FileNotFoundError otherwise
         """
         pass
 

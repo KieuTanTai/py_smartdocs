@@ -1,8 +1,0 @@
-from dataclasses import dataclass
-from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
-
-@dataclass
-class IChatRequest:
-    conversation_id: str
-    provider: IProvider
-    messages: str

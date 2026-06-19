@@ -32,13 +32,13 @@ class DocumentApplication(IDocumentApplication):
         provider = request.provider
         response = self.upload_task.run_with_paths(paths, provider)
         metadata = IConversationInfoResponse(
-            conversation_id=response.faiss_file_name,
+            conversation_name=response.faiss_file_name,
             provider=provider,
             model_name=request.model_name,
             document_urls=request.document_urls,
             document_paths=request.document_paths,
             type=request.type,
-            create_at=response.crate_at
+            create_at=response.created_at
         )
         #! NOTE: time_counter is not implemented yet, so the time_counter in response is None, 
         #! this will be implemented in the future

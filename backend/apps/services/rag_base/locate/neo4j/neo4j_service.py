@@ -16,7 +16,7 @@ from neo4j_graphrag.llm.base import LLMInterface
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 from neo4j_graphrag.indexes import create_vector_index
 from neo4j_graphrag.generation import GraphRAG
-from neo4j_graphrag.generation.prompts import ERExtractionTemplate, RagTemplate
+from neo4j_graphrag.generation.prompts import RagTemplate
 
 class Neo4jService(INeo4jService):
     def __init__(
@@ -47,7 +47,6 @@ class Neo4jService(INeo4jService):
         create_vector_index(self.driver, name=index_name, label=label, embedding_property=embedding_property, dimensions=dimension, similarity_fn=similarity_fn.value)
         return index_name
 
-
     def __create_graph_retriever(
         self,
         template: str,
@@ -58,6 +57,16 @@ class Neo4jService(INeo4jService):
         retriever = VectorCypherRetriever(self.driver, index_name = index_name, embedder=embedder, retrieval_query=template)
         print(f"Created Graph Retriever with index: {index_name}\n   retriever: {retriever}")
         self.logger.info(f"Created Graph Retriever with index: {index_name}\n   retriever: {retriever}", Path(__file__).name, file_caller, self.__create_graph_retriever.__name__)
+        return retriever
+
+    def get_vector_cypher_retriever(
+        self,
+        embedder: Embedder,
+        index_name: str,
+        file_caller="",
+    ) -> VectorCypherRetriever:
+        self.logger.info(f"Getting Vector Cypher Retriever with index: {index_name}", Path(__file__).name, file_caller, self.get_vector_cypher_retriever.__name__)
+        retriever = self.__create_graph_retriever(template=self.prompt_structure, embedder=embedder, index_name=index_name, file_caller=file_caller)
         return retriever
 
     async def execute_file_to_kg_pipeline(
