@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import ITimeCounterResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IRetrievalTimeCounterResponse, ITimeCounterResponse
 
 class ITimeCounter(ABC):
     @abstractmethod
@@ -33,6 +33,16 @@ class ITimeCounter(ABC):
         """
         Reset the time counter to its initial state.
         This can be useful if you want to reuse the same time counter instance for multiple measurements.
+        """
+        pass
+
+    @abstractmethod
+    def mapping_to_retrieval_time_counter_response(self, retrieval_time: float, query_time: float) -> IRetrievalTimeCounterResponse:
+        """
+        Map the recorded time values to an IRetrievalTimeCounterResponse dataclass instance.
+        This method should take the recorded time values (e.g., retrieval_time, query_time) and return an instance of IRetrievalTimeCounterResponse with these values populated.
+        Returns:
+            IRetrievalTimeCounterResponse: An instance of IRetrievalTimeCounterResponse containing the recorded time values.
         """
         pass
 

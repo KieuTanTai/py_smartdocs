@@ -1,6 +1,6 @@
 import time
 
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import ITimeCounterResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IRetrievalTimeCounterResponse, ITimeCounterResponse
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
 
 class TimeCounter(ITimeCounter):
@@ -30,6 +30,14 @@ class TimeCounter(ITimeCounter):
             chunk_time=chunk_time,
             embedding_time=embedding_time,
             save_time=save_time,
+            query_time=query_time,
+            total_time=total_time
+        )
+    
+    def mapping_to_retrieval_time_counter_response(self, retrieval_time: float, query_time: float) -> IRetrievalTimeCounterResponse:
+        total_time = retrieval_time + query_time
+        return IRetrievalTimeCounterResponse(
+            retrieval_time=retrieval_time,
             query_time=query_time,
             total_time=total_time
         )
