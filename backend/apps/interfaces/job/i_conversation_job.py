@@ -7,7 +7,7 @@ class IConversationJob(ABC):
     """Contract for Conversation Preparation Processing."""
     
     @abstractmethod
-    def check_documents_ready(self, conversation_key: str) -> bool:
+    def check_documents_ready(self, conversation_id: str) -> bool:
         """Checks if all documents attached to the conversation are ready (e.g., indexed) for processing.
         Args:
             conversation_key (str): The key of the conversation to check.
@@ -17,7 +17,7 @@ class IConversationJob(ABC):
         pass
 
     @abstractmethod
-    def generate_bootstrap_message(self, conversation_key: str, provider: EProviderName, model_name: str, prompt: str) -> IConversationJobResponse:
+    def generate_bootstrap_message(self, conversation_id: str, provider: EProviderName, model_name: str | None = None) -> IConversationJobResponse:
         """
         Generates the initial assistant message for a conversation based on the attached documents and the specified LLM provider/model.
         Args:

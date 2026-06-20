@@ -13,12 +13,14 @@ from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.exceptions.exceptions import DocumentsNotReadyError
 from backend.apps.interfaces.job.i_conversation_job import IConversationJob
 from backend.apps.interfaces.tasks.i_conversation_task import IConversationTask
+from sys_services.time_counter import TimeCounter
 
 class ConversationTask(IConversationTask):
-    def __init__(self, conversation_job: IConversationJob, faiss_memory_pool: IFaissMemoryPool, logger: ILogger):
+    def __init__(self, conversation_job: IConversationJob, faiss_memory_pool: IFaissMemoryPool, logger: ILogger,time_counter: TimeCounter):
         self.conversation_job = conversation_job
         self.faiss_memory_pool = faiss_memory_pool
         self.logger = logger
+        self.time_counter = time_counter
 
     # --- SINGLE RESPONSIBILITY METHODS ---
     def _verify_documents_readiness(self, conversation_job: IConversationJob, conversation_id: str) -> None:
@@ -46,6 +48,10 @@ class ConversationTask(IConversationTask):
             call_by=file_caller,
             method_call=self.run.__name__,
         )
+        
+        self.time_counter.reset()
+        self.time_counter.start()
+        
         # Validate
         self._verify_documents_readiness(self.conversation_job, conversation_id)
 
@@ -55,10 +61,14 @@ class ConversationTask(IConversationTask):
             provider=provider_name,
             model_name=model_name
         )
+        self.time_counter.stop()
         self.logger.info(
             f"Completed ConversationTask for conversation_id: {conversation_id}. Generated assistant message: {result_dataclass.assistant_message[:100]}",
             source=__file__,
             call_by=file_caller,
             method_call=self.run.__name__,
         )
+        
+        elapsed = self.time_counter.get_elapsed_time_ms()
+        self.logger.info(f"ConversationTask completed in {elapsed:.2f}ms for conversation {conversation_id}")
         return result_dataclass

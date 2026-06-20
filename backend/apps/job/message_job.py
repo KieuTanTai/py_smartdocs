@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from typing import List
 import numpy as np
+import concurrent.futures
 
 from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content import IExtractContent
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import INeo4jService
@@ -20,6 +21,8 @@ from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
 from neo4j_graphrag.generation.prompts import RagTemplate
 
+from sys_services.time_counter import TimeCounter
+
 class MessageJob(IMessageJob):
     def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, locate_service: ILocateService, cache_session: IConnectCacheSession, logger: ILogger, hybrid_search_service: IHybridSearchService, extract_service: IExtractContent, neo4j_service: INeo4jService):
         self.llm_provider_factory = llm_provider_factory
@@ -32,20 +35,33 @@ class MessageJob(IMessageJob):
         self.neo4j_service = neo4j_service
 
     def run(self, conversation_id: str, content: str, provider: EProviderName, model_name: str | None = None) -> IMessageJobResponse:
+        total_timer = TimeCounter()
+        total_timer.start()
+        
         conversation = self._get_conversation(conversation_id)
+        
+        # Lưu tin nhắn của user
         self._save_message(conversation, is_user_send=True, content=content)
+    
+        # Khởi tạo 2 luồng công nhân (worker) chạy song song
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            # Giao việc cho công nhân 1 (Tìm Hybrid)
+            future_hybrid = executor.submit(self._retrieve_context_hits, content, conversation, provider)
+            # Giao việc cho công nhân 2 (Tìm Graph)
+            future_graph = executor.submit(self._retrieve_graph_context, content, conversation, provider)
 
-        # Lấy ngữ cảnh văn bản thô từ FAISS + BM25 (Hybrid)
-        context_hits = self._retrieve_context_hits(content, conversation, provider)
+            # Thu thập kết quả (Hệ thống sẽ chờ đến khi cả 2 công nhân đều làm xong)
+            context_hits = future_hybrid.result()
+            graph_context = future_graph.result()
+            
+        self.logger.info(f"Parallel Retrieval completed", source=str(self.__class__))
+
         context_hits_dicts = [{"text": hit.text, "score": hit.score} for hit in context_hits]
-
-        # Lấy ngữ cảnh quan hệ từ Đồ thị Neo4j (Graph Search)
-        graph_context = self._retrieve_graph_context(content, conversation, provider)
-
+        
         # Gộp cả 2 vào Prompt
         prompt = self._build_prompt(content, context_hits_dicts, graph_context)
 
-        model = model_name or "gemini-2.5-flash"
+        model = model_name or "qwen2.5:1.5b-instruct"
         llm_client = self.llm_provider_factory.get_provider(provider)
 
         self.logger.info(
@@ -54,10 +70,10 @@ class MessageJob(IMessageJob):
             method_call=self.run.__name__,
         )
 
-        start_time = time.time()
+        
         response = llm_client.generate(ICompletionRequest(provider=provider, model=model, prompt=prompt, context_hits=context_hits_dicts))
-        latency_ms = int((time.time() - start_time) * 1000)
 
+        # Lưu tin nhắn của Assistant
         self._save_message(conversation, is_user_send=False, content=response)
 
         return IMessageJobResponse(
@@ -65,9 +81,16 @@ class MessageJob(IMessageJob):
             assistant=response,
             provider=provider.value,
             model=model,
-            latency_ms=latency_ms,
             retrieval_hits=context_hits
         )
+        
+        # metrics = ITimeConversationCounter(
+        #     conversation_id=conversation_id,
+        #     llm_time_ms=llm_timer.get_elapsed_time_ms(),
+        #     retrieval_time_ms=retrieval_timer.get_elapsed_time_ms(),
+        #     other_time_ms=(total_timer.get_elapsed_time_ms() - llm_timer.get_elapsed_time_ms() - retrieval_timer.get_elapsed_time_ms()),
+        #     total_time_ms=total_timer.get_elapsed_time_ms()
+        # )
 
     def _get_conversation(self, conversation_id: str) -> ConversationModel:
         try:
@@ -79,65 +102,43 @@ class MessageJob(IMessageJob):
         return MessageModel.objects.create(message_conversation=conversation, message_is_user_send=is_user_send, message_content=content)
 
     def _retrieve_context_hits(self, content: str, conversation: ConversationModel, provider: EProviderName) -> List[IMessageJobContextHit]:
+        """Đã Tuning: Gọi song song (Concurrency) hàng loạt file để tránh nghẽn I/O"""
+        mappings = ConversationFilesModel.objects.filter(conversation=conversation)
+        valid_documents = [m.faiss_index for m in mappings if m.faiss_index and m.faiss_index.status == "indexed"]
+        
+        if not valid_documents:
+            return []
+
         query_embedding = self._embed_text(content, provider)
-        
-        dense_hits: List[IMessageJobContextHit] = []
-        sparse_hits: List[IMessageJobContextHit] = []
-        
         faiss_store = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
         bm25_store = self.locate_service.get_vector_store(EBackendStorageName.BM25)
 
-        mappings = ConversationFilesModel.objects.filter(conversation=conversation)
-        for mapping in mappings:
-            document = mapping.faiss_index
-            if document is None or document.status != "indexed":
-                continue
+        all_dense_hits: List[IMessageJobContextHit] = []
+        all_sparse_hits: List[IMessageJobContextHit] = []
 
-            doc_id_str = str(document.faiss_index_id)
-            meta = self._load_document_chunk_metadata(doc_id_str)
-            if meta is None:
-                continue
 
-            # FAISS SEARCH (Tìm theo Ngữ Nghĩa/semantic search)
-            load_faiss = faiss_store.load(doc_id_str, file_caller=self._retrieve_context_hits.__name__)
-            if load_faiss.is_success and load_faiss.index is not None:
-                query_res = faiss_store.search(
-                    load_faiss.index, doc_id_str, query_embedding, limit=5, file_caller=self._retrieve_context_hits.__name__
-                )
-                for distance, vector_id in zip(query_res.distances, query_res.indices):
-                    try:
-                        chunk_text = self._resolve_chunk_text(doc_id_str, vector_id, meta)
-                        similarity = 1.0 / (1.0 + float(distance))
-                        dense_hits.append(IMessageJobContextHit(text=chunk_text, score=similarity, source_document_id=doc_id_str))
-                    except ValueError:
-                        continue
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(valid_documents) or 1, 10)) as executor:
+            # Ném việc cho công nhân
+            futures = [
+                executor.submit(self._search_single_document, doc, query_embedding, content, faiss_store, bm25_store)
+                for doc in valid_documents
+            ]
+            
+            # Thu hoạch kết quả ngay khi công nhân làm xong
+            for future in concurrent.futures.as_completed(futures):
+                dense_res, sparse_res = future.result()
+                all_dense_hits.extend(dense_res)
+                all_sparse_hits.extend(sparse_res)
 
-            # BM25 SEARCH (Tìm theo Từ Khóa/ keyword search)
-            load_bm25 = bm25_store.load(doc_id_str, file_caller=self._retrieve_context_hits.__name__)
-            if load_bm25.is_success and load_bm25.index is not None:
-                bm25_res = bm25_store.search(
-                    load_bm25.index, doc_id_str, query_vector=np.array([]), query_text=content, limit=5, file_caller=self._retrieve_context_hits.__name__
-                )
-                for score, chunk_key in zip(bm25_res.distances, bm25_res.indices):
-                    try:
-                        # BM25 trả về trực tiếp string key "doc_id:chunk_idx"
-                        chunk_text = meta.get("chunks", {}).get(str(chunk_key))
-                        if chunk_text:
-                            sparse_hits.append(IMessageJobContextHit(text=chunk_text, score=float(score), source_document_id=doc_id_str))
-                    except Exception:
-                        continue
+        all_dense_hits.sort(key=lambda item: item.score, reverse=True)
+        all_sparse_hits.sort(key=lambda item: item.score, reverse=True)
 
-        # Sắp xếp cục bộ trước khi truyền vào RRF để lấy Rank
-        dense_hits.sort(key=lambda item: item.score, reverse=True)
-        sparse_hits.sort(key=lambda item: item.score, reverse=True)
-
-        # HYBRID FUSION (Gộp kết quả bằng RRF)
-        if dense_hits or sparse_hits:
-            self.logger.info("Fusing Dense and Sparse results using RRF", file_caller=self._retrieve_context_hits.__name__)
-            return self.hybrid_search_service.fuse_results(dense_hits, sparse_hits, top_k=5)
+        if all_dense_hits or all_sparse_hits:
+            self.logger.info(f"Fusing {len(all_dense_hits)} Dense and {len(all_sparse_hits)} Sparse hits", file_caller=self._retrieve_context_hits.__name__)
+            return self.hybrid_search_service.fuse_results(all_dense_hits, all_sparse_hits, top_k=5)
 
         return self._keyword_context_hits(content, self._get_attached_document_texts(conversation))
-
+    
     def _embed_text(self, text: str, provider: EProviderName) -> np.ndarray:
         llm_client = self.llm_provider_factory.get_provider(provider)
         model_name = self._get_embedding_model(provider)
@@ -177,13 +178,11 @@ class MessageJob(IMessageJob):
         raise ValueError(f"Embedding model not configured for provider {provider}")
 
     def _keyword_context_hits(self, content: str, document_texts: List[str]) -> List[IMessageJobContextHit]:
-        paragraphs: List[str] = []
-        for doc_text in document_texts:
-            paragraphs.extend([p.strip() for p in doc_text.split("\n") if p.strip()])
-
         query_words = set(content.lower().split())
         scored_paragraphs: List[tuple[int, str]] = []
-        for paragraph in paragraphs:
+        
+        # Duyệt qua Generator, không tạo mảng khổng lồ trong RAM
+        for paragraph in self._generate_paragraphs(document_texts):
             paragraph_words = set(paragraph.lower().split())
             score = len(query_words.intersection(paragraph_words))
             if score > 0:
@@ -228,9 +227,10 @@ class MessageJob(IMessageJob):
                 if file_path.exists():
                     try:
                         # Tiến hành trích xuất sử dụng đúng service đã được inject qua Container
-                        raw_text = self.extract_service.extract_from_file_text(file_path, EProviderName.MISTRAL)
-                        if raw_text:
-                            document_texts.append(raw_text)
+                        raw_texts = self.extract_service.extract(file_path, EProviderName.MISTRAL)
+                        if raw_texts and raw_texts.extracted_text:
+                            document_texts.append(raw_texts.extracted_text)
+                            self.logger.info(f"Fallback text extraction successful for document {doc_id_str}", source=str(self.__class__))
                     except Exception as exc:
                         self.logger.error(
                             f"Fallback text extraction failed for document {doc_id_str}: {exc}",
@@ -246,14 +246,27 @@ class MessageJob(IMessageJob):
             if not mappings.exists():
                 return ""
             
-            document_ids = str(mappings.values_list("faiss_index__faiss_index_id", flat=True))
-            index_name = f"graph_index_{document_ids}"
+            doc_uuid_list = list(mappings.values_list("faiss_index__faiss_index_id", flat=True))
+            safe_ids_str = "_".join(str(uid).replace("-", "") for uid in doc_uuid_list)
+            index_name = f"graph_index_{safe_ids_str}"
 
             llm_client = self.llm_provider_factory.get_provider(provider)
 
-            retriever = self.neo4j_service.__create_graph_retriever( template="MATCH (c:Chunk)-[:MENTIONS]->(e) WHERE c.id = $chunk_id RETURN e.id", embedder=llm_client, index_name=index_name, file_caller=self._retrieve_graph_context.__name__)
+            retriever = self.neo4j_service.create_graph_retriever( 
+                template="MATCH (c:Chunk)-[:MENTIONS]->(e) WHERE c.id = $chunk_id RETURN e.id",
+                embedder=llm_client,
+                index_name=index_name,
+                file_caller=self._retrieve_graph_context.__name__
+            )
 
-            graph_answer = self.neo4j_service.search(query_text=content, limit=5, llm=llm_client, retriever=retriever, template=RagTemplate(), file_caller=self._retrieve_graph_context.__name__)
+            graph_answer = self.neo4j_service.search(
+                query_text=content,
+                limit=5,
+                llm=llm_client,
+                retriever=retriever,
+                template=RagTemplate(),
+                file_caller=self._retrieve_graph_context.__name__
+            )
         
             return graph_answer
         
@@ -265,3 +278,71 @@ class MessageJob(IMessageJob):
         context_text = "\n".join(hit["text"] for hit in context_hits)
         system_prompt = "You are an intelligent assistant. Answer the user based on the provided text context and graph relationships."
         return f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nGraph Context:\n{graph_context}\n\nUser: {content}\n\nAssistant:"
+    
+    def _resolve_chunk_text(self, document_id: str, vector_id: int, metadata: dict, base_id: int) -> str:
+        """Đã Tuning: Nhận thẳng base_id, không gọi hashlib nữa."""
+        chunk_key = self._vector_id_to_chunk_key(document_id, vector_id, base_id)
+        chunks = metadata.get("chunks", {})
+        if chunk_key not in chunks:
+            raise ValueError(f"Chunk not found for key {chunk_key}")
+        return chunks[chunk_key]
+
+    def _vector_id_to_chunk_key(self, document_id: str, vector_id: int, base_id: int) -> str:
+        """Đã Tuning: Tính toán siêu nhẹ vì base_id đã được tính sẵn 1 lần ở ngoài."""
+        chunk_index = int(vector_id) - base_id - 1
+        if chunk_index < 0:
+            raise ValueError(f"Invalid vector id {vector_id} for document {document_id}")
+        return f"{document_id}:{chunk_index + 1}"
+    
+    def _search_single_document(self, document, query_embedding, content: str, faiss_store, bm25_store) -> tuple[List[IMessageJobContextHit], List[IMessageJobContextHit]]:
+        """Hàm công nhân: Chịu trách nhiệm tìm kiếm trên 1 file duy nhất."""
+        dense_hits: List[IMessageJobContextHit] = []
+        sparse_hits: List[IMessageJobContextHit] = []
+        
+        doc_id_str = str(document.faiss_index_id)
+        meta = self._load_document_chunk_metadata(doc_id_str)
+        if meta is None:
+            return [], []
+
+        # Tính Hash đúng 1 lần cho cả 1 file
+        base_hash = hashlib.sha256(doc_id_str.encode("utf-8")).digest()[:8]
+        base_id = int.from_bytes(base_hash, "big") & 0x7FFFFFFFFFFFFFFF
+
+        # FAISS SEARCH
+        load_faiss = faiss_store.load(doc_id_str, file_caller=self._search_single_document.__name__)
+        if load_faiss.is_success and load_faiss.index is not None:
+            query_res = faiss_store.search(load_faiss.index, doc_id_str, query_embedding, limit=5, file_caller=self._search_single_document.__name__)
+            for distance, vector_id in zip(query_res.distances, query_res.indices):
+                try:
+                    # Truyền base_id đã tính ở trên xuống
+                    chunk_text = self._resolve_chunk_text(doc_id_str, vector_id, meta, base_id)
+                    similarity = 1.0 / (1.0 + float(distance))
+                    dense_hits.append(IMessageJobContextHit(text=chunk_text, score=similarity, source_document_id=doc_id_str))
+                except ValueError:
+                    continue
+
+        # BM25 SEARCH
+        load_bm25 = bm25_store.load(doc_id_str, file_caller=self._search_single_document.__name__)
+        if load_bm25.is_success and load_bm25.index is not None:
+            bm25_res = bm25_store.search(load_bm25.index, doc_id_str, query_vector=np.array([]), query_text=content, limit=5, file_caller=self._search_single_document.__name__)
+            for score, chunk_key in zip(bm25_res.distances, bm25_res.indices):
+                try:
+                    chunk_text = meta.get("chunks", {}).get(str(chunk_key))
+                    if chunk_text:
+                        sparse_hits.append(IMessageJobContextHit(text=chunk_text, score=float(score), source_document_id=doc_id_str))
+                except Exception:
+                    continue
+
+
+        return dense_hits, sparse_hits
+    
+    def _generate_paragraphs(self, document_texts: List[str]):
+        """
+        TỐI ƯU RAM (Bài toán 2): Hàm Generator vắt từng dòng văn bản.
+        Sinh ra đoạn nào xử lý đoạn đó, rác sẽ được dọn ngay khỏi RAM.
+        """
+        for doc_text in document_texts:
+            for p in doc_text.split("\n"):
+                clean_p = p.strip()
+                if clean_p:
+                    yield clean_p
