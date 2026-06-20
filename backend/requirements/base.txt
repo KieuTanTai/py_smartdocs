@@ -38,3 +38,4 @@ dependency-injector
 rank-bm25
 PyVi
 faiss-cpu
+asgiref

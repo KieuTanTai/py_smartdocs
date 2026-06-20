@@ -22,6 +22,13 @@ class TimeCounter(ITimeCounter):
     def reset(self):
         self.start_time = None
         self.end_time = None
+        
+    def __enter__(self):
+        self.start()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
 
     def mapping_to_time_counter_response(self, extract_time: float, chunk_time: float, embedding_time: float, save_time: float, query_time: float = 0.0) -> ITimeCounterResponse:
         total_time = extract_time + chunk_time + embedding_time + save_time + query_time

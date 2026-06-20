@@ -86,17 +86,17 @@ class INeo4jService(ABC):
     #     """
     #     pass
 
-    # @abstractmethod
-    # def create_graph_retriever(self, template: str, embedder: Embedder, index_name: str = "text_embeddings", file_caller="") -> VectorCypherRetriever:
-    #     """
-    #     Creates a graph retriever that can be used to retrieve relevant information from the Neo4j database based on the provided template and embedder.
-    #     :param template: The template string that defines the structure of the retrieval query to be used by the retriever.
-    #     :param embedder: The embedder to use for generating vector embeddings for the retrieval process.
-    #     :param index_name: The name of the vector index to use for retrieval (default is "text_embeddings").
-    #     :param file_caller: Optional string to identify the caller of this method for logging purposes.
-    #     :return: A VectorCypherRetriever object that can be used to perform retrieval operations on the Neo4j database.
-    #     """
-    #     pass
+    @abstractmethod
+    def create_graph_retriever(self, template: str, embedder: Embedder, index_name: str = "text_embeddings", file_caller="") -> VectorCypherRetriever:
+        """
+        Creates a graph retriever that can be used to retrieve relevant information from the Neo4j database based on the provided template and embedder.
+        :param template: The template string that defines the structure of the retrieval query to be used by the retriever.
+        :param embedder: The embedder to use for generating vector embeddings for the retrieval process.
+        :param index_name: The name of the vector index to use for retrieval (default is "text_embeddings").
+        :param file_caller: Optional string to identify the caller of this method for logging purposes.
+        :return: A VectorCypherRetriever object that can be used to perform retrieval operations on the Neo4j database.
+        """
+        pass
 
     @abstractmethod
     def search(self, query_text:str, limit: int, llm: LLMInterface, retriever: VectorCypherRetriever, template: RagTemplate, file_caller="") -> str:

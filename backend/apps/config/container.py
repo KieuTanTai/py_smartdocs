@@ -3,12 +3,16 @@ from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
 from backend.apps.core.normalize.normalize import Normalize
-from backend.apps.job.delete_job import DeleteJob
 from backend.apps.llm.llm_prompt_structure import LLMPromptStructure
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.job.message_job import MessageJob
+from backend.apps.job.delete_job import DeleteJob
 from backend.apps.job.conversation_job import ConversationJob
 from backend.apps.job.upload_job import UploadJob
+from backend.apps.tasks.upload_tasks import UploadTask
+from backend.apps.tasks.message_tasks import MessageTask
+from backend.apps.tasks.delete_task import DeleteTask
+from backend.apps.tasks.conversation_tasks import ConversationTask
 from backend.apps.services.cache.faiss_memory_pool import FaissMemoryPool
 from backend.apps.services.cache.radis_cache_service import RedisCacheService
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
@@ -39,6 +43,7 @@ from sys_services.log_pool import LogPool
 from sys_services.logging import Logger
 from sys_services.read_config.config_provider import EnvConfigProvider
 from sys_services.system_dirs import LOGS_DIR, METADATA_DIR
+from sys_services.time_counter import TimeCounter
 
 
 class BackendContainer(containers.DeclarativeContainer):
@@ -88,6 +93,8 @@ class BackendContainer(containers.DeclarativeContainer):
         storage=file_storage,
         logger=log_pool,
     )
+    
+    time_counter = providers.Factory(TimeCounter)
 
     # Normalize
     normalize = providers.Singleton(Normalize, logger=log_pool)
@@ -129,7 +136,7 @@ class BackendContainer(containers.DeclarativeContainer):
     hybrid_search_service = providers.Factory(
         HybridSearchService,
         locate_service=locate_service,
-        logger=log_pool,
+        logger=log_pool
     )
 
     upload_job = providers.Factory(
@@ -142,7 +149,7 @@ class BackendContainer(containers.DeclarativeContainer):
         locate_service=locate_service,
         config_provider=config_provider,
         logger=log_pool,
-        neo4j_service=neo4j_service,
+        neo4j_service=neo4j_service
     )
     
     delete_job = providers.Factory(
@@ -151,7 +158,7 @@ class BackendContainer(containers.DeclarativeContainer):
         neo4j_service=neo4j_service,
         cache_session=cache_service,
         logger=log_pool,
-        file_storage=file_storage,
+        storage_service=file_storage
     )
 
     message_job = providers.Factory(
@@ -163,7 +170,7 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,
-        neo4j_service=neo4j_service,
+        neo4j_service=neo4j_service
     )
 
     conversation_job = providers.Factory(
@@ -171,5 +178,34 @@ class BackendContainer(containers.DeclarativeContainer):
         llm_provider_factory=llm_provider_factory,
         config_provider=config_provider,
         logger=log_pool,
-        hybrid_search_service=hybrid_search_service,
+        hybrid_search_service=hybrid_search_service
+    )
+    
+    upload_task = providers.Factory(
+        UploadTask,
+        upload_job=upload_job,
+        logger=log_pool,
+        time_counter=time_counter
+    )
+
+    message_task = providers.Factory(
+        MessageTask,
+        message_job=message_job,
+        logger=log_pool,
+        time_counter=time_counter
+    )
+
+    delete_task = providers.Factory(
+        DeleteTask,
+        delete_job=delete_job,
+        logger=log_pool,
+        time_counter=time_counter
+    )
+
+    conversation_task = providers.Factory(
+        ConversationTask,
+        conversation_job=conversation_job,
+        faiss_memory_pool=faiss_memory_pool,
+        logger=log_pool,
+        time_counter=time_counter
     )
