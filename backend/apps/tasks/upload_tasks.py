@@ -22,8 +22,9 @@ from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
 from backend.apps.services.chat.models import ConversationModel, DocumentModel
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
+from backend.apps.utils.get_instance_model_database import get_instance_model_database
 
-class UploadTask(Task, IUploadTask):
+class UploadTask(IUploadTask):
 
     def __init__(
         self,
@@ -38,7 +39,7 @@ class UploadTask(Task, IUploadTask):
         self.faiss_memory_pool = faiss_memory_pool
         self.database_provider = database_provider
         self.time_counter = time_counter
-        self.document_database = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
+        self.document_database: IDocumentDatabase = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
 
     # --- MAIN ENTRY POINT ---
     @property
@@ -74,27 +75,27 @@ class UploadTask(Task, IUploadTask):
             raise exc
 
     # --- SINGLE RESPONSIBILITY METHODS ---
-    def __ensure_document_database_exists(self) -> None:
-        """Ensure the document database service is available."""
+
+    def __ensure_document_database_initialized(self) -> None:
+        """Ensure that the document database is initialized."""
         if self.document_database is None:
-            self.logger.error(
-                "Document database service is not available",
-                source=Path(__file__).name,
-                call_by=Path(__file__).name,
-                method_call=self.__ensure_document_database_exists.__name__,
-            )
-            raise ValueError("Document database service is not available")
+            obj_instance = get_instance_model_database(DocumentModel, self.database_provider)
+            if isinstance(obj_instance, IDocumentDatabase):
+                self.document_database = obj_instance
+            else:
+                raise RuntimeError("Document database service is not available.")
 
     def __create_document_model(self, conversation_model: ConversationModel, file_path: Path | None = None, content: str | None = None) -> DocumentModel:
         """Create a new document model and set its status."""
-        self.__ensure_document_database_exists()
+        self.__ensure_document_database_initialized()
         response = self.document_database.create_document(conversation_model, file_path, EDocumentStatus.PROCESSING, content)
         return response
 
     def __update_document_status_and_path(self, document_id: Any, status: EDocumentStatus, file_path: Path | None = None) -> DocumentModel:
         """Update the document status and optionally its file path."""
-        self.__ensure_document_database_exists()
-        document = self.document_database.update_status(document_id, status)
+        if (self.document_database is None):
+            self.__ensure_document_database_initialized()
+        document = self.document_database.update_status(document_id, status) 
         if file_path:
             document.documents_file_path = str(file_path)
             document.save(update_fields=["file_path"])
@@ -155,9 +156,9 @@ class UploadTask(Task, IUploadTask):
         if graph_retriever_response is None or isinstance(graph_retriever_response, IGraphRagUploadResponse) is False:
             self.logger.error(f"Failed to create graph retriever for conversation {conversation.pk} and provider {provider}", source=Path(__file__).name, call_by=self.__create_graph_retriever.__name__, method_call=self.__create_graph_retriever.__name__)
             raise ValueError(f"Failed to create graph retriever for conversation {conversation.pk} and provider {provider}")
-        
+
         return graph_retriever_response 
-    
+
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     def __execute_base_pipeline_with_paths(
         self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str

@@ -16,7 +16,7 @@ from backend.apps.interfaces.job.i_message_job import IMessageJob
 from backend.apps.interfaces.tasks.i_message_task import IMessageTask
 from sys_services.time_counter import TimeCounter
 
-class MessageTask(Task, IMessageTask):
+class MessageTask(IMessageTask):
 
     def __init__(self, message_job: IMessageJob, logger: ILogger, time_counter: TimeCounter):
         self.message_job = message_job

@@ -2,11 +2,13 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
 
+from celery import Task
+
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.services.chat.models import ConversationModel
 
-class IUploadTask(ABC):
+class IUploadTask(ABC, Task):
     """Contract for Celery Upload Processing Task."""
 
     @property

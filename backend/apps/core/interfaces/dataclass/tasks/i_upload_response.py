@@ -7,6 +7,7 @@ import numpy as np
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import IEmbeddingResponse
 from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IGraphTimeCounterResponse, ITimeCounterResponse
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 
@@ -30,7 +31,7 @@ class IUploadResponse:
     faiss_upsert: IVectorDBUpsertResponse
     bm25_upsert: IVectorDBUpsertResponse | None = None
     time_counter: ITimeCounterResponse | None = None
-    summarize: str = ""
+    summarize: IGenerateResponse | None = None
     created_at: Any = None
 
 @dataclass

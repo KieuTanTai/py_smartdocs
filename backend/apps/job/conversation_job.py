@@ -1,3 +1,4 @@
+from typing import Any, cast
 import uuid
 
 # Import Interfaces
@@ -6,46 +7,60 @@ from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import IComp
 from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
+from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
+from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 from backend.apps.interfaces.job.i_conversation_job import IConversationJob
-from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, MessageModel
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel, MessageModel
+from backend.apps.utils.get_instance_model_database import get_instance_model_database
 
 class ConversationJob(IConversationJob):
 
-    def __init__(self, llm_provider_factory: ILLMProviderFactory, llm_prompt_structure: ILLMPromptStructure, config_provider: IConfigProvider, logger: ILogger, hybrid_search_service: IHybridSearchService | None = None):
+    def __init__(self, llm_provider_factory: ILLMProviderFactory, llm_prompt_structure: ILLMPromptStructure, config_provider: IConfigProvider, 
+                 database_provider: IDatabaseProvider,
+                 logger: ILogger, hybrid_search_service: IHybridSearchService | None = None):
         self.llm_provider_factory = llm_provider_factory
         self.llm_prompt_structure = llm_prompt_structure
         self.config_provider = config_provider
+        self.database_provider = database_provider
         self.logger = logger
         self.hybrid_search_service = hybrid_search_service
+        self.document_database: IDocumentDatabase = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
 
-    def check_documents_ready(self, conversation_id: str | uuid.UUID) -> bool:
-        try:
-            if isinstance(conversation_id, uuid.UUID):
-                conversation = ConversationModel.objects.get(pk=conversation_id)
+    def __ensure_database_initialized(self, database_model: Any) -> None:
+        """Ensure that the document database is initialized."""
+        if self.document_database is None:
+            obj_instance = get_instance_model_database(DocumentModel, self.database_provider)
+            if isinstance(obj_instance, IDocumentDatabase):
+                self.document_database = obj_instance
             else:
-                conversation = ConversationModel.objects.get(conversation_id=conversation_id)
-                
-            faiss_index = conversation.conversation_faiss_index
-            documents = ConversationFilesModel.objects.filter(conversation=conversation)
-            
-            if not faiss_index or not faiss_index.faiss_index_is_active:
-                return False
-            if not documents.exists():
-                self.logger.warning(f"No documents attached to conversation {conversation_id}.", source=__file__, call_by=self.check_documents_ready.__name__)
-                return False 
-            return True
-        except ConversationModel.DoesNotExist:
-            self.logger.error(f"Conversation not found: {conversation_id}", source=__file__, call_by=self.check_documents_ready.__name__)
-            raise ValueError(f"Conversation not found: {conversation_id}")
+                raise RuntimeError("Document database service is not available.")
 
-    def generate_bootstrap_message(self, conversation_id: str, provider: EProviderName, model_name: str | None = None) -> IConversationJobResponse:
+    def check_documents_ready(self, conversation_key:uuid.UUID) -> bool:
         try:
-            conversation = ConversationModel.objects.get(pk=conversation_id)
+            if not self.document_database:
+                self.__ensure_database_initialized(DocumentModel)
+            existed = self.document_database.get_by_id(conversation_key)
+            if not existed or not existed.documents_status.lower().strip() == "indexed":
+                return False
+            return True
+        except Exception as e:
+            self.logger.error(
+                f"Error checking document readiness for conversation {conversation_key}: {str(e)}",
+                source=__file__,
+                call_by=ConversationJob.check_documents_ready.__name__,
+                method_call=self.check_documents_ready.__name__,
+            )
+            return False
+
+    def generate_bootstrap_message(self, conversation_key: uuid.UUID, provider: EProviderName, model_name: str | None = None) -> IConversationJobResponse:
+        try:
+            conversation = ConversationModel.objects.get(pk=conversation_key)
         except ConversationModel.DoesNotExist:
-            raise ValueError(f"Conversation not found: {conversation_id}")
+            raise ValueError(f"Conversation not found: {conversation_key}")
 
         # TỰ ĐỘNG SINH PROMPT BÊN TRONG JOB
         mappings = ConversationFilesModel.objects.filter(conversation=conversation).select_related('faiss_index')
@@ -68,10 +83,10 @@ class ConversationJob(IConversationJob):
             model=model,
         )
 
-    def _generate_assistant_response(self, prompt: str, provider: EProviderName, model_name: str) -> str:
+    def __generate_assistant_response(self, prompt: str, provider: EProviderName, model_name: str) -> str:
         llm_client = self.llm_provider_factory.get_provider(provider)
         response = llm_client.generate(ICompletionRequest(provider=provider, model=model_name, prompt=prompt, context_hits=[]))
         return response.message_content if hasattr(response, 'message_content') else response
 
-    def _save_message(self, conversation: ConversationModel, is_user_send: bool, content: str) -> MessageModel:
+    def __save_message(self, conversation: ConversationModel, is_user_send: bool, content: str) -> MessageModel:
         return MessageModel.objects.create(message_conversation=conversation, message_is_user_send=is_user_send, message_content=content)

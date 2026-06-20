@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 
+from celery import Task
+
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.job.i_conversation_job import IConversationJobResponse
 
-class IConversationTask(ABC):
+class IConversationTask(ABC, Task):
     """Contract for Celery Conversation Preparation Task."""
     
     @property

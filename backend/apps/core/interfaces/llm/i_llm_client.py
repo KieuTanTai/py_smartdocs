@@ -9,6 +9,9 @@ from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import IComp
 from neo4j_graphrag.llm.base import LLMInterface
 from neo4j_graphrag.embeddings import Embedder
 
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
+
+
 class ILLMClient(ABC):
     """
     Abstract interface for LLM providers.
@@ -17,7 +20,7 @@ class ILLMClient(ABC):
 
 
     @abstractmethod
-    def generate(self, request: ICompletionRequest, file_caller: str = "") -> str:
+    def generate(self, request: ICompletionRequest, file_caller: str = "") -> IGenerateResponse:
         """
         Generate text completion.
 
@@ -25,7 +28,7 @@ class ILLMClient(ABC):
             request: CompletionRequest object with prompt, context, params
             file_caller: Optional string indicating the caller for logging purposes
         Returns:
-            CompletionResponse with text, tokens, metadata
+            IGenerateResponse with text, tokens, metadata
         """
         pass
 

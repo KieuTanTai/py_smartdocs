@@ -18,6 +18,7 @@ from backend.apps.core.interfaces.core.normalize.i_normalize import INormalize
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IDocumentResponse, IEmbedResponse, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
@@ -208,7 +209,7 @@ class UploadJob(IUploadJob):
                             cache_params: List[ICacheParam],
                             provider: EProviderName,
                             model_name: str,
-                            file_caller: str = "") -> str:
+                            file_caller: str = "") -> IGenerateResponse:
         faiss_service = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
         if not isinstance(faiss_service, IVectorStoreService) or faiss_service is None:
             self.logger.error(

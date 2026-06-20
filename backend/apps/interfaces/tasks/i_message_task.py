@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
+from celery import Task
+
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.job.i_message_job import IMessageJobResponse
 
-class IMessageTask(ABC):
+class IMessageTask(ABC, Task):
     """Contract for Celery Chat Message RAG Inference Task."""
     
     @property

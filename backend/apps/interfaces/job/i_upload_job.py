@@ -14,6 +14,8 @@ from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
+from backend.apps.core.interfaces.dataclass.response.i_chat_response import IChatResponse
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
@@ -152,7 +154,7 @@ class IUploadJob(ABC):
                             cache_params: List[ICacheParam],
                             provider: EProviderName,
                             model_name: str,
-                            file_caller: str = "") -> str:
+                            file_caller: str = "") -> IGenerateResponse:
         """
         summarize document based on original texts retrieved from vector store, this is used to improve the quality of summary by providing more context to LLM.
         Args:

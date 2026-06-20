@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 
 import ssl
@@ -8,6 +9,7 @@ from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,
     IEmbeddingResponse,
 )
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse, IGenerateResponseMetadata
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from neo4j_graphrag.embeddings import Embedder
@@ -30,7 +32,7 @@ class MistralClient(ILLMClient):
         self.api_key = api_key
         self.client = Mistral(api_key=api_key)
 
-    def generate(self, request: ICompletionRequest, file_caller: str = "") -> str:
+    def generate(self, request: ICompletionRequest, file_caller: str = "") -> IGenerateResponse:
         self.logger.info("Sending request to Mistral API.", source=str(self.__class__), call_by=file_caller, method_call=self.generate.__name__)
         response = self.client.chat.complete(
             model=request.model,
@@ -40,7 +42,18 @@ class MistralClient(ILLMClient):
             self.logger.error("Response from Mistral API does not contain message.", source=str(self.__class__), call_by=file_caller, method_call=self.generate.__name__)
             raise ValueError("Response from Mistral API does not contain message.")
         self.logger.info("successfully generated content using Mistral API.", source=str(self.__class__), call_by=file_caller, method_call=self.generate.__name__)
-        return str(response.choices[0].message.content)
+        metadata = IGenerateResponseMetadata(
+            done=response.choices[0].finish_reason is not None,
+            done_reason=response.choices[0].finish_reason,
+            prompt_tokens=response.usage.prompt_tokens,
+            completion_tokens=response.usage.completion_tokens,
+            total_tokens=response.usage.total_tokens,
+        )
+        return IGenerateResponse(
+            content=str(response.choices[0].message.content),
+            model_name=request.model,
+            metadata=metadata,
+        )
 
     def embedding(self, request: ICompletionRequest, file_caller: str = "") -> IEmbeddingResponse:
         self.logger.info(
