@@ -68,10 +68,10 @@ class RedisCacheService(ICacheService):
         self.logger.info(f"Metadata for cache key: {key} written to '{destination_path}'", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
         return destination_path
 
-    def __convert_to_serializable(self, value_key: str, value: List[ICacheParamValue], expire: int | None = None) -> str:
+    def __convert_to_serializable(self, value_key: str, value: list[ICacheParamValue], expire: int | None = None) -> str:
         return json.dumps({"key": value_key, "values": self.__normalize_value(value), "expire": expire})
     
-    def __normalize_value(self, values: List[ICacheParamValue]):
+    def __normalize_value(self, values: list[ICacheParamValue]):
         result = [
             {"index": int(value.index), "text_value": value.text_value, "embedding": value.embedding} for value in values
         ]

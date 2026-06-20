@@ -22,7 +22,8 @@ class ITimeCounter(ABC):
     def get_elapsed_time(self) -> float:
         """
         Get the elapsed time in seconds.
-        call stop() before calling this method to ensure accurate timing. If stop() is not called, this method will call stop() internally to calculate the elapsed time up to the current moment.
+        call stop() before calling this method to ensure accurate timing. If stop() is not called, this method will call stop() 
+        internally to calculate the elapsed time up to the current moment.
         Returns:
             float: The elapsed time in seconds.
         """

@@ -123,10 +123,10 @@ class IUploadJob(ABC):
         self,
         provider: EProviderName,
         faiss_file_id: uuid.UUID,
-        document_ids: List[str],
-        embedding_batches: List[np.ndarray],
-        chunk_texts: List[str],
-        paths: List[Path],
+        document_ids: list[str],
+        embedding_batches: list[np.ndarray],
+        chunk_texts: list[str],
+        paths: list[Path],
         ids: np.ndarray,
         file_caller: str = "",
     ) -> IUploadResponse | None:
@@ -151,7 +151,7 @@ class IUploadJob(ABC):
                             faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
                             faiss_file_id: uuid.UUID,
                             embeddings_stack: np.ndarray,
-                            cache_params: List[ICacheParam],
+                            cache_params: list[ICacheParam],
                             provider: EProviderName,
                             model_name: str,
                             file_caller: str = "") -> IGenerateResponse:
@@ -176,7 +176,7 @@ class IUploadJob(ABC):
     async def step_build_knowledge_graph(
         self,
         conversation_id: uuid.UUID,
-        graph_params: List[IGraphRagParam],
+        graph_params: list[IGraphRagParam],
         model_name: str,
         embedding_model_name: str,
         provider: EProviderName = EProviderName.GEMINI,
@@ -202,7 +202,7 @@ class IUploadJob(ABC):
         pass
 
     @abstractmethod
-    def build_name(self, document_ids: List[str], split_by: str = "-", file_caller: str = "") -> str:
+    def build_name(self, document_ids: list[str], split_by: str = "-", file_caller: str = "") -> str:
         """
         build file name for saving vector store files and this also use for conversation name
         Args:
@@ -216,8 +216,8 @@ class IUploadJob(ABC):
 
     @abstractmethod
     def build_chunk_keys(
-        self, file_id: str, chunk_texts: List[str], file_caller: str = ""
-    ) -> List[Tuple[np.int64, str]]:
+        self, file_id: str, chunk_texts: list[str], file_caller: str = ""
+    ) -> list[Tuple[np.int64, str]]:
         """
         build chunk keys for caching
         Args:

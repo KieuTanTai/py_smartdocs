@@ -14,4 +14,4 @@ class IMessageJobResponse:
     provider: str
     model: str
     latency_ms: int
-    retrieval_hits: List[IMessageJobContextHit] = field(default_factory=list)
+    retrieval_hits: list[IMessageJobContextHit] = field(default_factory=list)

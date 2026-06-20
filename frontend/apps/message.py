@@ -62,7 +62,7 @@ def send_message(
     api: ApiClient,
     conversation_id: Optional[str],
     content: str,
-    selected_docs: List[str],
+    selected_docs: list[str],
     provider: str,
     model: str,
     system_prompt: str,

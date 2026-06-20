@@ -41,6 +41,16 @@ class ILLMPromptStructure(ABC):
         pass
 
     @abstractmethod
+    def build_init_processed_prompt(self, user_input: str) -> str:
+        """
+        Creates a structured prompt for LLM interactions based on the user input and retrieved chunks of information.
+        The prompt is designed to provide clear instructions to the LLM, along with relevant context from the retrieved chunks, to facilitate accurate and relevant response generation.
+        :param user_input: The user's input or question that the LLM needs to respond to.
+        :return: The structured prompt as a string.
+        """
+        pass
+
+    @abstractmethod
     def create_rag_template(self) -> RagTemplate:
         """
         Creates a RAG template with the specified template string and expected inputs.  

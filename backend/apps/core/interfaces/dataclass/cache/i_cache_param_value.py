@@ -13,5 +13,5 @@ class ICacheParamValue:
 @dataclass
 class ICacheParam:
     key: str
-    values: List[ICacheParamValue]
+    values: list[ICacheParamValue]
     expire: int | None = None # Expiration time in seconds, optional

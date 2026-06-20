@@ -101,7 +101,7 @@ class MessageJob(IMessageJob):
     def _save_message(self, conversation: ConversationModel, is_user_send: bool, content: str) -> MessageModel:
         return MessageModel.objects.create(message_conversation=conversation, message_is_user_send=is_user_send, message_content=content)
 
-    def _retrieve_context_hits(self, content: str, conversation: ConversationModel, provider: EProviderName) -> List[IMessageJobContextHit]:
+    def _retrieve_context_hits(self, content: str, conversation: ConversationModel, provider: EProviderName) -> list[IMessageJobContextHit]:
         """Đã Tuning: Gọi song song (Concurrency) hàng loạt file để tránh nghẽn I/O"""
         mappings = ConversationFilesModel.objects.filter(conversation=conversation)
         valid_documents = [m.faiss_index for m in mappings if m.faiss_index and m.faiss_index.status == "indexed"]
@@ -113,8 +113,8 @@ class MessageJob(IMessageJob):
         faiss_store = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
         bm25_store = self.locate_service.get_vector_store(EBackendStorageName.BM25)
 
-        all_dense_hits: List[IMessageJobContextHit] = []
-        all_sparse_hits: List[IMessageJobContextHit] = []
+        all_dense_hits: list[IMessageJobContextHit] = []
+        all_sparse_hits: list[IMessageJobContextHit] = []
 
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(valid_documents) or 1, 10)) as executor:
@@ -177,9 +177,9 @@ class MessageJob(IMessageJob):
                 return provider_record.embed_model_name
         raise ValueError(f"Embedding model not configured for provider {provider}")
 
-    def _keyword_context_hits(self, content: str, document_texts: List[str]) -> List[IMessageJobContextHit]:
+    def _keyword_context_hits(self, content: str, document_texts: list[str]) -> list[IMessageJobContextHit]:
         query_words = set(content.lower().split())
-        scored_paragraphs: List[tuple[int, str]] = []
+        scored_paragraphs: list[tuple[int, str]] = []
         
         # Duyệt qua Generator, không tạo mảng khổng lồ trong RAM
         for paragraph in self._generate_paragraphs(document_texts):
@@ -194,12 +194,12 @@ class MessageJob(IMessageJob):
             for score, paragraph in scored_paragraphs[:5]
         ]
 
-    def _get_attached_document_texts(self, conversation: ConversationModel) -> List[str]:
+    def _get_attached_document_texts(self, conversation: ConversationModel) -> list[str]:
         """
         Thu thập toàn bộ nội dung văn bản thô của các tài liệu đính kèm phục vụ luồng fallback keyword match.
         Sử dụng extract_service chuẩn IoC khi Redis cache bị mất hoặc hết hạn dữ liệu (Eviction).
         """
-        document_texts: List[str] = []
+        document_texts: list[str] = []
         
         # Tìm tất cả các liên kết file với Conversation hiện tại
         mappings = ConversationFilesModel.objects.filter(conversation=conversation)
@@ -274,7 +274,7 @@ class MessageJob(IMessageJob):
             self.logger.error(f"Lỗi khi truy vấn Graph RAG: {e}")
             return ""
 
-    def _build_prompt(self, content: str, context_hits: List[dict], graph_context: str) -> str:
+    def _build_prompt(self, content: str, context_hits: list[dict], graph_context: str) -> str:
         context_text = "\n".join(hit["text"] for hit in context_hits)
         system_prompt = "You are an intelligent assistant. Answer the user based on the provided text context and graph relationships."
         return f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nGraph Context:\n{graph_context}\n\nUser: {content}\n\nAssistant:"
@@ -294,10 +294,10 @@ class MessageJob(IMessageJob):
             raise ValueError(f"Invalid vector id {vector_id} for document {document_id}")
         return f"{document_id}:{chunk_index + 1}"
     
-    def _search_single_document(self, document, query_embedding, content: str, faiss_store, bm25_store) -> tuple[List[IMessageJobContextHit], List[IMessageJobContextHit]]:
+    def _search_single_document(self, document, query_embedding, content: str, faiss_store, bm25_store) -> tuple[list[IMessageJobContextHit], list[IMessageJobContextHit]]:
         """Hàm công nhân: Chịu trách nhiệm tìm kiếm trên 1 file duy nhất."""
-        dense_hits: List[IMessageJobContextHit] = []
-        sparse_hits: List[IMessageJobContextHit] = []
+        dense_hits: list[IMessageJobContextHit] = []
+        sparse_hits: list[IMessageJobContextHit] = []
         
         doc_id_str = str(document.faiss_index_id)
         meta = self._load_document_chunk_metadata(doc_id_str)
@@ -336,7 +336,7 @@ class MessageJob(IMessageJob):
 
         return dense_hits, sparse_hits
     
-    def _generate_paragraphs(self, document_texts: List[str]):
+    def _generate_paragraphs(self, document_texts: list[str]):
         """
         TỐI ƯU RAM (Bài toán 2): Hàm Generator vắt từng dòng văn bản.
         Sinh ra đoạn nào xử lý đoạn đó, rác sẽ được dọn ngay khỏi RAM.

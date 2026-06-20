@@ -25,9 +25,9 @@ class IEmbedResponse:
 class IUploadResponse:
     faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap
     faiss_file_id: uuid.UUID
-    vector_ids: List[int]
+    vector_ids: list[int]
     embeddings_stack: np.ndarray
-    documents: List[IDocumentResponse]
+    documents: list[IDocumentResponse]
     faiss_upsert: IVectorDBUpsertResponse
     bm25_upsert: IVectorDBUpsertResponse | None = None
     time_counter: ITimeCounterResponse | None = None
@@ -49,8 +49,8 @@ class IGraphRagParam:
 @dataclass
 class IGraphRagUploadResponse:
     conversation_id: uuid.UUID
-    list_document_ids: List[str]
-    graph_param_list: List[IGraphRagParam]
+    list_document_ids: list[str]
+    graph_param_list: list[IGraphRagParam]
     graph_retriever: VectorCypherRetriever
     created_at: Any = None
     conversation_name: str = ""

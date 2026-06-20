@@ -16,5 +16,5 @@ class IChunkAndCacheResponse:
 @dataclass
 class IChunkResponse:
     document_id: str
-    chunk_keys: List[np.int64]
-    chunk_texts: List[str]
+    chunk_keys: list[np.int64]
+    chunk_texts: list[str]

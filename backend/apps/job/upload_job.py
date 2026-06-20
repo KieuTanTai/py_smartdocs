@@ -130,7 +130,7 @@ class UploadJob(IUploadJob):
         # * NOTE: change chunk keys to tuple[np.int64, str] to store in cache and using for ids in faiss service
         chunk_keys_tuples = self.build_chunk_keys(document_id, chunk_texts, file_caller=file_caller)
 
-        # * NOTE: change field chunk_keys from List[str] to List[np.int64] to store the hashed keys for faiss ids, the original keys are stored in cache with the hashed keys as reference
+        # * NOTE: change field chunk_keys from list[str] to list[np.int64] to store the hashed keys for faiss ids, the original keys are stored in cache with the hashed keys as reference
         response = IChunkResponse(
             document_id=document_id,
             chunk_keys=[k for k, _ in chunk_keys_tuples],
@@ -165,10 +165,10 @@ class UploadJob(IUploadJob):
         self,
         provider: EProviderName,
         faiss_file_id: uuid.UUID,
-        document_ids: List[str],
-        embedding_batches: List[np.ndarray],
-        chunk_texts: List[str],
-        paths: List[Path],
+        document_ids: list[str],
+        embedding_batches: list[np.ndarray],
+        chunk_texts: list[str],
+        paths: list[Path],
         ids: np.ndarray,
         file_caller: str = "",
     ) -> IUploadResponse | None:
@@ -206,7 +206,7 @@ class UploadJob(IUploadJob):
                             faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
                             faiss_file_id: uuid.UUID,
                             embeddings_stack: np.ndarray,
-                            cache_params: List[ICacheParam],
+                            cache_params: list[ICacheParam],
                             provider: EProviderName,
                             model_name: str,
                             file_caller: str = "") -> IGenerateResponse:
@@ -284,7 +284,7 @@ class UploadJob(IUploadJob):
     async def step_build_knowledge_graph(
         self,
         conversation_id: uuid.UUID,
-        graph_params: List[IGraphRagParam],
+        graph_params: list[IGraphRagParam],
         model_name: str,
         embedding_model_name: str,
         provider: EProviderName = EProviderName.GEMINI,
@@ -320,8 +320,8 @@ class UploadJob(IUploadJob):
         )
 
     def build_chunk_keys(
-        self, file_id: str, chunk_texts: List[str], file_caller: str = ""
-    ) -> List[Tuple[np.int64, str]]:
+        self, file_id: str, chunk_texts: list[str], file_caller: str = ""
+    ) -> list[Tuple[np.int64, str]]:
         """create chunk keys based on file_id with structure: file_id:chunk_index
         after that hashing this key to 64 bit integer for numpy array dtype int64
         """
@@ -349,7 +349,7 @@ class UploadJob(IUploadJob):
         return chunk_keys_tuples
 
     def build_name(
-        self, document_ids: List[str], split_by: str = "_", file_caller: str = ""
+        self, document_ids: list[str], split_by: str = "_", file_caller: str = ""
     ) -> str:
         sorted_ids = sorted(document_ids)
         name = split_by.join(sorted_ids)
@@ -368,7 +368,7 @@ class UploadJob(IUploadJob):
         embedder: Embedder,
         llm_model: LLMInterface,
         template: str,
-        params: List[IGraphRagParam],
+        params: list[IGraphRagParam],
         similarity_fn: ESimilarityFn,
         file_caller: str = "",
     ) -> VectorCypherRetriever:
@@ -404,7 +404,7 @@ class UploadJob(IUploadJob):
         finally:
             self.session_provider.disconnect(file_caller=self.step_build_knowledge_graph.__name__)
 
-    def __validate_before_save(self, embedding_batches: List[np.ndarray], ids: np.ndarray, document_ids: List[str], chunk_paths: List[Path], chunk_texts: List[str], provider: EProviderName, file_caller: str = "") -> None:
+    def __validate_before_save(self, embedding_batches: list[np.ndarray], ids: np.ndarray, document_ids: list[str], chunk_paths: list[Path], chunk_texts: list[str], provider: EProviderName, file_caller: str = "") -> None:
         if embedding_batches is None or len(embedding_batches) == 0:
             self.logger.error(
                 f"No embeddings to save for provider {provider} for document ids: {document_ids}",
@@ -507,7 +507,7 @@ class UploadJob(IUploadJob):
     def __save_to_bm25(
         self,
         provider: EProviderName,
-        chunk_texts: List[str],
+        chunk_texts: list[str],
         file_name: uuid.UUID,
         file_caller: str = "",
     ) -> IVectorDBUpsertResponse | None:
@@ -551,7 +551,7 @@ class UploadJob(IUploadJob):
 
     def __convert_to_cache_param_value(
         self, chunk_response: IChunkResponse, embedding_response: IEmbedResponse
-    ) -> List[ICacheParamValue]:
+    ) -> list[ICacheParamValue]:
         """Convert chunk and embedding responses to list of ICacheParamValue"""
         return [
             ICacheParamValue(index=chunk_key, text_value=chunk_text, embedding=embedding)
@@ -564,7 +564,7 @@ class UploadJob(IUploadJob):
         faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap,
         faiss_file_id: uuid.UUID,
         embeddings_stack: np.ndarray,
-        cache_params: List[ICacheParam],
+        cache_params: list[ICacheParam],
         file_caller: str = "",
     ) -> str:
         response = faiss_service.search(
@@ -602,7 +602,7 @@ class UploadJob(IUploadJob):
         raise ValueError(f"Embedding model not configured for provider {provider}")
 
     def __embed_chunk_texts(
-        self, chunk_texts: List[str], provider: EProviderName
+        self, chunk_texts: list[str], provider: EProviderName
     ) -> np.ndarray:
         llm_client = self.llm_provider_factory.get_provider(provider)
         model_name = self.__get_embedding_model(provider)

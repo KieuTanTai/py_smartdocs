@@ -7,6 +7,6 @@ class IHybridSearchService(ABC):
     """Contract cho dịch vụ Tìm kiếm Lai (Hybrid Search Fusion)."""
     
     @abstractmethod
-    def fuse_results(self, dense_hits: List[IMessageJobContextHit], sparse_hits: List[IMessageJobContextHit], top_k: int = 5) -> List[IMessageJobContextHit]:
+    def fuse_results(self, dense_hits: list[IMessageJobContextHit], sparse_hits: list[IMessageJobContextHit], top_k: int = 5) -> list[IMessageJobContextHit]:
         """Dung hợp kết quả từ Dense Vector (FAISS) và Sparse Vector (BM25)."""
         pass
