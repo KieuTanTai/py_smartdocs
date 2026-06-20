@@ -34,6 +34,7 @@ class ConversationTask(IConversationTask):
         )
         return self.conversation_job.change_title_document(conversation_id, new_title, file_caller=file_caller)
 
+    #! NOTE: Will continue fixing this after fix delete_job, tasks
     def remove(self, conversation_id: str, file_caller: str = "") -> int:
         self.logger.info(
             f"Removing conversation {conversation_id} and associated resources",
