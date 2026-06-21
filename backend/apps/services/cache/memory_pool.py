@@ -3,11 +3,11 @@ from typing import Any
 
 import faiss
 
-from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
+from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 
 
-class FaissMemoryPool(IFaissMemoryPool):
+class FaissMemoryPool(IMemoryPool):
     def __init__(self, logger: ILogger):
         self.logger = logger
         self.pool = dict[Any, faiss.IndexFlatL2 | faiss.IndexIDMap]()

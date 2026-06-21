@@ -11,7 +11,7 @@ from django.db.models import QuerySet
 from backend.apps.core.interfaces.services.rag_base.database.i_model_database import (
     IModelDatabase,
 )
-from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel
 
 
 class IConversationFileDatabase(IModelDatabase[ConversationFilesModel]):
@@ -20,18 +20,27 @@ class IConversationFileDatabase(IModelDatabase[ConversationFilesModel]):
     @abstractmethod
     def create_conversation_file(
         self,
-        conversation: ConversationModel,
+        document: DocumentModel,
         cloud_id: str,
         **extra_fields: Any,
     ) -> ConversationFilesModel:
-        """Create a file link for a conversation."""
+        """Create a file link for a document."""
         pass
 
     @abstractmethod
-    def get_by_conversation(
-        self, conversation: ConversationModel
+    def create_conversation_files_bulk(
+        self,
+        document_cloud_id_pairs: list[tuple[DocumentModel, str]],
+        **extra_fields: Any,
+    ) -> list[ConversationFilesModel]:
+        """Bulk create file links for multiple documents."""
+        pass
+
+    @abstractmethod
+    def get_by_document(
+        self, document: DocumentModel
     ) -> QuerySet[ConversationFilesModel]:
-        """Get file links attached to the given conversation."""
+        """Get file links attached to the given document."""
         pass
 
     @abstractmethod
@@ -45,6 +54,11 @@ class IConversationFileDatabase(IModelDatabase[ConversationFilesModel]):
         pass
 
     @abstractmethod
-    def delete_by_conversation(self, conversation: ConversationModel) -> int:
-        """Delete all file links attached to the given conversation."""
+    def delete_by_document(self, document: DocumentModel) -> int:
+        """Delete all file links attached to the given document."""
+        pass
+
+    @abstractmethod
+    def get_by_conversation(self, conversation: ConversationModel) -> QuerySet[ConversationFilesModel]:
+        """Get file links attached to the given conversation."""
         pass

@@ -38,6 +38,11 @@ class IDocumentDatabase(IModelDatabase[DocumentModel]):
     #     pass
 
     @abstractmethod
+    def get_by_conversation(self, conversation: ConversationModel) -> DocumentModel:
+        """Get documents by conversation."""
+        pass
+
+    @abstractmethod
     def get_by_file_path(self, file_path: Path) -> QuerySet[DocumentModel]:
         """Get documents by file path."""
         pass

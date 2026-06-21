@@ -23,6 +23,17 @@ class ILLMPromptStructure(ABC):
         pass
 
     @abstractmethod
+    def build_prompt_for_graph_context(self, content: str, context_hits: list[dict], graph_context: str) -> str:
+        """Creates a structured prompt for LLM interactions based on the user input, retrieved chunks of information, and graph context.
+        The prompt is designed to provide clear instructions to the LLM, along with relevant context from the retrieved chunks and graph relationships, to facilitate accurate and relevant response generation.
+        :param content: The user's input or question that the LLM needs to respond to.
+        :param context_hits: A list of dictionaries representing the retrieved chunks of information relevant to the user's query, where each dictionary contains a "text" key with the chunk content.
+        :param graph_context: A string representing the graph context or relationships relevant to the user's query.
+        :return: The structured prompt as a string.
+        """
+        pass
+
+    @abstractmethod
     def build_prompt_for_multiple_file(self, dict_retrieved_chunks: dict[str, list[str]], user_input: str) -> str:
         """
         Creates a structured prompt for LLM interactions based on multiple files.

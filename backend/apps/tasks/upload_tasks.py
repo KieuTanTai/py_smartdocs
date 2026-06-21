@@ -4,7 +4,7 @@ Handles the execution flow for uploaded files via background workers.
 """
 
 from dataclasses import asdict
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, cast
 from pathlib import Path
 import uuid
 from celery import Task
@@ -13,33 +13,34 @@ import numpy as np
 from backend.apps.core.enums.e_document_status import EDocumentStatus
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
-from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
+from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IExtractMapping, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
-from backend.apps.services.chat.models import ConversationModel, DocumentModel
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
-from backend.apps.utils.get_instance_model_database import get_instance_model_database
 
 class UploadTask(IUploadTask):
 
     def __init__(
         self,
         upload_job: IUploadJob,
-        faiss_memory_pool: IFaissMemoryPool,
+        memory_pool: IMemoryPool,
         database_provider: IDatabaseProvider,
         logger: ILogger,
         time_counter: ITimeCounter,
     ):
         self.upload_job = upload_job
         self.logger = logger
-        self.faiss_memory_pool = faiss_memory_pool
+        self.memory_pool = memory_pool
         self.database_provider = database_provider
         self.time_counter = time_counter
         self.document_database: IDocumentDatabase = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
+        self.conversation_files_database = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
 
     # --- MAIN ENTRY POINT ---
     @property
@@ -57,7 +58,7 @@ class UploadTask(IUploadTask):
             result_dataclass = self.__execute_base_pipeline_with_paths(conversation_model, file_paths, provider_name, model_name)
             # Lưu index vào memory pool
             self.logger.info(f"Adding FAISS index to memory pool with file ID {result_dataclass.faiss_file_id} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
-            self.faiss_memory_pool.add_to_pool(result_dataclass.faiss_file_id, result_dataclass.faiss_index, file_caller)
+            self.memory_pool.add_to_pool(result_dataclass.faiss_file_id, result_dataclass.faiss_index, file_caller)
             self.logger.info(f"Successfully completed UploadTask for file paths {file_paths} and provider {provider_name}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             return result_dataclass
         except Exception as exc:
@@ -75,15 +76,6 @@ class UploadTask(IUploadTask):
             raise exc
 
     # --- SINGLE RESPONSIBILITY METHODS ---
-
-    # def __ensure_document_database_initialized(self) -> None:
-    #     """Ensure that the document database is initialized."""
-    #     if self.document_database is None:
-    #         obj_instance = get_instance_model_database(DocumentModel, self.database_provider)
-    #         if isinstance(obj_instance, IDocumentDatabase):
-    #             self.document_database = obj_instance
-    #         else:
-    #             raise RuntimeError("Document database service is not available.")
 
     def __create_document_model(self, conversation_model: ConversationModel, file_path: Path | None = None, content: str | None = None) -> DocumentModel:
         """Create a new document model and set its status."""
@@ -104,6 +96,12 @@ class UploadTask(IUploadTask):
         self.logger.info(f"Updated document model with ID {document.pk} and file path {file_path}", source=Path(__file__).name, call_by=self.__update_document_status_and_path.__name__, method_call=self.__update_document_status_and_path.__name__)
         return document
 
+    def __create_conversation_file_model(self, documents: list[tuple[DocumentModel, str]]) -> list[ConversationFilesModel]:
+        self.logger.info(f"Creating conversation file models for documents: {[doc.pk for doc, _ in documents]}", source=Path(__file__).name, call_by=self.__create_conversation_file_model.__name__, method_call=self.__create_conversation_file_model.__name__)
+        response = self.conversation_files_database.create_conversation_files_bulk(documents)
+        self.logger.info(f"Created conversation file models with IDs: {[cfm.pk for cfm in response]}", source=Path(__file__).name, call_by=self.__create_conversation_file_model.__name__, method_call=self.__create_conversation_file_model.__name__)
+        return response
+
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     async def __execute_pipeline_create_retriever_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str, embed_model_name: str) -> IGraphRagUploadResponse:
 
@@ -111,11 +109,11 @@ class UploadTask(IUploadTask):
         self.time_counter.reset()
         self.time_counter.start()
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
+        document = self.__create_document_model(conversation_model)
         contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
         extract_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed text extraction and normalization for file paths {file_paths} in {extract_time:.2f} seconds", source=Path(__file__).name, 
                          call_by=self.__execute_pipeline_create_retriever_with_paths.__name__, method_call=self.__execute_pipeline_create_retriever_with_paths.__name__)
-
         # start chunk time counter
         # * Step 2: Chunk the normalized text
         chunk_responses, chunk_texts = self.__chunk(contents)
@@ -127,6 +125,7 @@ class UploadTask(IUploadTask):
         # * Step 3: Create graph retriever
         graph_params = self.__build_list_graph_params(conversation_model, chunk_responses)
         graph_retriever_response = await self.__create_graph_retriever(conversation_model, provider, graph_params, model_name, embed_model_name)
+        graph_retriever_response.conversation_files = self.__create_conversation_file_model(self.__build_documents(document_ids, document))
         graph_retriever_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed graph retriever creation for file paths {file_paths} in {graph_retriever_time:.2f} seconds", source=Path(__file__).name,   
                         call_by=self.__execute_pipeline_create_retriever_with_paths.__name__, method_call=self.__execute_pipeline_create_retriever_with_paths.__name__)
@@ -202,11 +201,13 @@ class UploadTask(IUploadTask):
         # * Step 5: Save the embeddings to vector store and update document model with file path and status
         try:
             upload_response = self.__upload_to_vector_store(provider, document_ids, faiss_document.pk, embeddings, chunk_texts, ids, chunk_paths, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+            upload_response.conversation_files = self.__create_conversation_file_model(self.__build_documents(document_ids, faiss_document))
         except Exception as exc:
             self.time_counter.stop()
             self.time_counter.reset()
             self.logger.error(f"Error during saving embeddings to vector store for file paths {file_paths}: {exc}", source=Path(__file__).name, call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
             raise exc
+
         save_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed saving embeddings to vector store for file paths {file_paths} in {save_time:.2f} seconds", source=Path(__file__).name, 
                          call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
@@ -224,7 +225,14 @@ class UploadTask(IUploadTask):
         upload_response.time_counter = self.time_counter.mapping_to_time_counter_response(extract_time, chunk_time, embedding_time, save_time, summarize_time)
         return upload_response
 
+
     # * Mini step on pipeline
+    def __build_documents(self, document_ids: list[str], document: DocumentModel) -> list[tuple[DocumentModel, str]]:
+        self.logger.info(f"Building document tuples for document IDs: {document_ids} and document model ID: {document.pk}", source=Path(__file__).name, call_by=self.__build_documents.__name__, method_call=self.__build_documents.__name__)
+        result = [(document, doc_id) for doc_id in document_ids]
+        self.logger.info(f"Built document tuples: {[(doc.pk, doc_id) for doc, doc_id in result]}", source=Path(__file__).name, call_by=self.__build_documents.__name__, method_call=self.__build_documents.__name__)
+        return result
+
     def __upload_to_vector_store(self, provider: EProviderName, document_ids: list[str], faiss_file_id: uuid.UUID,
                                  embedding_batches: list[np.ndarray], chunk_texts: list[str] = [], ids: np.ndarray = np.ndarray([], dtype=np.int64), chunk_paths: list[Path] = [], file_caller: str = "") -> IUploadResponse:
         try:            
@@ -239,14 +247,14 @@ class UploadTask(IUploadTask):
         self.__update_document_status_and_path(faiss_file_id, EDocumentStatus.INDEXED)
         return upload_response
 
-    def __embed_chunks(self, chunk_responses: list[IChunkResponse], provider: EProviderName) -> Tuple[list[IEmbedResponse], list[np.ndarray]]:
+    def __embed_chunks(self, chunk_responses: list[IChunkResponse], provider: EProviderName) -> tuple[list[IEmbedResponse], list[np.ndarray]]:
         embed_responses = list[IEmbedResponse]()
         for chunk_response in chunk_responses:
             embed_response = self.upload_job.step_embed(chunk_response, provider, file_caller=self.__embed_chunks.__name__)
             embed_responses.append(embed_response)
         return embed_responses, [embed.embeddings for embed in embed_responses]
 
-    def __chunk(self, contents: list[IExtractMapping]) -> Tuple[list[IChunkResponse], list[str]]:
+    def __chunk(self, contents: list[IExtractMapping]) -> tuple[list[IChunkResponse], list[str]]:
         chunk_responses = list[IChunkResponse]()
         texts = []
         for content in contents:
@@ -263,7 +271,7 @@ class UploadTask(IUploadTask):
             cache_responses.append(cache_response)
         return cache_responses
 
-    def __extract_contents_and_get_document_ids(self, file_paths: list[Path], provider: EProviderName, file_caller: str = "") -> Tuple[list[IExtractMapping], list[str]]:
+    def __extract_contents_and_get_document_ids(self, file_paths: list[Path], provider: EProviderName, file_caller: str = "") -> tuple[list[IExtractMapping], list[str]]:
         contents = list[IExtractMapping]()
         for file_path in file_paths:
             self.logger.info(

@@ -1,7 +1,6 @@
 import asyncio
 import hashlib
 from pathlib import Path
-from typing import List, Tuple
 import uuid
 from venv import create
 import faiss
@@ -321,7 +320,7 @@ class UploadJob(IUploadJob):
 
     def build_chunk_keys(
         self, file_id: str, chunk_texts: list[str], file_caller: str = ""
-    ) -> list[Tuple[np.int64, str]]:
+    ) -> list[tuple[np.int64, str]]:
         """create chunk keys based on file_id with structure: file_id:chunk_index
         after that hashing this key to 64 bit integer for numpy array dtype int64
         """
@@ -402,6 +401,9 @@ class UploadJob(IUploadJob):
             )
             raise e
         finally:
+            self.logger.info(
+                f"Disconnecting session provider after building knowledge graph for conversation {conversation_id}", Path(__file__).name, file_caller, self.step_build_knowledge_graph.__name__
+            )
             self.session_provider.disconnect(file_caller=self.step_build_knowledge_graph.__name__)
 
     def __validate_before_save(self, embedding_batches: list[np.ndarray], ids: np.ndarray, document_ids: list[str], chunk_paths: list[Path], chunk_texts: list[str], provider: EProviderName, file_caller: str = "") -> None:

@@ -4,7 +4,6 @@ Interface for Upload Job module.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Tuple
 import uuid
 
 import faiss
@@ -217,7 +216,7 @@ class IUploadJob(ABC):
     @abstractmethod
     def build_chunk_keys(
         self, file_id: str, chunk_texts: list[str], file_caller: str = ""
-    ) -> list[Tuple[np.int64, str]]:
+    ) -> list[tuple[np.int64, str]]:
         """
         build chunk keys for caching
         Args:

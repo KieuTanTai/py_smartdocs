@@ -15,7 +15,7 @@ def build_message(
     return IChatMessage(role=role, content=content, meta=meta or {})
 
 #! NOTE RECOMMEND USE THAT WHEN HAVE DATACLASS FOR RESPONSE, DONT USE dict[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-# def _extract_id(payload: Dict[str, Any]) -> Optional[str]:
+# def _extract_id(payload: dict[str, Any]) -> Optional[str]:
 #     for key in ("id", "conversation_id", "uuid"):
 #         if key in payload:
 #             return str(payload[key])
@@ -27,7 +27,7 @@ def build_message(
 #     return None
 
 #! NOTE RECOMMEND USE THAT WHEN HAVE DATACLASS FOR RESPONSE, DONT USE dict[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-# def _extract_text(payload: Dict[str, Any]) -> str:
+# def _extract_text(payload: dict[str, Any]) -> str:
 #     for key in ("message", "content", "answer", "text", "assistant"):
 #         if key in payload and payload[key]:
 #             return str(payload[key])
@@ -39,7 +39,7 @@ def build_message(
 #     return ""
 
 
-def _extract_metrics(payload: Dict[str, Any]) -> IChatMetrics:
+def _extract_metrics(payload: dict[str, Any]) -> IChatMetrics:
     metrics = payload.get("metrics")
 
     if metrics is None:
@@ -68,7 +68,7 @@ def send_message(
     system_prompt: str,
     mode: str,
     allow_mock: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         new_conversation = False
         if not conversation_id:

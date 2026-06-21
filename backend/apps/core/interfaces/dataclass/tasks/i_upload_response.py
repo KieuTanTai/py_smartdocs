@@ -11,6 +11,8 @@ from backend.apps.core.interfaces.dataclass.response.i_generate_response import 
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 
+from backend.apps.services.chat.models import ConversationFilesModel
+
 @dataclass
 class IExtractMapping:
     document_path: Path
@@ -31,6 +33,7 @@ class IUploadResponse:
     faiss_upsert: IVectorDBUpsertResponse
     bm25_upsert: IVectorDBUpsertResponse | None = None
     time_counter: ITimeCounterResponse | None = None
+    conversation_files: list[ConversationFilesModel] = field(default_factory=list)
     summarize: IGenerateResponse | None = None
     created_at: Any = None
 
@@ -54,4 +57,5 @@ class IGraphRagUploadResponse:
     graph_retriever: VectorCypherRetriever
     created_at: Any = None
     conversation_name: str = ""
+    conversation_files: list[ConversationFilesModel] = field(default_factory=list)
     time_counter: IGraphTimeCounterResponse | None = None

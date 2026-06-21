@@ -31,7 +31,7 @@ class ConversationApplication:
         model_name: Optional[str] = None,
         system_prompt: Optional[str] = None,
         document_ids: Optional[list[UUID]] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new conversation with optional documents.
 
@@ -76,7 +76,7 @@ class ConversationApplication:
             self.logger.error(f"Error creating conversation: {e}")
             raise
 
-    def get_conversation(self, conversation_id: UUID) -> Dict[str, Any]:
+    def get_conversation(self, conversation_id: UUID) -> dict[str, Any]:
         """
         Get conversation details.
 
@@ -98,7 +98,7 @@ class ConversationApplication:
             self.logger.error(f"Error retrieving conversation: {e}")
             raise
 
-    def list_conversations(self) -> list[Dict[str, Any]]:
+    def list_conversations(self) -> list[dict[str, Any]]:
         """
         List all conversations.
 
@@ -116,7 +116,7 @@ class ConversationApplication:
 
     def add_documents_to_conversation(
         self, conversation_id: UUID, document_ids: list[UUID]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Add documents to an existing conversation.
 
@@ -147,7 +147,7 @@ class ConversationApplication:
 
     def remove_documents_from_conversation(
         self, conversation_id: UUID, document_ids: list[UUID]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Remove documents from conversation.
 
@@ -200,7 +200,7 @@ class ConversationApplication:
             self.logger.error(f"Error deleting conversation: {e}")
             raise
 
-    def get_conversation_documents(self, conversation_id: UUID) -> list[Dict[str, Any]]:
+    def get_conversation_documents(self, conversation_id: UUID) -> list[dict[str, Any]]:
         """
         Get documents attached to conversation.
 
@@ -270,7 +270,7 @@ class ConversationApplication:
                 self.logger.warning(f"Document {doc_id} not found, skipping")
                 continue
 
-    def _serialize_conversation(self, conversation: ConversationModel) -> Dict[str, Any]:
+    def _serialize_conversation(self, conversation: ConversationModel) -> dict[str, Any]:
         """
         Serialize conversation model to dictionary.
 

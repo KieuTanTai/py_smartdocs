@@ -9,7 +9,7 @@ from typing import Any, Dict
 import uuid
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
-from backend.apps.core.interfaces.services.cache.i_faiss_memory_pool import IFaissMemoryPool
+from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
 from backend.apps.exceptions.exceptions import DocumentsNotReadyError
@@ -18,9 +18,9 @@ from backend.apps.interfaces.tasks.i_conversation_task import IConversationTask
 from backend.apps.services.chat.models import ConversationModel
 
 class ConversationTask(IConversationTask):
-    def __init__(self, conversation_job: IConversationJob, faiss_memory_pool: IFaissMemoryPool, logger: ILogger,time_counter: ITimeCounter):
+    def __init__(self, conversation_job: IConversationJob, memory_pool: IMemoryPool, logger: ILogger,time_counter: ITimeCounter):
         self.conversation_job = conversation_job
-        self.faiss_memory_pool = faiss_memory_pool
+        self.memory_pool = memory_pool
         self.logger = logger
         self.time_counter = time_counter
 
@@ -43,7 +43,6 @@ class ConversationTask(IConversationTask):
             method_call=self.remove.__name__,
         )
         # Clean up any resources associated with the conversation (e.g., cached data in FaissMemoryPool)
-        self.faiss_memory_pool.remove_from_pool(conversation_id)
         return self.conversation_job.remove_conversation(conversation_id, file_caller=file_caller)
 
     def create_init_conversation(self, conversation_title: str = "Initial Conversation", file_caller: str = "") -> ConversationModel:

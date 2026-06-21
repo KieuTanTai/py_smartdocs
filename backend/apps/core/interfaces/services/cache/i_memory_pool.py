@@ -3,7 +3,7 @@ from typing import Any
 
 import faiss
 
-class IFaissMemoryPool(ABC):
+class IMemoryPool(ABC):
     """
     Contract for Faiss Memory Pool Service.
     This service manages the in-memory storage of Faiss indices for active conversations, allowing for efficient retrieval and management of indices during the conversation lifecycle.

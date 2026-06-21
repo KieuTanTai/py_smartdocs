@@ -9,6 +9,7 @@ from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response
 from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
+from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
