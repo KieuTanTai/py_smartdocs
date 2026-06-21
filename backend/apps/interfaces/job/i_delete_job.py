@@ -30,3 +30,10 @@ class IDeleteJob(ABC):
         Xóa dữ liệu thô (Chunk text) đã lưu trong Redis Cache.
         """
         pass
+    
+    @abstractmethod
+    def step_delete_cloud_file(self, file_id: str, file_caller: str = "") -> bool:
+        """
+        Xóa file tạm trên Cloud của LLM Provider (Mistral Cloud).
+        """
+        pass

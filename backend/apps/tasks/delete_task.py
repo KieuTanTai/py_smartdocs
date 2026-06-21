@@ -13,13 +13,17 @@ class DeleteTask(Task):
     def name(self) -> str:
         return "delete_task"
 
-    def run(self, document_id: str, file_caller: str = "") -> dict:
+    def run(self, document_id: str, file_id: str = None, file_caller: str = "") -> dict:
         self.logger.info(f"Starting DeleteTask for document {document_id} called by {file_caller}")
         try:
             # Chạy qua 3 bước dọn dẹp
             self.delete_job.step_clear_cache(document_id, file_caller=self.run.__name__)
             self.delete_job.step_delete_vectors(document_id, file_caller=self.run.__name__)
             self.delete_job.step_delete_graph_data(document_id, file_caller=self.run.__name__)
+            
+            # Xóa Cloud File
+            target_cloud_id = file_id if file_id else document_id
+            self.delete_job.step_delete_cloud_file(target_cloud_id, file_caller=self.run.__name__)
             
             return {
                 "status": "success", 
