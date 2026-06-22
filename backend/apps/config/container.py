@@ -162,24 +162,25 @@ class BackendContainer(containers.DeclarativeContainer):
     delete_job = providers.Factory(
         DeleteJob,
         locate_service=locate_service,
-        database_provider=database_provider,
-        session_provider=neo4j_session,
+        neo4j_service=neo4j_service,
         cache_session=cache_session,
         logger=log_pool,
-        storage_service=file_storage
+        storage_service=file_storage,
+        time_counter=time_counter
     )
 
     message_job = providers.Factory(
         MessageJob,
         llm_provider_factory=llm_provider_factory,
         config_provider=config_provider,
+        prompt_structure=llm_prompt_structure,
         locate_service=locate_service,
         cache_session=cache_session,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,
         database_provider=database_provider,
-        session_provider=neo4j_session
+        neo4j_service=neo4j_service
     )
 
     conversation_job = providers.Factory(
@@ -222,6 +223,15 @@ class BackendContainer(containers.DeclarativeContainer):
         memory_pool=memory_pool,
         logger=log_pool,
         time_counter=time_counter
+    )
+
+    run_application = providers.Factory(
+        RunApplication,
+        upload_task=upload_task,
+        message_job=message_job,
+        delete_job=delete_job,
+        database_provider=database_provider,
+        logger=log_pool
     )
 
     document_application = providers.Factory(

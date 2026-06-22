@@ -32,7 +32,7 @@ class Extractor:
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 PDF_SOURCE = (
-    Path("C:\\Users\\Acer\\Downloads\\3_Bai giang Toan A3 - chinh thuc - Bac Dai hoc.pdf")
+    Path("C:\\Users\\Acer\\Downloads\\drive-download-20260130T160128Z-3-001\\Shin cậu bé bút chì T01.pdf")
 )
 IMAGE_SOURCE = (
     Path("C:\\Users\\Acer\\Downloads\\12.png")

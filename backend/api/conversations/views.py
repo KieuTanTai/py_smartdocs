@@ -265,7 +265,7 @@ def call_llm_with_resilience(
 ) -> tuple[str, str]:
     """
     Call LLM with retries. If the primary provider fails, fall back to other providers.
-    Returns (answer, used_provider_name).
+    Returns (answer_string, used_provider_name).
     """
     try:
         primary_provider = EProviderName(provider_name.lower())
@@ -306,9 +306,11 @@ def call_llm_with_resilience(
                         f"Calling LLM provider {provider.value} (model: {resolved_model}), attempt {attempt + 1}",
                         source="call_llm_with_resilience"
                     )
-                    answer = client.generate(req)
-                    if answer:
-                        return answer, provider.value
+                    response = client.generate(req)
+                    if response:
+                        # Extract string content from IGenerateResponse dataclass
+                        answer_text = response.content if hasattr(response, 'content') else str(response)
+                        return answer_text, provider.value
                 except Exception as e:
                     DEFAULT_LOGGER.warning(
                         f"Attempt {attempt + 1} failed for provider {provider.value}: {e}",
@@ -402,12 +404,17 @@ class MessageListView(APIView):
         used_provider = provider_name
 
         try:
-            answer, used_provider = call_llm_with_resilience(
+            answer_response, used_provider = call_llm_with_resilience(
                 provider_name=provider_name,
                 model_name=model_name,
                 prompt=llm_prompt,
                 max_retries=2,
             )
+            # Extract string content from IGenerateResponse if it's a dataclass
+            if hasattr(answer_response, 'content'):
+                answer = answer_response.content
+            else:
+                answer = str(answer_response)
         except Exception as exc:
             DEFAULT_LOGGER.error(
                 f"All LLM providers failed after retries: {exc}. Using mock response.",
