@@ -3,9 +3,9 @@ from typing import List
 from shiny import ui
 from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
 
-#* NOTE: using List[IProvider] instead of List[str] because we need to get the model name and provider name to display in the UI, and also to send the request to the backend when create conversation, if we only use List[str], 
-#* we will lose the provider name information, and we need to do extra work to get the provider name from the model name, which is not efficient and also not necessary because we can get the provider name directly from the IProvider object. So using List[IProvider] is more convenient and efficient in this case.
-def model_settings_ui(object_providers: List[IProvider]) -> ui.Tag:
+#* NOTE: using list[IProvider] instead of list[str] because we need to get the model name and provider name to display in the UI, and also to send the request to the backend when create conversation, if we only use list[str], 
+#* we will lose the provider name information, and we need to do extra work to get the provider name from the model name, which is not efficient and also not necessary because we can get the provider name directly from the IProvider object. So using list[IProvider] is more convenient and efficient in this case.
+def model_settings_ui(object_providers: list[IProvider]) -> ui.Tag:
     mode_choices = ["normal", "graph"]
 
     return ui.tags.div(

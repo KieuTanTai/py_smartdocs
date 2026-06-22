@@ -8,8 +8,11 @@ import numpy as np
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import IEmbeddingResponse
 from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IGraphTimeCounterResponse, ITimeCounterResponse
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
 from neo4j_graphrag.retrievers import VectorCypherRetriever
+
+from backend.apps.services.chat.models import ConversationFilesModel
 
 @dataclass
 class IExtractMapping:
@@ -25,19 +28,18 @@ class IEmbedResponse:
 class IUploadResponse:
     faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap
     faiss_file_id: uuid.UUID
-    vector_ids: List[int]
+    vector_ids: list[int]
     embeddings_stack: np.ndarray
-    documents: List[IDocumentResponse]
     faiss_upsert: IVectorDBUpsertResponse
     bm25_upsert: IVectorDBUpsertResponse | None = None
     time_counter: ITimeCounterResponse | None = None
-    summarize: str = ""
+    conversation_files: list[ConversationFilesModel] = field(default_factory=list)
+    summarize: IGenerateResponse | None = None
     created_at: Any = None
+    conversation_id: uuid.UUID = field(default_factory=uuid.uuid7)
+    conversation_name: str = ""
+    conversation_cache_path: Path = field(default_factory=Path)
 
-@dataclass
-class IDocumentResponse:
-    document_id: str
-    path: Path
 
 @dataclass 
 class IGraphRagParam:
@@ -48,10 +50,12 @@ class IGraphRagParam:
 
 @dataclass
 class IGraphRagUploadResponse:
-    conversation_id: uuid.UUID
-    list_document_ids: List[str]
-    graph_param_list: List[IGraphRagParam]
+    list_document_ids: list[str]
+    graph_param_list: list[IGraphRagParam]
     graph_retriever: VectorCypherRetriever
     created_at: Any = None
-    conversation_name: str = ""
+    conversation_files: list[ConversationFilesModel] = field(default_factory=list)
     time_counter: IGraphTimeCounterResponse | None = None
+    conversation_id: uuid.UUID = field(default_factory=uuid.uuid7)
+    conversation_name: str = ""
+    conversation_cache_path: Path = field(default_factory=Path)

@@ -2,6 +2,7 @@ import os
 import numpy as np
 from google import genai
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse, IGenerateResponseMetadata
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from neo4j_graphrag.embeddings import Embedder
@@ -24,7 +25,7 @@ class GeminiClient(ILLMClient):
         self.timeout = timeout
         self.logger = logger
 
-    def generate(self, request: ICompletionRequest, file_caller: str = "") -> str:
+    def generate(self, request: ICompletionRequest, file_caller: str = "") -> IGenerateResponse:
         self.logger.info("Sending request to Gemini API.", source=str(self.__class__), call_by=file_caller, method_call=self.generate.__name__)
 
         response = self.client.models.generate_content(
@@ -35,7 +36,11 @@ class GeminiClient(ILLMClient):
             self.logger.error("Response from Gemini API does not contain text.", source=str(self.__class__), call_by=file_caller, method_call=self.generate.__name__)
             raise ValueError("Response from Gemini API does not contain text.")
         self.logger.info("successfully generated content using Gemini API.", source=str(self.__class__), call_by=file_caller, method_call=self.generate.__name__)
-        return response.text
+        return IGenerateResponse(
+            content=response.text,
+            model_name=request.model,
+        )
+
 
     def embedding(self, request: ICompletionRequest, file_caller: str = "") -> IEmbeddingResponse:
         self.logger.info(

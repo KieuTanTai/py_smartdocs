@@ -52,6 +52,9 @@ class DocumentDatabaseService(IDocumentDatabase):
     def get_by_file_paths(self, file_paths: list[Path]) -> QuerySet[DocumentModel]:
         return DocumentModel.objects.filter(documents_file_path__in=[str(path) for path in file_paths])
 
+    def get_by_conversation(self, conversation: ConversationModel) -> DocumentModel:
+        return DocumentModel.objects.get(documents_conversation=conversation)
+
     def list(self, **filters: Any) -> QuerySet[DocumentModel]:
         queryset = DocumentModel.objects.all()
         if filters:

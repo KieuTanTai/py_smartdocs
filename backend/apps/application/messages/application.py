@@ -30,7 +30,7 @@ class MessageApplication:
         provider_name: str,
         model_name: str,
         message_type: str = "normal",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process incoming message and prepare for job scheduling.
 
@@ -91,7 +91,7 @@ class MessageApplication:
 
     def get_conversation_messages(
         self, conversation_id: UUID, limit: int = 50, offset: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Retrieve conversation message history.
 
@@ -140,7 +140,7 @@ class MessageApplication:
         response_content: str,
         retrieval_time: float = 0.0,
         generation_time: float = 0.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Save assistant response to database.
 
@@ -254,7 +254,7 @@ class MessageApplication:
         message: MessageModel,
         retrieval_time: float = 0.0,
         generation_time: float = 0.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Serialize message model to dictionary.
 

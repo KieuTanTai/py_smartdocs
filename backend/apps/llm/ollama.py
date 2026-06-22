@@ -1,6 +1,9 @@
+import datetime
+
 import numpy as np
 from ollama import Client
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse, IGenerateResponseMetadata
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from neo4j_graphrag.embeddings import Embedder
@@ -23,7 +26,7 @@ class OllamaClient(ILLMClient):
         self.timeout = timeout
         self.logger = logger
 
-    def generate(self, request: ICompletionRequest, file_caller: str = "") -> str:
+    def generate(self, request: ICompletionRequest, file_caller: str = "") -> IGenerateResponse:
         self.logger.info(
             f"Sending request to Ollama: model={request.model}, prompt_length={len(request.prompt)}",
             source=str(self.__class__),
@@ -44,7 +47,23 @@ class OllamaClient(ILLMClient):
             call_by=file_caller,
             method_call=self.generate.__name__
         )
-        return response.response if response.response is not None else ""
+        
+        total_tokens = (response.prompt_eval_count or 0) + (response.eval_count or 0)
+        metadata = IGenerateResponseMetadata(
+            done = response.done,
+            done_reason = response.done_reason,
+            total_duration = response.total_duration,
+            load_duration = response.load_duration,
+            prompt_tokens = response.prompt_eval_count,
+            completion_tokens = response.eval_count,
+            total_tokens = total_tokens,
+            prompt_eval_duration = response.prompt_eval_duration,
+        )
+        return IGenerateResponse(
+            content=values,
+            model_name=request.model,
+            metadata=metadata,
+        )
 
     def embedding(self, request: ICompletionRequest, file_caller: str = "") -> IEmbeddingResponse:
         self.logger.info(

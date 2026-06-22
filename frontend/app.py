@@ -27,7 +27,7 @@ from sys_services.system_dirs import BASE_FE_DIR
 from sys_services.read_config.read_list_provider import LIST_PROVIDERS
 
 # ── Global auth token store (persists across Shiny sessions) ─────────────────
-_auth_tokens: Dict[str, str] = {}   # "access_token", "refresh_token"
+_auth_tokens: dict[str, str] = {}   # "access_token", "refresh_token"
 _auth_user: Optional[Dict] = None
 
 app_ui = ui.page_fluid(
@@ -90,8 +90,8 @@ def server(input: Any, output: Any, session: Any) -> None:
         return ApiClient(api_base_url.get())
 
     def normalize_doc(
-        payload: Dict[str, Any], file_info: dict, source: str
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any], file_info: dict, source: str
+    ) -> dict[str, Any]:
         data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
         doc_id = (
             data.get("id")  # type: ignore

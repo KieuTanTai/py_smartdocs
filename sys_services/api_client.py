@@ -23,7 +23,7 @@ class ApiClient:
         self._access_token = None
         self._refresh_token = None
 
-    def _headers(self) -> Dict[str, str]:
+    def _headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
         if self._access_token:
             headers["Authorization"] = f"Bearer {self._access_token}"
@@ -34,7 +34,7 @@ class ApiClient:
         self._refresh_token = refresh_token
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    def _request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+    def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         headers = self._headers()
         if "headers" in kwargs:
@@ -72,7 +72,7 @@ class ApiClient:
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
     def _request_with_fallback(
         self, method: str, primary_path: str, fallback_path: str, **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         try:
             return self._request(method, primary_path, **kwargs)
         except ApiError as exc:
@@ -81,10 +81,10 @@ class ApiClient:
                 raise
         return self._request(method, fallback_path, **kwargs)
 
-    def health(self) -> Dict[str, Any]:
+    def health(self) -> dict[str, Any]:
         return self._request("GET", "/api/health/")
 
-    def list_conversations(self) -> Dict[str, Any]:
+    def list_conversations(self) -> dict[str, Any]:
         return self._request("GET", "/api/conversations/")
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
@@ -126,7 +126,7 @@ class ApiClient:
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
     def update_conversation_documents(
         self, conversation_id: str, document_ids: list[str]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         payload = {"document_ids": document_ids}
         return self._request(
             "PATCH",
@@ -135,7 +135,7 @@ class ApiClient:
         )
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    def upload_document(self, file_info: dict, source: str) -> Dict[str, Any]:
+    def upload_document(self, file_info: dict, source: str) -> dict[str, Any]:
         file_type = file_info.get("type") or "application/octet-stream"
         print(f"Uploading document with file type: {file_type}")
         print(f"File info: {file_info}")
@@ -154,40 +154,40 @@ class ApiClient:
             print(f"Upload response: {resp}")
             return resp
 
-    def index_document(self, document_id: str) -> Dict[str, Any]:
+    def index_document(self, document_id: str) -> dict[str, Any]:
         return self._request_with_fallback(
             "POST",
             f"/api/documents/{document_id}/index/",
             f"/api/documents/{document_id}/process/",
         )
 
-    def document_status(self, document_id: str) -> Dict[str, Any]:
+    def document_status(self, document_id: str) -> dict[str, Any]:
         return self._request_with_fallback(
             "GET",
             f"/api/documents/{document_id}/status/",
             f"/api/documents/{document_id}/",
         )
 
-    def delete_document(self, document_id: str) -> Dict[str, Any]:
+    def delete_document(self, document_id: str) -> dict[str, Any]:
         return self._request("DELETE", f"/api/documents/{document_id}/")
 
     # ── Auth ────────────────────────────────────────────────────────────────
     #! UNUSED: These methods are defined for completeness but not currently called by the frontend.
-    def signup(self, email: str, password: str, name: str) -> Dict[str, Any]:
+    def signup(self, email: str, password: str, name: str) -> dict[str, Any]:
         payload = {"email": email, "password": password, "name": name}
         return self._request("POST", "/api/auth/signup/", json=payload)
 
-    def login(self, email: str, password: str) -> Dict[str, Any]:
+    def login(self, email: str, password: str) -> dict[str, Any]:
         payload = {"email": email, "password": password}
         return self._request("POST", "/api/auth/login/", json=payload)
 
-    def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+    def refresh_token(self, refresh_token: str) -> dict[str, Any]:
         payload = {"refresh_token": refresh_token}
         return self._request("POST", "/api/auth/refresh/", json=payload)
 
-    def me(self) -> Dict[str, Any]:
+    def me(self) -> dict[str, Any]:
         return self._request("GET", "/api/auth/me/")
 
-    def logout(self, user_id: str) -> Dict[str, Any]:
+    def logout(self, user_id: str) -> dict[str, Any]:
         payload = {"user_id": user_id}
         return self._request("POST", "/api/auth/logout/", json=payload)

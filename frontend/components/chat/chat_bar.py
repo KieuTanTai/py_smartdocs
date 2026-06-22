@@ -6,7 +6,7 @@ from backend.apps.core.interfaces.dataclass.system.i_provider import IProvider
 from components.settings.model_settings import model_settings_ui
 
 
-def chat_bar_ui(object_providers: List[IProvider]) -> ui.Tag:
+def chat_bar_ui(object_providers: list[IProvider]) -> ui.Tag:
     return ui.tags.div(
         ui.tags.div(
             ui.input_text_area(

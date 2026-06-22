@@ -14,7 +14,7 @@ sys.modules['apps.services.chat.models'] = mock_django_models
 
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.tasks.upload_tasks import UploadTask
-from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import ICacheResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, ISaveResponse
 
 # ==========================================
@@ -38,7 +38,7 @@ def test_upload_task_run_multiple_files_success(mock_document_model):
     mock_upload_job.step_extract.return_value = ["Nội dung file 1", "Nội dung file 2"]
     mock_upload_job.step_normalize.return_value = ["Clean text 1", "Clean text 2"]
     
-    mock_chunk_response = MagicMock(spec=IChunkAndCacheResponse)
+    mock_chunk_response = MagicMock(spec=ICacheResponse)
     mock_chunk_response.chunk_texts = ["Chunk 1", "Chunk 2", "Chunk 3"]
     mock_upload_job.step_chunk_and_cache.return_value = mock_chunk_response
     

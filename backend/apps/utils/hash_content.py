@@ -8,7 +8,7 @@ def sha256_embedded_content(content: np.ndarray) -> str:
     hash_object = hashlib.sha256(memoryview(content))
     return hash_object.hexdigest()
 
-def sha256_embedded_contents(contents: List[np.ndarray]) -> List[str]:
+def sha256_embedded_contents(contents: list[np.ndarray]) -> list[str]:
     """Hash multiple embedded contents using SHA-256."""
     return [sha256_embedded_content(content) for content in contents]
 

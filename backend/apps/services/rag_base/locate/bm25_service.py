@@ -24,7 +24,7 @@ class BM25Service(ISpareVectorStoreService):
         # BM25 không cần init index rỗng bằng np_vectors như FAISS
         return None
 
-    def upsert(self, index: Dict[str, str], vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBUpsertResponse:
+    def upsert(self, index: dict[str, str], vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBUpsertResponse:
         # Tách từ (tokenize) cho thuật toán BM25
         keys = list(index.keys())
         corpus = list(index.values())

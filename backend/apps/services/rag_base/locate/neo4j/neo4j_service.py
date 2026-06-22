@@ -59,7 +59,7 @@ class Neo4jService(INeo4jService):
         file_caller="",
     ) -> VectorCypherRetriever:
         self.logger.info(f"Getting Vector Cypher Retriever with index: {index_name}", Path(__file__).name, file_caller, self.get_vector_cypher_retriever.__name__)
-        retriever = self.__create_graph_retriever(template=self.prompt_structure, embedder=embedder, index_name=index_name, file_caller=file_caller)
+        retriever = self.create_graph_retriever(template=self.prompt_structure, embedder=embedder, index_name=index_name, file_caller=file_caller)
         return retriever
 
     async def execute_file_to_kg_pipeline(
@@ -89,7 +89,7 @@ class Neo4jService(INeo4jService):
         self.logger.info(
             f"Completed processing files: {processed_files}", Path(__file__).name, file_caller, self.execute_file_to_kg_pipeline.__name__
         )
-        return self.__create_graph_retriever(retrieval_query, embedder, index_name, file_caller)
+        return self.create_graph_retriever(retrieval_query, embedder, index_name, file_caller)
 
     def wait_for_index_ready(self, index_name: uuid.UUID, timeout: int = 30, file_caller="") -> bool:
         self.logger.info(
@@ -189,7 +189,7 @@ class Neo4jService(INeo4jService):
         with self.driver.session() as session:
             session.run(query, name=name, label=label, embedding_property=embedding_property, dimensions=dimensions, similarity_fn=similarity_fn)  # type: ignore
 
-    def __create_graph_retriever(
+    def create_graph_retriever(
         self,
         template: str,
         embedder: Embedder,
@@ -209,6 +209,6 @@ class Neo4jService(INeo4jService):
             f"Created Graph Retriever with index: {index_name}\n   retriever: {retriever}",
             Path(__file__).name,
             file_caller,
-            self.__create_graph_retriever.__name__,
+            self.create_graph_retriever.__name__,
         )
         return retriever

@@ -50,9 +50,10 @@ class FaissService(IVectorStoreService):
         self.logger.info(f"Searching FAISS index for vector_id '{vector_id}' with query vector of shape {query_vector.shape}",
             Path(__file__).name, file_caller, method_call=self.search.__name__)
         distances, indices = index.search(query_vector, limit)
-        distances, indices = self.__filter_output_search_results(distances, indices, allow_ids, chunk_file_map, file_caller)
-        self.logger.info(f"FAISS search results for vector_id '{vector_id}': distances={distances}, indices={indices}",
-            Path(__file__).name, file_caller, method_call=self.search.__name__)
+        if (allow_ids is not None or chunk_file_map is not None):
+            distances, indices = self.__filter_output_search_results(distances, indices, allow_ids, chunk_file_map, file_caller)
+            self.logger.info(f"FAISS search results for vector_id '{vector_id}': distances={distances}, indices={indices}",
+                Path(__file__).name, file_caller, method_call=self.search.__name__)
         return IVectorDBQueryResponse(id=vector_id, distances=distances.tolist()[0], indices=indices.tolist()[0])
 
     def delete(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:
@@ -76,6 +77,18 @@ class FaissService(IVectorStoreService):
         self.logger.info(f"Loaded FAISS index for vector_id '{vector_id}' from metadata",
             Path(__file__).name, file_caller, method_call=self.load.__name__)
         return IVectorDBLoadResponse(id=vector_id, is_success=True, index=index)
+
+    def load_with_path(self, path: Path, file_caller: str = "") -> IVectorDBLoadResponse:
+        if not path.exists():
+            self.logger.error(f"FAISS index file at '{path}' does not exist",
+                Path(__file__).name, file_caller, method_call=self.load_with_path.__name__)
+            raise ValueError(f"FAISS index file at '{path}' does not exist")
+        index = faiss.read_index(str(path))
+        self.logger.info(f"Loaded FAISS index from path '{path}'",
+            Path(__file__).name, file_caller, method_call=self.load_with_path.__name__)
+        return IVectorDBLoadResponse(
+            id=uuid.UUID(Path(path).name), is_success=True, index=index
+        )
 
     def is_existed_in_metadata(self, vector_id: uuid.UUID) -> Path | None:
         return is_existed_in_metadata(self.metadata_dir, vector_id, "faiss", self.logger)
