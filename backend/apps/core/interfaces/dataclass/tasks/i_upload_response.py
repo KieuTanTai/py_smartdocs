@@ -29,7 +29,6 @@ class IUploadResponse:
     faiss_file_id: uuid.UUID
     vector_ids: list[int]
     embeddings_stack: np.ndarray
-    documents: list[IDocumentResponse]
     faiss_upsert: IVectorDBUpsertResponse
     bm25_upsert: IVectorDBUpsertResponse | None = None
     time_counter: ITimeCounterResponse | None = None
@@ -38,11 +37,8 @@ class IUploadResponse:
     created_at: Any = None
     conversation_id: uuid.UUID = field(default_factory=uuid.uuid7)
     conversation_name: str = ""
+    conversation_cache_path: Path = field(default_factory=Path)
 
-@dataclass
-class IDocumentResponse:
-    document_id: str
-    path: Path
 
 @dataclass 
 class IGraphRagParam:
@@ -57,8 +53,8 @@ class IGraphRagUploadResponse:
     graph_param_list: list[IGraphRagParam]
     graph_retriever: VectorCypherRetriever
     created_at: Any = None
-    conversation_name: str = ""
     conversation_files: list[ConversationFilesModel] = field(default_factory=list)
     time_counter: IGraphTimeCounterResponse | None = None
     conversation_id: uuid.UUID = field(default_factory=uuid.uuid7)
     conversation_name: str = ""
+    conversation_cache_path: Path = field(default_factory=Path)

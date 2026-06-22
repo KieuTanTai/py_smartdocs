@@ -7,8 +7,9 @@ import numpy as np
 @dataclass
 class ICacheParamValue:
     index: np.int64
-    embedding: np.ndarray
+    # embedding: np.ndarray
     text_value: str
+    document_id: str = ""  # optional, can be used to store the document_id of the chunk if needed
 
 @dataclass
 class ICacheParam:
