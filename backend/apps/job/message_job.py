@@ -16,7 +16,9 @@ from backend.apps.core.interfaces.services.rag_base.database.i_database_provider
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_message_database import IMessageDatabase
 from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content import IExtractContent
+from backend.apps.core.interfaces.services.rag_base.locate.i_spare_vector_store_service import ISpareVectorStoreService
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import INeo4jService
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
 from backend.apps.interfaces.job.i_message_job import IMessageJob
@@ -116,24 +118,29 @@ class MessageJob(IMessageJob):
         self.logger.info(f"Parallel Retrieval completed", source=str(self.__class__))
         return (graph_context, context_hits)
 
-    def __thread_pool_executor_vector_search(self, content: str, query_embedding: np.ndarray, faiss_store: IVectorDBService, 
-                                             bm25_store: IVectorDBService, documents: list[ConversationFilesModel]) -> tuple[list[IMessageJobContextHit], list[IMessageJobContextHit]]:
+    def __thread_pool_executor_vector_search(self, conversation: ConversationModel,content: str, query_embedding: np.ndarray, faiss_store: IVectorStoreService, 
+                                             bm25_store: ISpareVectorStoreService, documents: list[ConversationFilesModel]) -> tuple[list[IMessageJobContextHit], list[IMessageJobContextHit]]:
         all_dense_hits: list[IMessageJobContextHit] = []
         all_sparse_hits: list[IMessageJobContextHit] = []
+        document = self.document_database.get_by_conversation(conversation)
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=min(len(documents) or 1, 10)
+            max_workers=2
         ) as executor:
             # Ném việc cho công nhân
             futures = [
+                # BM25 search sẽ được thực hiện song song với FAISS search
                 executor.submit(
-                    self._search_single_document,
-                    doc,
+                    self.__faiss_search,
+                    document.document_id,
                     query_embedding,
-                    content,
                     faiss_store,
+                ),
+                executor.submit(
+                    self.__bm25_search,
+                    document.document_id,
+                    content,
                     bm25_store,
                 )
-                for doc in documents
             ]
 
             # Thu hoạch kết quả ngay khi công nhân làm xong
@@ -160,9 +167,9 @@ class MessageJob(IMessageJob):
             return []
 
         query_embedding = self.__embed_text(content, provider, model_name)
-        faiss_store = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
-        bm25_store = self.locate_service.get_vector_store(EBackendStorageName.BM25)
-        all_dense_hits, all_sparse_hits = self.__thread_pool_executor_vector_search(content, query_embedding, faiss_store, bm25_store, documents)
+        faiss_store = cast(IVectorStoreService, self.locate_service.get_vector_store(EBackendStorageName.FAISS))
+        bm25_store = cast(ISpareVectorStoreService, self.locate_service.get_vector_store(EBackendStorageName.BM25))
+        all_dense_hits, all_sparse_hits = self.__thread_pool_executor_vector_search(conversation, content,query_embedding, faiss_store, bm25_store, documents)
 
         if all_dense_hits or all_sparse_hits:
             self.logger.info(f"Fusing {len(all_dense_hits)} Dense and {len(all_sparse_hits)} Sparse hits", Path(__file__).name, Path(__file__).name, self.__retrieve_context_hits.__name__)
@@ -214,16 +221,15 @@ class MessageJob(IMessageJob):
         response = llm_client.embedding(ICompletionRequest(provider=provider, model=model_name, prompt=text))
         return response.embedding.astype(np.float32)
 
-    def __load_document_chunk_metadata(self, document_id: str) -> list[ICacheParamValue] | None:
-        cache_key = f"document_chunks:{document_id}:meta"
+    def __load_document_chunk_metadata(self, document_id: str) -> ICacheParam | None:
         # Ghi log file_caller cho Cache Service
         try:
             cache_service = self.cache_session.connect(file_caller=self.__load_document_chunk_metadata.__name__)
             if not isinstance(cache_service, ICacheService):
                 raise ValueError("Cache service connection failed or returned invalid type")
-            response = cache_service.get(cache_key, file_caller=self.__load_document_chunk_metadata.__name__)
+            response = cache_service.get(document_id, file_caller=self.__load_document_chunk_metadata.__name__)
             if response and response.values:
-                return response.values
+                return response
             return None
         finally:
             self.cache_session.disconnect(file_caller=self.__load_document_chunk_metadata.__name__)
@@ -295,62 +301,50 @@ class MessageJob(IMessageJob):
                         )
         return document_texts
 
-    def __resolve_chunk_text(self, document_id: str, vector_id: int, metadata: list[ICacheParamValue], base_id: int) -> str:
-        """Đã Tuning: Nhận thẳng base_id, không gọi hashlib nữa."""
-        chunk_key = self._vector_id_to_chunk_key(document_id, vector_id, base_id)
-        for item in metadata:
-            if item.index == chunk_key:
-                return item.text_value
-        raise ValueError(f"Chunk not found for key {chunk_key}")
+    # def __resolve_chunk_text(self, document_id: str, vector_id: int, metadata: list[ICacheParamValue]) -> str:
+    #     """Đã Tuning: Nhận thẳng base_id, không gọi hashlib nữa."""
+    #     chunk_key = self.__vector_id_to_chunk_key(document_id, vector_id)
+    #     for item in metadata:
+    #         if item.index == chunk_key:
+    #             return item.text_value
+    #     raise ValueError(f"Chunk not found for key {chunk_key}")
 
-    def _vector_id_to_chunk_key(self, document_id: str, vector_id: int, base_id: int) -> str:
-        """Đã Tuning: Tính toán siêu nhẹ vì base_id đã được tính sẵn 1 lần ở ngoài."""
-        chunk_index = int(vector_id) - base_id - 1
-        if chunk_index < 0:
-            raise ValueError(f"Invalid vector id {vector_id} for document {document_id}")
-        return f"{document_id}:{chunk_index + 1}"
+    # def __vector_id_to_chunk_key(self, document_id: str, vector_id: int) -> str:
+    #     """Đã Tuning: Tính toán siêu nhẹ vì base_id đã được tính sẵn 1 lần ở ngoài."""
+    #     chunk_index = int(vector_id) - base_id - 1
+    #     if chunk_index < 0:
+    #         raise ValueError(f"Invalid vector id {vector_id} for document {document_id}")
+    #     return f"{document_id}:{chunk_index + 1}"
 
-    def _search_single_document(self, document, query_embedding, content: str, faiss_store, bm25_store) -> tuple[list[IMessageJobContextHit], list[IMessageJobContextHit]]:
-        """Hàm công nhân: Chịu trách nhiệm tìm kiếm trên 1 file duy nhất."""
-        dense_hits: list[IMessageJobContextHit] = []
-        sparse_hits: list[IMessageJobContextHit] = []
-
-        doc_id_str = str(document.faiss_index_id)
-        meta = self.__load_document_chunk_metadata(doc_id_str)
-        if meta is None:
-            return [], []
-
-        # Tính Hash đúng 1 lần cho cả 1 file
-        base_hash = hashlib.sha256(doc_id_str.encode("utf-8")).digest()[:8]
-        base_id = int.from_bytes(base_hash, "big") & 0x7FFFFFFFFFFFFFFF
-
-        # FAISS SEARCH
-        load_faiss = faiss_store.load(doc_id_str, file_caller=self._search_single_document.__name__)
+    
+    def __faiss_search(self, doc_id, query_embedding: np.ndarray, faiss_store: IVectorStoreService) -> list[IMessageJobContextHit]:
+        dense_hits = []
+        load_faiss = faiss_store.load(doc_id, file_caller=self.__faiss_search.__name__)
         if load_faiss.is_success and load_faiss.index is not None:
-            query_res = faiss_store.search(load_faiss.index, doc_id_str, query_embedding, limit=5, file_caller=self._search_single_document.__name__)
+            query_res = faiss_store.search(load_faiss.index, doc_id, query_embedding, limit=5, file_caller=self.__faiss_search.__name__)
             for distance, vector_id in zip(query_res.distances, query_res.indices):
                 try:
                     # Truyền base_id đã tính ở trên xuống
-                    chunk_text = self.__resolve_chunk_text(doc_id_str, vector_id, meta, base_id)
+                    chunk_text = self.__resolve_chunk_text(str(doc_id), vector_id, meta)
                     similarity = 1.0 / (1.0 + float(distance))
-                    dense_hits.append(IMessageJobContextHit(text=chunk_text, score=similarity, source_document_id=doc_id_str))
+                    dense_hits.append(IMessageJobContextHit(text=chunk_text, score=similarity, source_document_id=doc_id))
                 except ValueError:
                     continue
+        return dense_hits
 
-        # BM25 SEARCH
-        load_bm25 = bm25_store.load(doc_id_str, file_caller=self._search_single_document.__name__)
+    def __bm25_search(self, doc_id, content: str, bm25_store: ISpareVectorStoreService) -> list[IMessageJobContextHit]:
+        sparse_hits = []
+        load_bm25 = bm25_store.load(doc_id, file_caller=self.__bm25_search.__name__)
         if load_bm25.is_success and load_bm25.index is not None:
-            bm25_res = bm25_store.search(load_bm25.index, doc_id_str, query_vector=np.array([]), query_text=content, limit=5, file_caller=self._search_single_document.__name__)
+            bm25_res = bm25_store.search(load_bm25.index, doc_id, query_vector=np.array([]), query_text=content, limit=5, file_caller=self.__bm25_search.__name__)
             for score, chunk_key in zip(bm25_res.distances, bm25_res.indices):
                 try:
-                    chunk_text = self.__resolve_chunk_text(doc_id_str, chunk_key, meta, base_id)
+                    chunk_text = self.__resolve_chunk_text(doc_id, chunk_key, meta, base_id)
                     if chunk_text:
-                        sparse_hits.append(IMessageJobContextHit(text=chunk_text, score=float(score), source_document_id=doc_id_str))
+                        sparse_hits.append(IMessageJobContextHit(text=chunk_text, score=float(score), source_document_id=doc_id))
                 except Exception:
                     continue
-
-        return dense_hits, sparse_hits
-
+        return sparse_hits
     def _generate_paragraphs(self, document_texts: list[str]):
         """
         TỐI ƯU RAM (Bài toán 2): Hàm Generator vắt từng dòng văn bản.

@@ -31,7 +31,7 @@ class DeleteTask(Task):
             self.delete_job.step_delete_cloud_file(target_cloud_id, file_caller=self.run.__name__)
             
             self.time_counter.stop()
-            elapsed = self.time_counter.get_elapsed_time_ms()
+            elapsed = self.time_counter.get_elapsed_time()
             self.logger.info(f"DeleteTask completed successfully in {elapsed:.2f}ms for document {document_id}")
             
             return {
