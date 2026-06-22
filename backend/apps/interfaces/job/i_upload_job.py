@@ -228,18 +228,3 @@ class IUploadJob(ABC):
             list of tuples containing chunk IDs and corresponding chunk texts
         """
         pass
-
-    @abstractmethod
-    def load_document(self, conversation_id: str, file_caller: str = "") -> IconversationDocumentGetResponse:
-        """
-        load document information for a conversation, which can be used for further processing such as building knowledge graph, or for displaying the document information in the UI, etc. The document information is stored in the database with the conversation_id as reference, and it includes the document ids and paths, etc.
-        Args:
-            conversation_id: the ID of the conversation to load documents for
-            file_caller: function name of caller for logging
-        Returns:
-            IconversationDocumentGetResponse containing the document information for the conversation
-        Raises:
-            ValueError: If conversation is not found or has no associated documents
-            Exception: For any other processing errors
-        """
-        pass

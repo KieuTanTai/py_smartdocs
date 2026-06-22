@@ -183,6 +183,7 @@ class BackendContainer(containers.DeclarativeContainer):
         llm_prompt_structure=llm_prompt_structure,
         config_provider=config_provider,
         database_provider=database_provider,
+        locate_service=locate_service,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service
     )

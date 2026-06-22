@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import uuid
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.services.chat.models import ConversationModel
 
 class IConversationJob(ABC):
@@ -70,5 +71,20 @@ class IConversationJob(ABC):
             file_caller (str): The file caller for the conversation.
         Returns:
             IConversationJobResponse: The response containing the generated bootstrap message and related metadata.
+        """
+        pass
+
+    @abstractmethod
+    def load_document(self, conversation_id: str, file_caller: str = "") -> IconversationDocumentGetResponse:
+        """
+        load document information for a conversation, which can be used for further processing such as building knowledge graph, or for displaying the document information in the UI, etc. The document information is stored in the database with the conversation_id as reference, and it includes the document ids and paths, etc.
+        Args:
+            conversation_id: the ID of the conversation to load documents for
+            file_caller: function name of caller for logging
+        Returns:
+            IconversationDocumentGetResponse containing the document information for the conversation
+        Raises:
+            ValueError: If conversation is not found or has no associated documents
+            Exception: For any other processing errors
         """
         pass

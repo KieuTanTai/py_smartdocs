@@ -316,32 +316,7 @@ class UploadJob(IUploadJob):
             created_at=np.datetime64("now"),
         )
 
-    def load_document(self, conversation_id: str, file_caller: str = "") -> IconversationDocumentGetResponse:
-        # * NOTE: this method is used to load the document information for a conversation, which can be used for further processing such as building knowledge graph, or for displaying the document information in the UI, etc. The document information is stored in the database with the conversation_id as reference, and it includes the document ids and paths, etc.
-        conversation = self.conversation_database.get_by_id(conversation_id)
-        document = self.document_database.get_by_conversation(conversation)
-        files = self.conversation_files_database.get_by_conversation(conversation)
 
-        if document is None:
-            self.logger.warning(
-                f"No document found for conversation {conversation_id}",
-                Path(__file__).name,
-                file_caller,
-                self.load_document.__name__,
-            )
-            return IconversationDocumentGetResponse(document_url=Path(), files=[], db_load=None)
-        self.logger.info(
-            f"Loaded document for conversation {conversation_id}: {document.document_id}",
-            Path(__file__).name,
-            file_caller,
-            self.load_document.__name__,
-        )
-        # load to faiss
-        path = Path(document.documents_file_path if document.documents_file_path else "")
-        response = self.faiss_store.load_with_path(path, file_caller)
-        return IconversationDocumentGetResponse(document_url=path, 
-                                                files=[file for file in files if file.conversation_files_document.document_id == document.document_id], 
-                                                db_load=response)
 
     def build_chunk_keys(
         self, file_id: str, chunk_texts: list[str], file_caller: str = ""

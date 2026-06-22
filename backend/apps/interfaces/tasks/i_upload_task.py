@@ -22,21 +22,6 @@ class IUploadTask(ABC, Task):
         pass
 
     @abstractmethod
-    def load_document(self, conversation_id: str, file_caller: str = "") -> IconversationDocumentGetResponse:
-        """
-        Load document for a given conversation.
-        Args:
-            conversation_id: Unique identifier for the conversation
-            file_caller: Name of the file caller (for logging purposes)
-        Returns:
-            An IconversationDocumentGetResponse containing document URL, associated files, and optional vector DB load response
-        Raises:
-            ValueError: If conversation_id is invalid or document is not found
-            Exception: For any other loading errors
-        """
-        pass
-
-    @abstractmethod
     def run_with_paths(self, conversation_id: str, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller:str = "") -> IUploadResponse:
         """
         Executes document RAG pipeline via UploadJob.

@@ -3,9 +3,11 @@ from typing import Any, cast
 import uuid
 
 # Import Interfaces
+from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
@@ -15,6 +17,8 @@ from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_message_database import IMessageDatabase
+from backend.apps.core.interfaces.services.rag_base.locate.i_locate_service import ILocateService
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.services.rag_base.search.i_hybrid_search_service import IHybridSearchService
@@ -27,6 +31,7 @@ class ConversationJob(IConversationJob):
     def __init__(self, llm_provider_factory: ILLMProviderFactory, 
                  llm_prompt_structure: ILLMPromptStructure, config_provider: IConfigProvider, 
                  database_provider: IDatabaseProvider,
+                 locate_service: ILocateService,
                  logger: ILogger, hybrid_search_service: IHybridSearchService | None = None):
         self.llm_provider_factory = llm_provider_factory
         self.llm_prompt_structure = llm_prompt_structure
@@ -34,6 +39,7 @@ class ConversationJob(IConversationJob):
         self.database_provider = database_provider
         self.logger = logger
         self.hybrid_search_service = hybrid_search_service
+        self.locate_service = locate_service
         self.document_database: IDocumentDatabase = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
         self.conversation_files_database: IConversationFileDatabase = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
         self.message_database: IMessageDatabase = cast(IMessageDatabase, self.database_provider.get_model_service(MessageModel))
@@ -106,7 +112,7 @@ class ConversationJob(IConversationJob):
             message_model=self.__save_message(conversation, False, assistant_response.content if assistant_response else summarize),
             generate_response=assistant_response
         )
-    
+
     def remove_conversation(self, conversation_id: str, file_caller: str = "") -> int:
         try:
             removed_count = self.conversation_database.delete(conversation_id)
@@ -144,6 +150,49 @@ class ConversationJob(IConversationJob):
                 method_call=self.change_title_document.__name__,
             )
             raise ValueError(f"Failed to rename conversation {conversation_id} to '{new_title}'")
+
+    def load_document(
+        self, conversation_id: str, file_caller: str = ""
+    ) -> IconversationDocumentGetResponse:
+        # * NOTE: this method is used to load the document information for a conversation, which can be used for further processing such as building knowledge graph, or for displaying the document information in the UI, etc. The document information is stored in the database with the conversation_id as reference, and it includes the document ids and paths, etc.
+        conversation = self.conversation_database.get_by_id(conversation_id)
+        document = self.document_database.get_by_conversation(conversation)
+        files = self.conversation_files_database.get_by_conversation(conversation)
+        faiss_store = cast(
+            IVectorStoreService,
+            self.locate_service.get_vector_store(EBackendStorageName.FAISS),
+        )
+
+        if document is None:
+            self.logger.warning(
+                f"No document found for conversation {conversation_id}",
+                Path(__file__).name,
+                file_caller,
+                self.load_document.__name__,
+            )
+            return IconversationDocumentGetResponse(
+                document_url=Path(), files=[], db_load=None
+            )
+        self.logger.info(
+            f"Loaded document for conversation {conversation_id}: {document.document_id}",
+            Path(__file__).name,
+            file_caller,
+            self.load_document.__name__,
+        )
+        # load to faiss
+        path = Path(
+            document.documents_file_path if document.documents_file_path else ""
+        )
+        response = faiss_store.load_with_path(path, file_caller)
+        return IconversationDocumentGetResponse(
+            document_url=path,
+            files=[
+                file
+                for file in files
+                if file.conversation_files_document.document_id == document.document_id
+            ],
+            db_load=response,
+        )
 
     def __generate_assistant_response(self, prompt: str, provider: EProviderName, model_name: str) -> IGenerateResponse:
         llm_client = self.llm_provider_factory.get_provider(provider)

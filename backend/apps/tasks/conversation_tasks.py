@@ -9,6 +9,7 @@ from typing import Any, Dict
 import uuid
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
@@ -53,6 +54,19 @@ class ConversationTask(IConversationTask):
             method_call=self.create_init_conversation.__name__,
         )
         return self.conversation_job.create_init_conversation(conversation_title=conversation_title, file_caller=file_caller)
+
+    def load_document(
+        self, conversation_id: str, file_caller: str = ""
+    ) -> IconversationDocumentGetResponse:
+        self.logger.info(
+            f"Loading document for conversation ID {conversation_id} called by {file_caller}",
+            source=Path(__file__).name,
+            call_by=file_caller,
+            method_call=self.load_document.__name__,
+        )
+        return self.conversation_job.load_document(
+            conversation_id, file_caller=self.load_document.__name__
+        )
 
     def run(self, conversation: ConversationModel, provider_name: EProviderName, model_name: str, summarize: str = "", file_caller: str = "") -> IConversationJobResponse:
         self.logger.info(

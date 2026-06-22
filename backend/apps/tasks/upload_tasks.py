@@ -80,10 +80,6 @@ class UploadTask(IUploadTask):
             self.logger.error(f"Error processing file paths {file_paths} for graph pipeline: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
             raise exc
 
-    def load_document(self, conversation_id: str, file_caller: str = "") -> IconversationDocumentGetResponse:
-        self.logger.info(f"Loading document for conversation ID {conversation_id} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.load_document.__name__)
-        return self.upload_job.load_document(conversation_id, file_caller=self.load_document.__name__)
-
     # --- SINGLE RESPONSIBILITY METHODS ---
 
     def __create_document_model(self, conversation_model: ConversationModel, file_path: Path | None = None, content: str | None = None) -> DocumentModel:
