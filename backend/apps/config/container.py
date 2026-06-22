@@ -103,7 +103,7 @@ class BackendContainer(containers.DeclarativeContainer):
     chunker = providers.Singleton(Chunker, logger=log_pool)
 
     # Caching
-    cache_service = providers.Factory(
+    cache_session = providers.Factory(
         RedisCacheSession,
         config_provider=config_provider,
         metadata_dir=METADATA_DIR,
@@ -144,7 +144,7 @@ class BackendContainer(containers.DeclarativeContainer):
         extract_service=extract_content_service,
         normalize=normalize,
         chunker=chunker,
-        cache_session=cache_service,
+        cache_session=cache_session,
         llm_provider_factory=llm_provider_factory,
         locate_service=locate_service,
         config_provider=config_provider,
@@ -159,7 +159,7 @@ class BackendContainer(containers.DeclarativeContainer):
         locate_service=locate_service,
         database_provider=database_provider,
         session_provider=neo4j_session,
-        cache_session=cache_service,
+        cache_session=cache_session,
         logger=log_pool,
         storage_service=file_storage
     )
@@ -169,7 +169,7 @@ class BackendContainer(containers.DeclarativeContainer):
         llm_provider_factory=llm_provider_factory,
         config_provider=config_provider,
         locate_service=locate_service,
-        cache_session=cache_service,
+        cache_session=cache_session,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,
@@ -218,3 +218,9 @@ class BackendContainer(containers.DeclarativeContainer):
         time_counter=time_counter
     )
 
+    document_application = providers.Factory(
+        upload_task=upload_task,
+        cache_session=cache_session,
+        database_provider=database_provider,
+        logger=log_pool,
+        time_counter=time_counter)
