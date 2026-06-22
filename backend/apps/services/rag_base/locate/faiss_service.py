@@ -77,6 +77,18 @@ class FaissService(IVectorStoreService):
             Path(__file__).name, file_caller, method_call=self.load.__name__)
         return IVectorDBLoadResponse(id=vector_id, is_success=True, index=index)
 
+    def load_with_path(self, path: Path, file_caller: str = "") -> IVectorDBLoadResponse:
+        if not path.exists():
+            self.logger.error(f"FAISS index file at '{path}' does not exist",
+                Path(__file__).name, file_caller, method_call=self.load_with_path.__name__)
+            raise ValueError(f"FAISS index file at '{path}' does not exist")
+        index = faiss.read_index(str(path))
+        self.logger.info(f"Loaded FAISS index from path '{path}'",
+            Path(__file__).name, file_caller, method_call=self.load_with_path.__name__)
+        return IVectorDBLoadResponse(
+            id=uuid.UUID(Path(path).name), is_success=True, index=index
+        )
+
     def is_existed_in_metadata(self, vector_id: uuid.UUID) -> Path | None:
         return is_existed_in_metadata(self.metadata_dir, vector_id, "faiss", self.logger)
 

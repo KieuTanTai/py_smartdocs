@@ -129,3 +129,18 @@ class IVectorStoreService(IVectorDBService, ABC):
             Or Raise exception if load fails
         """
         pass
+
+    @abstractmethod
+    def load_with_path(self, path: Path, file_caller: str = "") -> IVectorDBLoadResponse:
+        """
+        Load vector from a file path.
+
+        Args:
+            path: Path to the vector file
+            file_caller: Identifier for the calling file
+
+        Returns:
+            IVectorDBLoadResponse with success status and additional info
+            Or Raise exception if load fails
+        """
+        pass

@@ -12,8 +12,10 @@ import numpy as np
 
 from backend.apps.core.enums.e_document_status import EDocumentStatus
 from backend.apps.core.enums.e_provider_name import EProviderName
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
@@ -41,6 +43,7 @@ class UploadTask(IUploadTask):
         self.time_counter = time_counter
         self.document_database: IDocumentDatabase = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
         self.conversation_files_database = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
+        self.conversation_database = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
 
     # --- MAIN ENTRY POINT ---
     @property
@@ -51,10 +54,11 @@ class UploadTask(IUploadTask):
 
     # * New run method to handle for new interface with file paths,
     # * this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def run_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller: str = "") -> IUploadResponse:
+    def run_with_paths(self, conversation_id: str, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller: str = "") -> IUploadResponse:
         self.logger.info(f"Starting UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
         try:
             # Chạy luồng lõi
+            conversation_model = self.conversation_database.get_by_id(conversation_id)
             result_dataclass = self.__execute_base_pipeline_with_paths(conversation_model, file_paths, provider_name, model_name)
             # Lưu index vào memory pool
             self.logger.info(f"Adding FAISS index to memory pool with file ID {result_dataclass.faiss_file_id} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
@@ -65,15 +69,20 @@ class UploadTask(IUploadTask):
             self.logger.error(f"Error processing file paths {file_paths}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             raise exc
 
-    async def run_graph_pipeline_with_paths(self, conversation_model: ConversationModel, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
+    async def run_graph_pipeline_with_paths(self, conversation_id: str, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
         self.logger.info(f"Starting Graph RAG UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
         try:
+            conversation_model = self.conversation_database.get_by_id(conversation_id)
             responses = await self.__execute_pipeline_create_retriever_with_paths(conversation_model, file_paths, provider_name, model_name, embed_model_name)
             self.logger.info(f"Successfully completed Graph RAG UploadTask for file paths {file_paths} and provider {provider_name}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
             return responses
         except Exception as exc:
             self.logger.error(f"Error processing file paths {file_paths} for graph pipeline: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
             raise exc
+
+    def load_document(self, conversation_id: str, file_caller: str = "") -> IconversationDocumentGetResponse:
+        self.logger.info(f"Loading document for conversation ID {conversation_id} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.load_document.__name__)
+        return self.upload_job.load_document(conversation_id, file_caller=self.load_document.__name__)
 
     # --- SINGLE RESPONSIBILITY METHODS ---
 
@@ -157,8 +166,8 @@ class UploadTask(IUploadTask):
         if graph_retriever_response is None or isinstance(graph_retriever_response, IGraphRagUploadResponse) is False:
             self.logger.error(f"Failed to create graph retriever for conversation {conversation.pk} and provider {provider}", source=Path(__file__).name, call_by=self.__create_graph_retriever.__name__, method_call=self.__create_graph_retriever.__name__)
             raise ValueError(f"Failed to create graph retriever for conversation {conversation.pk} and provider {provider}")
-
-        return graph_retriever_response 
+        graph_retriever_response.conversation_name = conversation.conversations_name
+        return graph_retriever_response
 
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     def __execute_base_pipeline_with_paths(
@@ -223,6 +232,8 @@ class UploadTask(IUploadTask):
 
         # * Step 7: mapping time counter to response
         upload_response.time_counter = self.time_counter.mapping_to_time_counter_response(extract_time, chunk_time, embedding_time, save_time, summarize_time)
+        upload_response.conversation_id = conversation_model.pk
+        upload_response.conversation_name = conversation_model.conversations_name
         return upload_response
 
 

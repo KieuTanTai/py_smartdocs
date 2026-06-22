@@ -36,6 +36,8 @@ class IUploadResponse:
     conversation_files: list[ConversationFilesModel] = field(default_factory=list)
     summarize: IGenerateResponse | None = None
     created_at: Any = None
+    conversation_id: uuid.UUID = field(default_factory=uuid.uuid7)
+    conversation_name: str = ""
 
 @dataclass
 class IDocumentResponse:
@@ -51,7 +53,6 @@ class IGraphRagParam:
 
 @dataclass
 class IGraphRagUploadResponse:
-    conversation_id: uuid.UUID
     list_document_ids: list[str]
     graph_param_list: list[IGraphRagParam]
     graph_retriever: VectorCypherRetriever
@@ -59,3 +60,5 @@ class IGraphRagUploadResponse:
     conversation_name: str = ""
     conversation_files: list[ConversationFilesModel] = field(default_factory=list)
     time_counter: IGraphTimeCounterResponse | None = None
+    conversation_id: uuid.UUID = field(default_factory=uuid.uuid7)
+    conversation_name: str = ""

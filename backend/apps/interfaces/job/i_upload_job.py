@@ -14,11 +14,14 @@ from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.response.i_chat_response import IChatResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from neo4j_graphrag.retrievers import VectorCypherRetriever
+
+from backend.apps.services.chat.models import ConversationFilesModel
 
 class IUploadJob(ABC):
     """
@@ -225,5 +228,20 @@ class IUploadJob(ABC):
             file_caller: function name of caller for logging
         Returns:
             list of tuples containing chunk IDs and corresponding chunk texts
+        """
+        pass
+
+    @abstractmethod
+    def load_document(self, conversation_id: str, file_caller: str = "") -> IconversationDocumentGetResponse:
+        """
+        load document information for a conversation, which can be used for further processing such as building knowledge graph, or for displaying the document information in the UI, etc. The document information is stored in the database with the conversation_id as reference, and it includes the document ids and paths, etc.
+        Args:
+            conversation_id: the ID of the conversation to load documents for
+            file_caller: function name of caller for logging
+        Returns:
+            IconversationDocumentGetResponse containing the document information for the conversation
+        Raises:
+            ValueError: If conversation is not found or has no associated documents
+            Exception: For any other processing errors
         """
         pass

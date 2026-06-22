@@ -4,7 +4,7 @@ from pathlib import Path
 import uuid
 from venv import create
 import faiss
-from typing import Any
+from typing import Any, cast
 import numpy as np
 
 # Import Interface và DTO
@@ -17,13 +17,19 @@ from backend.apps.core.interfaces.core.normalize.i_normalize import INormalize
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
-from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
+from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBLoadResponse, IVectorDBLoadResponse, IVectorDBUpsertResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IDocumentResponse, IEmbedResponse, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
+from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
+from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import (
     INeo4jService,
 )
@@ -43,6 +49,7 @@ from backend.apps.core.interfaces.services.repository.i_connect_graph_db_session
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel
 from backend.apps.utils.hash_content import hash_to_numpy_int64_by_str_content
 from neo4j_graphrag.llm.base import LLMInterface
 from neo4j_graphrag.embeddings import Embedder
@@ -63,6 +70,7 @@ class UploadJob(IUploadJob):
         locate_service: ILocateService,
         config_provider: IConfigProvider,
         logger: ILogger,
+        database_provider: IDatabaseProvider,
         session_provider: IConnectGraphDBSession,
         llm_prompt_structure: ILLMPromptStructure,
     ):
@@ -76,6 +84,11 @@ class UploadJob(IUploadJob):
         self.logger = logger
         self.llm_prompt_structure = llm_prompt_structure
         self.session_provider = session_provider
+        self.database_provider = database_provider
+        self.document_database = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
+        self.conversation_files_database = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
+        self.conversation_database = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
+        self.faiss_store = cast(IVectorStoreService, self.locate_service.get_vector_store(EBackendStorageName.FAISS))
 
     def step_extract_and_normalize(
         self, file_path: Path, provider: EProviderName, file_caller: str = ""
@@ -191,6 +204,8 @@ class UploadJob(IUploadJob):
         documents = [IDocumentResponse(document_id=doc_id, path=path) for doc_id, path in zip(document_ids, paths)]
 
         return IUploadResponse(
+            conversation_id=faiss_file_id,
+            conversation_name=self.build_name(document_ids, file_caller=file_caller),
             faiss_index=faiss_index,
             faiss_file_id=faiss_file_id,
             vector_ids=ids.tolist(),
@@ -209,18 +224,7 @@ class UploadJob(IUploadJob):
                             provider: EProviderName,
                             model_name: str,
                             file_caller: str = "") -> IGenerateResponse:
-        faiss_service = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
-        if not isinstance(faiss_service, IVectorStoreService) or faiss_service is None:
-            self.logger.error(
-                f"Vector store service for FAISS is not properly initialized",
-                Path(__file__).name,
-                self.step_embed.__name__,
-            )
-            raise ValueError(
-                "Vector store service for FAISS is not properly initialized"
-            )
-        original_texts = self.__get_orriginal_texts(faiss_service, faiss_index, faiss_file_id, embeddings_stack, cache_params, file_caller)
-
+        original_texts = self.__get_orriginal_texts(self.faiss_store, faiss_index, faiss_file_id, embeddings_stack, cache_params, file_caller)
         llm_client = self.llm_provider_factory.get_provider(provider)
         template = self.llm_prompt_structure.build_summary_prompt(original_texts)
         request = ICompletionRequest(provider, model_name, template)
@@ -317,6 +321,33 @@ class UploadJob(IUploadJob):
             graph_retriever=retriever,
             created_at=np.datetime64("now"),
         )
+
+    def load_document(self, conversation_id: str, file_caller: str = "") -> IconversationDocumentGetResponse:
+        # * NOTE: this method is used to load the document information for a conversation, which can be used for further processing such as building knowledge graph, or for displaying the document information in the UI, etc. The document information is stored in the database with the conversation_id as reference, and it includes the document ids and paths, etc.
+        conversation = self.conversation_database.get_by_id(conversation_id)
+        document = self.document_database.get_by_conversation(conversation)
+        files = self.conversation_files_database.get_by_conversation(conversation)
+
+        if document is None:
+            self.logger.warning(
+                f"No document found for conversation {conversation_id}",
+                Path(__file__).name,
+                file_caller,
+                self.load_document.__name__,
+            )
+            return IconversationDocumentGetResponse(document_url=Path(), files=[], db_load=None)
+        self.logger.info(
+            f"Loaded document for conversation {conversation_id}: {document.document_id}",
+            Path(__file__).name,
+            file_caller,
+            self.load_document.__name__,
+        )
+        # load to faiss
+        path = Path(document.documents_file_path if document.documents_file_path else "")
+        response = self.faiss_store.load_with_path(path, file_caller)
+        return IconversationDocumentGetResponse(document_url=path, 
+                                                files=[file for file in files if file.conversation_files_document.document_id == document.document_id], 
+                                                db_load=response)
 
     def build_chunk_keys(
         self, file_id: str, chunk_texts: list[str], file_caller: str = ""
@@ -476,23 +507,10 @@ class UploadJob(IUploadJob):
             file_caller,
             self.__save_to_faiss.__name__,
         )
-        vector_store = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
-
-        if not isinstance(vector_store, IVectorStoreService) or vector_store is None:
-            self.logger.error(
-                f"Vector store service for FAISS is not properly initialized",
-                Path(__file__).name,
-                file_caller,
-                self.__save_to_faiss.__name__,
-            )
-            raise ValueError(
-                "Vector store service for FAISS is not properly initialized"
-            )
-
-        index = vector_store.create_index(
+        index = self.faiss_store.create_index(
             embed_stack, ids, file_caller=self.__save_to_faiss.__name__
         )
-        faiss_file_name = vector_store.upsert(
+        faiss_file_name = self.faiss_store.upsert(
             index, file_name, file_caller=self.__save_to_faiss.__name__
         )
         self.logger.info(
@@ -501,7 +519,7 @@ class UploadJob(IUploadJob):
             file_caller,
             self.__save_to_faiss.__name__,
         )
-        upsert_response = vector_store.upsert(
+        upsert_response = self.faiss_store.upsert(
             index, file_name, file_caller=self.__save_to_faiss.__name__
         )
         return upsert_response, index
