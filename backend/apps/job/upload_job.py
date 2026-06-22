@@ -51,6 +51,7 @@ from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
 from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel
+from backend.apps.utils.get_instance_model_database import get_embedding_model
 from backend.apps.utils.hash_content import hash_to_numpy_int64_by_str_content
 from neo4j_graphrag.llm.base import LLMInterface
 from neo4j_graphrag.embeddings import Embedder
@@ -177,7 +178,7 @@ class UploadJob(IUploadJob):
     def step_save(
         self,
         provider: EProviderName,
-        faiss_file_id: uuid.UUID,
+        conversation_id: uuid.UUID,
         document_ids: list[str],
         embedding_batches: list[np.ndarray],
         chunk_texts: list[str],
@@ -194,18 +195,17 @@ class UploadJob(IUploadJob):
         )
 
         faiss_upsert_response, faiss_index = self.__save_to_faiss(
-            provider, embed_stack, faiss_file_id, ids, file_caller=file_caller
+            provider, embed_stack, conversation_id, ids, file_caller=file_caller
         )
 
         bm25_response = self.__save_to_bm25(
-            provider, chunk_texts, faiss_file_id, file_caller=file_caller
+            provider, chunk_texts, conversation_id, file_caller=file_caller
         )
 
         return IUploadResponse(
-            conversation_id=faiss_file_id,
+            conversation_id=conversation_id,
             conversation_name=self.build_name(document_ids, file_caller=file_caller),
             faiss_index=faiss_index,
-            faiss_file_id=faiss_file_id,
             vector_ids=ids.tolist(),
             embeddings_stack=embed_stack,
             faiss_upsert=faiss_upsert_response,
@@ -215,14 +215,17 @@ class UploadJob(IUploadJob):
 
     def summarize_document(self, 
                             faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
-                            faiss_file_id: uuid.UUID,
-                            embeddings_stack: np.ndarray,
+                            conversation_id: uuid.UUID,
                             cache_param_values: list[ICacheParamValue],
                             provider: EProviderName,
                             model_name: str,
                             file_caller: str = "") -> IGenerateResponse:
-        original_texts = self.__get_orriginal_texts(self.faiss_store, faiss_index, faiss_file_id, embeddings_stack, cache_param_values, file_caller)
         llm_client = self.llm_provider_factory.get_provider(provider)
+        embedding_model_name = get_embedding_model(self.config_provider, provider)
+        embedding_request = ICompletionRequest(provider, embedding_model_name, "summarize document")
+        embedding_result = llm_client.embedding(embedding_request, file_caller=self.summarize_document.__name__).embedding
+        original_texts = self.__get_orriginal_texts(self.faiss_store, faiss_index, conversation_id, embedding_result, cache_param_values, file_caller)
+        
         template = self.llm_prompt_structure.build_summary_prompt(original_texts)
         request = ICompletionRequest(provider, model_name, template)
         return llm_client.generate(request, file_caller=self.summarize_document.__name__)
@@ -530,15 +533,15 @@ class UploadJob(IUploadJob):
         self,
         faiss_service: IVectorStoreService,
         faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap,
-        faiss_file_id: uuid.UUID,
-        embeddings_stack: np.ndarray,
+        conversation_id: uuid.UUID,
+        embedding_query: np.ndarray,
         cache_param_values: list[ICacheParamValue],
         file_caller: str = "",
     ) -> str:
         response = faiss_service.search(
             faiss_index,
-            faiss_file_id,
-            embeddings_stack,
+            conversation_id,
+            embedding_query,
             limit=5,
             file_caller=self.summarize_document.__name__,
         )

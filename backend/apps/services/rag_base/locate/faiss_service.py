@@ -37,61 +37,46 @@ class FaissService(IVectorStoreService):
     def create_index(self, np_vectors: np.ndarray, ids: np.ndarray = np.array([], dtype=np.int64), file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap:
         return self.__generate_faiss_index(np_vectors, ids, file_caller)
 
-    def upsert(self, index: Any, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBUpsertResponse:
-        self.__write_metadata_file(vector_id, index)
-        self.logger.info(f"Upserted FAISS index for vector_id '{vector_id}' to metadata",
+    def upsert(self, index: Any, conversation_id: uuid.UUID, file_caller: str = "") -> IVectorDBUpsertResponse:
+        self.__write_metadata_file(conversation_id, index)
+        self.logger.info(f"Upserted FAISS index for conversation_id '{conversation_id}' to metadata",
             Path(__file__).name, file_caller, method_call=self.upsert.__name__)
-        return IVectorDBUpsertResponse(id=vector_id, create_at=datetime.datetime.now(), 
+        return IVectorDBUpsertResponse(id=conversation_id, create_at=datetime.datetime.now(), 
                                        sumarize_content="", is_success=True)
 
-    def search(self, index: Any, vector_id: uuid.UUID, query_vector: np.ndarray, limit=5, allow_ids: set | None = None, 
+    def search(self, index: Any, conversation_id: uuid.UUID, query_vector: np.ndarray, limit=5, allow_ids: set | None = None, 
                chunk_file_map: dict | None = None, file_caller: str = "") -> IVectorDBQueryResponse:
         query_vector = self.__validate_input(query_vector, np.float32)
-        self.logger.info(f"Searching FAISS index for vector_id '{vector_id}' with query vector of shape {query_vector.shape}",
+        self.logger.info(f"Searching FAISS index for conversation_id '{conversation_id}' with query vector of shape {query_vector.shape}",
             Path(__file__).name, file_caller, method_call=self.search.__name__)
         distances, indices = index.search(query_vector, limit)
         if (allow_ids is not None or chunk_file_map is not None):
             distances, indices = self.__filter_output_search_results(distances, indices, allow_ids, chunk_file_map, file_caller)
-            self.logger.info(f"FAISS search results for vector_id '{vector_id}': distances={distances}, indices={indices}",
+            self.logger.info(f"FAISS search results for conversation_id '{conversation_id}': distances={distances}, indices={indices}",
                 Path(__file__).name, file_caller, method_call=self.search.__name__)
-        return IVectorDBQueryResponse(id=vector_id, distances=distances.tolist()[0], indices=indices.tolist()[0])
+        return IVectorDBQueryResponse(id=conversation_id, distances=distances.tolist()[0], indices=indices.tolist()[0])
 
-    def delete(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:
-        deleted_count = delete_file_metadata_with_file_name(self.metadata_dir, vector_id, "faiss", self.logger)    
+    def delete(self, conversation_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:
+        deleted_count = delete_file_metadata_with_file_name(self.metadata_dir, conversation_id, "faiss", self.logger)    
         if deleted_count == 0:
-            self.logger.warning(f"Vector with id '{vector_id}' does not exist in metadata and cannot be deleted",
+            self.logger.warning(f"Vector with id '{conversation_id}' does not exist in metadata and cannot be deleted",
                 Path(__file__).name, file_caller, method_call=self.delete.__name__)
-            return IVectorDBDeleteResponse(id=vector_id, is_success=False, message=f"Vector with id '{vector_id}' does not exist in metadata")
+            return IVectorDBDeleteResponse(id=conversation_id, is_success=False, message=f"Vector with id '{conversation_id}' does not exist in metadata")
         else:
-            self.logger.info(f"Deleted vector with id '{vector_id}' from metadata",
+            self.logger.info(f"Deleted vector with id '{conversation_id}' from metadata",
                 Path(__file__).name, file_caller, method_call=self.delete.__name__)
-        return IVectorDBDeleteResponse(id=vector_id, is_success=True, deleted_count=deleted_count)
+        return IVectorDBDeleteResponse(id=conversation_id, is_success=True, deleted_count=deleted_count)
 
-    def load(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBLoadResponse:
-        path = self.is_existed_in_metadata(vector_id)
+    def load(self, conversation_id: uuid.UUID, file_caller: str = "") -> IVectorDBLoadResponse:
+        path = is_existed_in_metadata(self.metadata_dir, conversation_id, "faiss", self.logger)
         if (path is None):
-            self.logger.error(f"Metadata for vector_id '{vector_id}' does not exist",
+            self.logger.error(f"Metadata for conversation_id '{conversation_id}' does not exist",
                 Path(__file__).name, file_caller, method_call=self.load.__name__)
-            raise ValueError(f"Vector with id '{vector_id}' does not exist in metadata")
+            raise ValueError(f"Vector with id '{conversation_id}' does not exist in metadata")
         index = faiss.read_index(str(path))
-        self.logger.info(f"Loaded FAISS index for vector_id '{vector_id}' from metadata",
+        self.logger.info(f"Loaded FAISS index for conversation_id '{conversation_id}' from metadata",
             Path(__file__).name, file_caller, method_call=self.load.__name__)
-        return IVectorDBLoadResponse(id=vector_id, is_success=True, index=index)
-
-    def load_with_path(self, path: Path, file_caller: str = "") -> IVectorDBLoadResponse:
-        if not path.exists():
-            self.logger.error(f"FAISS index file at '{path}' does not exist",
-                Path(__file__).name, file_caller, method_call=self.load_with_path.__name__)
-            raise ValueError(f"FAISS index file at '{path}' does not exist")
-        index = faiss.read_index(str(path))
-        self.logger.info(f"Loaded FAISS index from path '{path}'",
-            Path(__file__).name, file_caller, method_call=self.load_with_path.__name__)
-        return IVectorDBLoadResponse(
-            id=uuid.UUID(Path(path).name), is_success=True, index=index
-        )
-
-    def is_existed_in_metadata(self, vector_id: uuid.UUID) -> Path | None:
-        return is_existed_in_metadata(self.metadata_dir, vector_id, "faiss", self.logger)
+        return IVectorDBLoadResponse(id=conversation_id, is_success=True, index=index)
 
     # region Private methods
     # helper method to filter FAISS search results based on allow_ids and chunk_file_map, it will log the filtering process and return the filtered distances and indices
@@ -154,15 +139,15 @@ class FaissService(IVectorStoreService):
                 Path(__file__).name, file_caller, method_call=self.__generate_faiss_index.__name__)
             return index
 
-    # helper method to write FAISS index metadata file, it will check if metadata for the vector_id already exists before writing, and log the process
-    def __write_metadata_file(self, vector_id: uuid.UUID, faiss_index: faiss.IndexFlatL2, file_caller: str = ""):
-        path = self.is_existed_in_metadata(vector_id)
+    # helper method to write FAISS index metadata file, it will check if metadata for the conversation_id already exists before writing, and log the process
+    def __write_metadata_file(self, conversation_id: uuid.UUID, faiss_index: faiss.IndexFlatL2, file_caller: str = ""):
+        path = self.is_existed_in_metadata(conversation_id)
         if (path is not None and type(path) == Path):
-            self.logger.warning(f"Metadata for vector_id '{vector_id}' already exists, skipping write",
+            self.logger.warning(f"Metadata for conversation_id '{conversation_id}' already exists, skipping write",
                 Path(__file__).name, file_caller, method_call=self.is_existed_in_metadata.__name__)
             return
 
-        destination_path = create_path_file(self.metadata_dir, vector_id, "faiss")
+        destination_path = create_path_file(self.metadata_dir, conversation_id, "faiss")
         faiss.write_index(faiss_index, str(destination_path))
-        self.logger.info(f"FAISS index metadata for vector_id '{vector_id}' written to '{destination_path}'",
+        self.logger.info(f"FAISS index metadata for conversation_id '{conversation_id}' written to '{destination_path}'",
             Path(__file__).name, file_caller, method_call=self.__write_metadata_file.__name__)

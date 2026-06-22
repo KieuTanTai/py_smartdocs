@@ -67,7 +67,6 @@ class MistralLLMOCR(ILLMOCR):
                 model=self.model,
                 document=document,
                 timeout_ms=int(self.timeout_seconds * 1000),
-                table_format="html",  # default is None
                 include_image_base64=True,
                 confidence_scores_granularity="page",
             )

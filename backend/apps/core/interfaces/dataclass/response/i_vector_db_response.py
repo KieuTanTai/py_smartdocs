@@ -18,7 +18,7 @@ class IVectorDBUpsertResponse:
 class IVectorDBQueryResponse:
     id: uuid.UUID # This is conversation_id (đè tem)
     distances: list[float]
-    indices: list[int] # This can be used to retrieve the original content or metadata associated with the vector
+    indices: list[np.int64] # This can be used to retrieve the original content or metadata associated with the vector
     message: str = ""  # Optional message field for additional info or error messages
 
 @dataclass

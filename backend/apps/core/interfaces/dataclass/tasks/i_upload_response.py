@@ -26,7 +26,7 @@ class IEmbedResponse:
 @dataclass
 class IUploadResponse:
     faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap
-    faiss_file_id: uuid.UUID
+    conversation_id: uuid.UUID
     vector_ids: list[int]
     embeddings_stack: np.ndarray
     faiss_upsert: IVectorDBUpsertResponse
@@ -35,7 +35,6 @@ class IUploadResponse:
     conversation_files: list[ConversationFilesModel] = field(default_factory=list)
     summarize: IGenerateResponse | None = None
     created_at: Any = None
-    conversation_id: uuid.UUID = field(default_factory=uuid.uuid7)
     conversation_name: str = ""
     conversation_cache_path: Path = field(default_factory=Path)
 

@@ -183,7 +183,7 @@ class ConversationJob(IConversationJob):
         path = Path(
             document.documents_file_path if document.documents_file_path else ""
         )
-        response = faiss_store.load_with_path(path, file_caller)
+        response = faiss_store.load(conversation_id, file_caller)
         return IconversationDocumentGetResponse(
             document_url=path,
             files=[
