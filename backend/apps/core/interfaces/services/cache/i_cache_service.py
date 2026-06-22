@@ -48,6 +48,24 @@ class ICacheService(ABC):
         pass
 
     @abstractmethod
+    def set_unpersisted(
+        self,
+        input: ICacheParam,
+        file_caller: str = "",
+    ) -> None:
+        """Store a value in the cache with the specified key without persisting metadata.
+        Args:
+        key: The primary key to store the value under in the cache.
+        input: An ICacheParam object containing the key, value, and optional expiration time for the cache entry.
+        expire: The expiration time for the cached value.
+        file_caller: Optional string to indicate the caller file for logging purposes.
+        Returns:
+        None
+        """
+
+        pass
+
+    @abstractmethod
     def delete(self, key: str, file_caller: str = "") -> int:
         """Remove a value from the cache by key.
         Args:

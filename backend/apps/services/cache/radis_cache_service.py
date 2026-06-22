@@ -30,6 +30,13 @@ class RedisCacheService(ICacheService):
         self.logger.info(f"Cache key: {input.key} set", Path(__file__).name, file_caller, self.set.__name__)
         return self.__write_metadata(input.key, value_str)
     
+    def set_unpersisted(self, input: ICacheParam, file_caller: str = "") -> None:
+        self.logger.info(f"Setting unpersisted cache key: {input.key}", Path(__file__).name, file_caller, self.set_unpersisted.__name__)
+        value_str = self.__convert_to_serializable(input.key, input.values, input.expire)
+        self.pipeline.set(input.key, value_str, ex=input.expire)
+        self.pipeline.execute()
+        self.logger.info(f"Unpersisted cache key: {input.key} set", Path(__file__).name, file_caller, self.set_unpersisted.__name__)
+
     def get(self, key: str, file_caller: str = "") -> ICacheParam | None:
         self.logger.info(f"Getting cache key: {key}", Path(__file__).name, file_caller, self.get.__name__)
         result = self.redis_client.get(key)
@@ -73,7 +80,7 @@ class RedisCacheService(ICacheService):
     
     def __normalize_value(self, values: list[ICacheParamValue]):
         result = [
-            {"index": int(value.index), "text_value": value.text_value, "embedding": value.embedding} for value in values
+            {"index": int(value.index), "text_value": value.text_value} for value in values
         ]
         return result
 
@@ -84,7 +91,7 @@ class RedisCacheService(ICacheService):
                 return None
             return ICacheParam(
                 key=loads["key"],
-                values=[ICacheParamValue(index=np.int64(item["index"]), text_value=item["text_value"], embedding=item["embedding"]) for item in loads["values"]]
+                values=[ICacheParamValue(index=np.int64(item["index"]), text_value=item["text_value"]) for item in loads["values"]]
             )
         except json.JSONDecodeError as e:
             self.logger.error(f"Error decoding cache value: {e}", Path(__file__).name, Path(__file__).name, self.__convert_to_origin_type.__name__)
