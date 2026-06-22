@@ -218,6 +218,24 @@ class DocumentIndexView(APIView):
 
         file_path = doc.file_path
 
+        # Primary method: Use Mistral OCR (via DI Container's extract_content_service)
+        try:
+            from backend.apps.config.container import BackendContainer
+            container = BackendContainer()
+            extract_service = container.extract_content_service()
+            ocr_response = extract_service.extract(Path(file_path), EProviderName.MISTRAL)
+            if ocr_response.extracted_text and ocr_response.extracted_text.strip():
+                DEFAULT_LOGGER.info(
+                    f"OCR successfully extracted text from: {Path(file_path).name}",
+                    source="DocumentIndexView"
+                )
+                return ocr_response.extracted_text
+        except Exception as exc:
+            DEFAULT_LOGGER.warning(
+                f"OCR extraction failed, falling back to native parser. Error: {exc}",
+                source="DocumentIndexView"
+            )
+
         if file_path.endswith(".pdf"):
             try:
                 reader = pypdf.PdfReader(file_path)

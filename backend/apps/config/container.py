@@ -35,9 +35,12 @@ from backend.apps.services.rag_base.search.hybrid_search_service import HybridSe
 from backend.apps.services.rag_base.locate.locate_service import LocateService
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
+from backend.apps.application.run_application import RunApplication
+from backend.apps.tasks.upload_tasks import UploadTask
 from sys_services.log_pool import LogPool
 from sys_services.logging import Logger
 from sys_services.read_config.config_provider import EnvConfigProvider
+from sys_services.time_counter import TimeCounter
 from sys_services.system_dirs import LOGS_DIR, METADATA_DIR
 
 
@@ -142,8 +145,11 @@ class BackendContainer(containers.DeclarativeContainer):
         locate_service=locate_service,
         config_provider=config_provider,
         logger=log_pool,
-        neo4j_service=neo4j_service,
+        session_provider=neo4j_session,
+        llm_prompt_structure=llm_prompt_structure,
     )
+
+    time_counter = providers.Factory(TimeCounter)
     
     delete_job = providers.Factory(
         DeleteJob,
@@ -151,7 +157,7 @@ class BackendContainer(containers.DeclarativeContainer):
         neo4j_service=neo4j_service,
         cache_session=cache_service,
         logger=log_pool,
-        file_storage=file_storage,
+        storage_service=file_storage,
     )
 
     message_job = providers.Factory(
@@ -169,7 +175,26 @@ class BackendContainer(containers.DeclarativeContainer):
     conversation_job = providers.Factory(
         ConversationJob,
         llm_provider_factory=llm_provider_factory,
+        llm_prompt_structure=llm_prompt_structure,
         config_provider=config_provider,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
+    )
+
+    upload_task = providers.Factory(
+        UploadTask,
+        upload_job=upload_job,
+        faiss_memory_pool=faiss_memory_pool,
+        database_provider=database_provider,
+        logger=log_pool,
+        time_counter=time_counter,
+    )
+
+    run_application = providers.Factory(
+        RunApplication,
+        upload_task=upload_task,
+        message_job=message_job,
+        delete_job=delete_job,
+        database_provider=database_provider,
+        logger=log_pool,
     )

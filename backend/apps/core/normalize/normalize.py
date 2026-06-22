@@ -6,8 +6,8 @@ from backend.apps.core.interfaces.system.i_logging import ILogger
 
 class Normalize(INormalize):
 
-    def __init__(self, looger = ILogger | None):
-        self.logger = looger
+    def __init__(self, logger: ILogger | None = None):
+        self.logger = logger
 
     def normalize(self, content: str) -> str:
         normalized_content = content.strip()

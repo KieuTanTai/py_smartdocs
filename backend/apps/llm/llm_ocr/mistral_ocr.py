@@ -67,7 +67,6 @@ class MistralLLMOCR(ILLMOCR):
                 model=self.model,
                 document=document,
                 timeout_ms=int(self.timeout_seconds * 1000),
-                table_format="html",  # default is None
                 include_image_base64=True,
                 confidence_scores_granularity="page",
             )
@@ -102,9 +101,12 @@ class MistralLLMOCR(ILLMOCR):
             "application/pdf",
             "text/plain",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "image/jpeg",
+            "image/png",
+            "image/tiff",
+            "image/jpg",
+            "image/webp"
         ]:
             return {"type": "document_url", "document_url": signed_url}
-        elif mime_type in ["image/jpeg", "image/png", "image/tiff", "image/jpg"]:
-            return {"type": "image_url", "image_url": signed_url}
         else:
             raise ValueError(f"Unsupported MIME type: {mime_type}")

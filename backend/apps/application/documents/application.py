@@ -272,7 +272,7 @@ class DocumentApplication:
             raise ValueError(f"File size exceeds maximum allowed size of 500MB")
 
         # Validate file type
-        allowed_extensions = [".pdf", ".txt", ".docx", ".doc", ".md"]
+        allowed_extensions = [".pdf", ".txt", ".docx", ".doc", ".md", ".png", ".jpg", ".jpeg", ".tiff"]
         file_ext = Path(file_name).suffix.lower()
         if file_ext not in allowed_extensions:
             raise ValueError(

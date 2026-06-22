@@ -20,8 +20,8 @@ urlpatterns = [
     # Conversations & messages
     path("api/conversations/", include("backend.api.conversations.urls")),
 
-    # Backward compatibility: /api/application/conversations/ → same views
-    path("api/application/conversations/", include("backend.api.conversations.urls")),
+    # Application layer endpoints (rule-compliant: api/ → application/ → job/ → tasks/)
+    path("api/application/", include("backend.api.application.urls")),
 
     # LLM Providers
     path("api/providers/", include("backend.api.providers.urls")),

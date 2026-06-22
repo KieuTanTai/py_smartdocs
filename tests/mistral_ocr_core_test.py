@@ -1,6 +1,12 @@
+from sys_services.log_pool import LogPool
 import asyncio
+import os
 import shutil
 from pathlib import Path
+
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'app.settings.local')
+django.setup()
 
 from backend.apps.llm.llm_ocr.mistral_uploader import MistralUploader
 from backend.apps.services.rag_base.storage.storage_service import FileStorageService
@@ -21,22 +27,18 @@ class Extractor:
     async def extract(self, file_path: Path):
         # Always use Mistral provider for this test
         provider = EProviderName.MISTRAL
-        suffix = file_path.suffix.lower()
-        if suffix in [".png", ".jpg", ".jpeg", ".webp"]:
-            return self.extract_content_service.extract_from_file_image(file_path, provider)
-        else:
-            return self.extract_content_service.extract_from_file_text(file_path, provider)
+        return self.extract_content_service.extract(file_path, provider)
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 PDF_SOURCE = (
-    ROOT_DIR / "docs" / "pdfs_test" / "Báo cáo tài chính Kiểm toán năm 2025.pdf"
+    Path("C:\\Users\\Acer\\Downloads\\3_Bai giang Toan A3 - chinh thuc - Bac Dai hoc.pdf")
 )
 IMAGE_SOURCE = (
-    ROOT_DIR / "docs" / "pdfs_test" / "1000125758-Picsart-AiImageEnhancer.jpg"
+    Path("C:\\Users\\Acer\\Downloads\\12.png")
 )
 
-logger = DEFAULT_LOGGER
+logger = LogPool()
 
 
 def _prepare_input_file(source_path: Path, work_dir: Path) -> Path:
@@ -61,7 +63,7 @@ async def run_text_ocr(output_dir: Path) -> None:
 
     response = await ocr.extract(file_path)
     output_path = output_dir / f"mistral_ocr_text_{file_path.stem}.md"
-    output_path.write_text(response.content)
+    output_path.write_text(response.extracted_text, encoding="utf-8")
     logger.info(
         f"Mistral OCR text output written to: '{output_path}'",
         source=Path(__file__).name,
@@ -83,7 +85,7 @@ async def run_image_ocr(output_dir: Path) -> None:
 
     response = await ocr.extract(file_path)
     output_path = output_dir / f"mistral_ocr_image_{file_path.stem}.md"
-    output_path.write_text(response.content)
+    output_path.write_text(response.extracted_text, encoding="utf-8")
     logger.info(
         f"Mistral OCR image output written to: '{output_path}'",
         source=Path(__file__).name,
@@ -96,3 +98,4 @@ if __name__ == "__main__":
 
     asyncio.run(run_text_ocr(output_dir))
     asyncio.run(run_image_ocr(output_dir))
+    logger.flush()

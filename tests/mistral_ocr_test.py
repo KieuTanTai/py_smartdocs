@@ -6,7 +6,7 @@ from mistralai.client import Mistral
 from mistralai.client.models import CreateFileResponse
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
-PDF_PATH = ROOT_DIR / "docs" / "pdfs_test" / "Báo cáo tài chính Kiểm toán năm 2025.pdf"
+PDF_PATH = "C:\\Users\\Acer\\Downloads\\12.png"
 
 client = Mistral(api_key=MISTRAL_CONFIG["api_key"])
 logger = DEFAULT_LOGGER
