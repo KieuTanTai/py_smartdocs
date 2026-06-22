@@ -7,6 +7,7 @@ import numpy as np
 import concurrent.futures
 
 from backend.apps.core.enums.e_pipeline_type import EPipelineType
+from backend.apps.core.interfaces.dataclass.application.i_message_response import IMessageDTO
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.core.interfaces.dataclass.locate.i_neo4j_search_request import INeo4jSearchRequest
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
@@ -57,56 +58,44 @@ class MessageJob(IMessageJob):
         self.message_database = cast(IMessageDatabase, self.database_provider.get_model_service(MessageModel))
         self.conversation_files_database = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
         self.document_database = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
-
-    def run(self, conversation_id: str, content: str, provider: EProviderName, pipeline_type: EPipelineType, model_name: str, embedding_model_name: str = "gemini-embedding-2") -> IMessageJobResponse:
-        total_timer = TimeCounter()
-        total_timer.start()
-
-        conversation = self.conversation_database.get_by_id(conversation_id) #để thành param, get trên task (step 1)
-        # Lưu tin nhắn của user
         
-        self.message_database.create_message(conversation, is_user_send=True, content=content) # để trên task (step 2)
-
-        #tách ra 1 def riêng, gọi trên task (step 3)
-        # --- PHẦN LẤY CONTEXT ---
+    def get_conversation(self, conversation_id: str) -> ConversationModel:
+        return self.conversation_database.get_by_id(conversation_id)
+    
+    def save_message(self, conversation: ConversationModel, is_user_send: bool, content: str) -> MessageModel:
+        return self.message_database.create_message(conversation, is_user_send=is_user_send, content=content)
+    
+    def build_prompt_and_retrieve(self, content: str, conversation: ConversationModel, provider: EProviderName, pipeline_type: EPipelineType, model_name: str, embedding_model_name: str = "gemini-embedding-2") -> tuple[str, list[IMessageJobContextHit]]:
         context_hits: list[IMessageJobContextHit] = []
         context_hits_dicts: list[dict] = []
+        
         if pipeline_type == EPipelineType.HYBRID:
             graph_context, context_hits = self.__thread_pool_executor_hybrid_search(content, conversation, provider, model_name, embedding_model_name)
             context_hits_dicts = [{"text": hit.text, "score": hit.score} for hit in context_hits]
             prompt = self.prompt_structure.build_prompt_for_graph_context(content, context_hits_dicts, graph_context)
+            
         elif pipeline_type == EPipelineType.GRAPH:
             graph_context = self.__thread_pool_executor_graph_search(content, conversation, provider, embedding_model_name)
             prompt = self.prompt_structure.build_prompt_for_graph_context(content, context_hits_dicts, graph_context)
+            
         else:
             context_hits = self.__retrieve_context_hits(content, conversation, provider, model_name)
             retrieval = [hit.text for hit in context_hits]
             prompt = self.prompt_structure.build_prompt(retrieval, content)
-        # Gộp cả 2 vào Prompt
-
-        #split 1 hàm riêng (step 4)
+            
+        return prompt, context_hits
+    
+    def generate_answer(self, provider: EProviderName, model_name: str, prompt: str) -> str:
         llm_client = self.llm_provider_factory.get_provider(provider)
-
+        
         self.logger.info(
-            f"Generating assistant response for conversation={conversation_id} provider={provider.value}",
+            f"Generating assistant response for provider={provider.value}",
             source=str(self.__class__),
-            method_call=self.run.__name__,
+            method_call=self.generate_answer.__name__,
         )
-
+        
         response = llm_client.generate(ICompletionRequest(provider, model_name, prompt))
-
-        # Lưu tin nhắn của Assistant
-        self.message_database.create_message(conversation, is_user_send=False, content=response.content) #gọi trên task (step 5)
-
-        # return này trên task
-        return IMessageJobResponse(
-            conversation_id=str(conversation.conversations_id),
-            provider=provider.value,
-            model=model_name,
-            latency_ms=0,  # Placeholder, replace with actual latency
-            mode="default",  # Placeholder, replace with actual mode
-            retrieval_hits=context_hits
-        )
+        return getattr(response, 'content', getattr(response, 'message_content', str(response)))
 
     def __thread_pool_executor_hybrid_search(self, content: str, conversation: ConversationModel, provider: EProviderName, model_name: str, embedding_model_name: str = "gemini-embedding-2") -> tuple[str, list[IMessageJobContextHit]]:
         # Khởi tạo 2 luồng công nhân (worker) chạy song song
@@ -321,3 +310,33 @@ class MessageJob(IMessageJob):
             for text, spare_hit in zip(chunk_texts, sparse_hits):
                 spare_hit.text = text
         return sparse_hits
+    
+    def get_conversation_title(self, conversation_id: str) -> str:
+        conversation = self.conversation_database.get_by_id(conversation_id)
+        return conversation.conversations_title
+
+    def get_messages(self, conversation_id: str, limit: int, offset: int) -> list[IMessageDTO]:
+        conversation = self.conversation_database.get_by_id(conversation_id)
+        
+        # Lấy dữ liệu từ DB Service
+        messages_qs = self.message_database.get_by_conversation(conversation)
+        paginated_qs = messages_qs.order_by("-messages_created_at")[offset : offset + limit]
+        
+        # MAP ORM MODEL SANG DTO
+        dtos = []
+        for m in reversed(paginated_qs):
+            dtos.append(
+                IMessageDTO(
+                    id=str(m.messages_id), # Thay bằng tên trường id thực tế trong Model của bạn
+                    conversation_id=str(conversation_id),
+                    role="user" if m.messages_is_user_send else "assistant",
+                    content=m.messages_content,
+                    created_at=m.messages_created_at.isoformat()
+                )
+            )
+        return dtos
+
+    def count_messages(self, conversation_id: str) -> int:
+        conversation = self.conversation_database.get_by_id(conversation_id)
+        
+        return self.message_database.get_by_conversation(conversation).count()
