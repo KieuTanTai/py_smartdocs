@@ -12,6 +12,6 @@ class ICacheParamValue:
 
 @dataclass
 class ICacheParam:
-    key: str
-    values: list[ICacheParamValue]
+    key: str #conversation_id
+    values: list[ICacheParamValue] #stack of chunks on all files of conversation
     expire: int | None = None # Expiration time in seconds, optional

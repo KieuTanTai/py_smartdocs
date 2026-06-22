@@ -9,6 +9,7 @@ from typing import Any, Dict
 from celery import Task
 
 from backend.apps.config.container import BackendContainer
+from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.job.i_message_job import IMessageJobResponse
 from backend.apps.core.interfaces.system.i_logging import ILogger
@@ -24,13 +25,14 @@ class MessageTask(IMessageTask):
         self.time_counter = time_counter
 
     # --- SINGLE RESPONSIBILITY METHODS ---
-    def _execute_rag_inference(self, message_job: IMessageJob, conversation_id: str, content: str, provider: EProviderName, model_name: str | None) -> IMessageJobResponse:
+    def _execute_rag_inference(self, message_job: IMessageJob, conversation_id: str, content: str, provider: EProviderName, pipeline_type: EPipelineType, model_name: str) -> IMessageJobResponse:
         """Execute RAG inference."""
         result_dataclass = message_job.run(
             conversation_id=conversation_id,
             content=content,
             provider=provider,
-            model_name=model_name
+            pipeline_type=pipeline_type,
+            model_name=model_name,
         )
         return result_dataclass
 
@@ -40,7 +42,7 @@ class MessageTask(IMessageTask):
         """Return the task name for routing."""
         return Path(__file__).stem  # Dynamic name based on filename
 
-    def run(self, conversation_id: str, content: str, provider_name: EProviderName, model_name: str | None = None) -> IMessageJobResponse:
+    def run(self, conversation_id: str, content: str, provider_name: EProviderName, pipeline_type: EPipelineType, model_name: str) -> IMessageJobResponse:
         """Execute the message task."""
         self.time_counter.reset()
         self.time_counter.start()
@@ -50,11 +52,12 @@ class MessageTask(IMessageTask):
             conversation_id=conversation_id,
             content=content,
             provider=provider_name,
+            pipeline_type=pipeline_type,
             model_name=model_name
         )
             
         # CHỐT THỜI GIAN
-        elapsed = self.time_counter.get_elapsed_time_ms()
+        elapsed = self.time_counter.get_elapsed_time()
         self.logger.info(f"MessageTask completed total End-to-End execution in {elapsed:.2f}ms for conversation {conversation_id}")
         
         # Ghi đè Latency = Tổng thời gian chạy của cả Task
