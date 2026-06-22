@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 import json
 import time
 from typing import Any, Dict, List, Optional
@@ -113,9 +117,9 @@ def server(input: Any, output: Any, session: Any) -> None:
 
         rows = []
         for msg in items:
-            role = msg.get("role", "assistant")
+            role = msg.role if hasattr(msg, "role") else msg.get("role", "assistant")
             classes = "message assistant" if role != "user" else "message user"
-            meta = msg.get("meta") or {}
+            meta = msg.meta if hasattr(msg, "meta") else msg.get("meta") or {}
             meta_line = None
             if role != "user" and meta:
                 parts = []
@@ -129,9 +133,11 @@ def server(input: Any, output: Any, session: Any) -> None:
                     parts.append("Error: API failed")
                 if parts:
                     meta_line = " | ".join(parts)
+            
+            content = msg.content if hasattr(msg, "content") else msg.get("content", "")
             rows.append(
                 ui.tags.div(
-                    ui.markdown(msg.get("content", "")),
+                    ui.markdown(content),
                     (
                         ui.tags.div(meta_line, class_="message-meta")
                         if meta_line

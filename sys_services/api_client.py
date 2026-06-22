@@ -3,8 +3,6 @@ from __future__ import annotations
 import os
 import httpx
 from typing import Any, Dict, Optional
-from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest
-from backend.apps.core.interfaces.dataclass.request.i_send_message_request import ISendMessageRequest
 from sys_services.system_dirs import DEFAULT_BASE_URL
 
 
@@ -90,24 +88,24 @@ class ApiClient:
         return self._request("GET", "/api/conversations/")
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    # def create_conversation(
-    #     self,
-    #     title: str,
-    #     provider: str,
-    #     model: str,
-    #     system_prompt: str,
-    #     document_ids: list[str],
-    #     mode: str,
-    # ) -> Dict[str, Any]:
-    #     payload = ICreateConversationRequest(
-    #         title=title,
-    #         provider=provider,
-    #         model=model,
-    #         system_prompt=system_prompt,
-    #         document_ids=document_ids,
-    #         mode=mode,
-    #     )
-    #     return self._request("POST", "/api/conversations/", json=payload)
+    def create_conversation(
+        self,
+        title: str,
+        provider: str,
+        model: str,
+        system_prompt: str,
+        document_ids: list[str],
+        mode: str,
+    ) -> Dict[str, Any]:
+        payload = {
+            "title": title,
+            "provider": provider,
+            "model": model,
+            "system_prompt": system_prompt,
+            "document_ids": document_ids,
+            "mode": mode,
+        }
+        return self._request("POST", "/api/conversations/", json=payload)
 
     def send_message(
         self,
@@ -116,14 +114,13 @@ class ApiClient:
         provider: Optional[str] = None,
         model: Optional[str] = None,
     ) -> Dict[str, Any]:
-        request = ISendMessageRequest(
-            conversation_id=conversation_id,
-            message=content,
-            provider=provider,
-            model=model,
-        )
+        payload = {
+            "content": content,
+            "provider": provider,
+            "model": model,
+        }
         return self._request(
-            "POST", f"/api/conversations/{conversation_id}/messages/", json=request
+            "POST", f"/api/conversations/{conversation_id}/messages/", json=payload
         )
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.

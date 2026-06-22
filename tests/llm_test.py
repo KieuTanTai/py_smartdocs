@@ -8,6 +8,19 @@ from pathlib import Path
 from typing import List
 import uuid
 
+if not hasattr(uuid, "uuid7"):
+    import os
+    import time
+    def _uuid7() -> uuid.UUID:
+        timestamp_ms = int(time.time() * 1000)
+        uuid_bytes = bytearray(16)
+        uuid_bytes[0:6] = timestamp_ms.to_bytes(6, 'big')
+        uuid_bytes[6:16] = os.urandom(10)
+        uuid_bytes[6] = (uuid_bytes[6] & 0x0f) | 0x70
+        uuid_bytes[8] = (uuid_bytes[8] & 0x3f) | 0x80
+        return uuid.UUID(bytes=bytes(uuid_bytes))
+    uuid.uuid7 = _uuid7
+
 import numpy as np
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
 from backend.apps.core.interfaces.dataclass.locate.i_neo4j_search_request import INeo4jSearchRequest

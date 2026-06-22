@@ -26,7 +26,7 @@ def model_settings_ui(object_providers: List[IProvider]) -> ui.Tag:
                 ui.input_select(
                     "model_select",
                     "Model",
-                    choices={object_provider.provider_name.value: object_provider.model_name for object_provider in object_providers},
+                    choices={object_provider.model_name: object_provider.model_name for object_provider in object_providers},
                     selected=object_providers[0].model_name if object_providers else "auto",
                 ),
                 class_="button-select-wrap",

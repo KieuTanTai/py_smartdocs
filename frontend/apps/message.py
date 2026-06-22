@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from typing import Any, Dict, List, Optional
 
 from backend.apps.core.interfaces.dataclass.request.i_chat_message import IChatMessage
@@ -96,33 +97,39 @@ def send_message(
         )
         assistant = response.get("assistant") or "No response text returned."
         metrics = _extract_metrics(response)
-        return IChatResponse(
+        res_dict = IChatResponse(
             assistant=assistant,
             conversation_id=conversation_id,
-            metrics=metrics,
+            metrics=dataclasses.asdict(metrics),
             new_conversation=new_conversation,
             error=None,
             used_mock=False,
         ).__dict__
+        res_dict["conversation_name"] = conversation_id
+        return res_dict
     except ApiError as exc:
         if not allow_mock:
-            return IChatResponse(
+            res_dict = IChatResponse(
                 assistant="",
                 conversation_id=conversation_id or "",
-                metrics=IChatMetrics(provider=provider, model=model, mode=mode, total_ms=0),
+                metrics=dataclasses.asdict(IChatMetrics(provider=provider, model=model, mode=mode, total_ms=0)),
                 new_conversation=False,
                 error=str(exc),
                 used_mock=False,
             ).__dict__
+            res_dict["conversation_name"] = conversation_id
+            return res_dict
         fallback = (
             "Backend unreachable. This is a local mock response so you can continue "
             "designing the UI."
         )
-        return IChatResponse(
+        res_dict = IChatResponse(
             assistant=fallback,
             conversation_id=conversation_id or "",
-            metrics=IChatMetrics(provider=provider, model=model, mode=mode, total_ms=0),
+            metrics=dataclasses.asdict(IChatMetrics(provider=provider, model=model, mode=mode, total_ms=0)),
             new_conversation=False,
             error=str(exc),
             used_mock=True,
         ).__dict__
+        res_dict["conversation_name"] = conversation_id
+        return res_dict

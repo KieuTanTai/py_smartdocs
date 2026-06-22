@@ -27,6 +27,7 @@ from backend.apps.services.rag_base.locate.locate_service import LocateService
 from backend.apps.application.conversations.application import ConversationApplication
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from sys_services.system_dirs import METADATA_DIR
+from sys_services.logging import DEFAULT_LOGGER
 
 # Singleton application instance
 _conversation_app = ConversationApplication()
@@ -256,16 +257,88 @@ class ConversationDocumentsView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+def call_llm_with_resilience(
+    provider_name: str,
+    model_name: str,
+    prompt: str,
+    max_retries: int = 2,
+) -> tuple[str, str]:
+    """
+    Call LLM with retries. If the primary provider fails, fall back to other providers.
+    Returns (answer, used_provider_name).
+    """
+    try:
+        primary_provider = EProviderName(provider_name.lower())
+    except ValueError:
+        primary_provider = EProviderName.OLLAMA
+
+    providers_to_try = [primary_provider]
+    for p in EProviderName:
+        if p not in providers_to_try:
+            providers_to_try.append(p)
+
+    last_exception = None
+    for provider in providers_to_try:
+        try:
+            if provider == primary_provider:
+                resolved_model = model_name
+            else:
+                if provider == EProviderName.GEMINI:
+                    resolved_model = DEFAULT_CONFIG_PROVIDER.get_gemini_config().get("model")
+                elif provider == EProviderName.MISTRAL:
+                    resolved_model = DEFAULT_CONFIG_PROVIDER.get_mistral_config().get("model")
+                elif provider == EProviderName.OLLAMA:
+                    resolved_model = DEFAULT_CONFIG_PROVIDER.get_ollama_config().get("model")
+                else:
+                    resolved_model = model_name
+
+            factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, DEFAULT_LOGGER)
+            client = factory.get_provider(provider)
+
+            for attempt in range(max_retries + 1):
+                try:
+                    req = ICompletionRequest(
+                        provider=provider,
+                        model=resolved_model,
+                        prompt=prompt,
+                    )
+                    DEFAULT_LOGGER.info(
+                        f"Calling LLM provider {provider.value} (model: {resolved_model}), attempt {attempt + 1}",
+                        source="call_llm_with_resilience"
+                    )
+                    answer = client.generate(req)
+                    if answer:
+                        return answer, provider.value
+                except Exception as e:
+                    DEFAULT_LOGGER.warning(
+                        f"Attempt {attempt + 1} failed for provider {provider.value}: {e}",
+                        source="call_llm_with_resilience",
+                    )
+                    last_exception = e
+                    if attempt == max_retries:
+                        raise e
+        except Exception as e:
+            DEFAULT_LOGGER.warning(
+                f"Provider {provider.value} failed completely: {e}",
+                source="call_llm_with_resilience",
+            )
+            last_exception = e
+
+    if last_exception:
+        raise last_exception
+    raise ValueError("No LLM providers could be contacted.")
+
+
 class MessageListView(APIView):
     def get(self, request, conversation_id: str):
         msgs = MessageModel.objects.filter(
-            message_conversation_id=conversation_id
-        ).order_by("message_created_at")
+            conversation_id=conversation_id
+        ).order_by("created_at")
         data = []
         for m in msgs:
             data.append({
-                "role": "user" if m.message_is_user_send else "assistant",
-                "content": m.message_content
+                "role": "user" if m.is_user_send else "assistant",
+                "content": m.content
             })
         return Response(data, status=status.HTTP_200_OK)
 
