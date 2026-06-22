@@ -149,13 +149,16 @@ class BackendContainer(containers.DeclarativeContainer):
         locate_service=locate_service,
         config_provider=config_provider,
         logger=log_pool,
-        neo4j_service=neo4j_service
+        database_provider=database_provider,
+        session_provider=neo4j_session,
+        llm_prompt_structure=llm_prompt_structure
     )
     
     delete_job = providers.Factory(
         DeleteJob,
         locate_service=locate_service,
-        neo4j_service=neo4j_service,
+        database_provider=database_provider,
+        session_provider=neo4j_session,
         cache_session=cache_service,
         logger=log_pool,
         storage_service=file_storage
@@ -170,13 +173,16 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,
-        neo4j_service=neo4j_service
+        database_provider=database_provider,
+        session_provider=neo4j_session
     )
 
     conversation_job = providers.Factory(
         ConversationJob,
         llm_provider_factory=llm_provider_factory,
+        llm_prompt_structure=llm_prompt_structure,
         config_provider=config_provider,
+        database_provider=database_provider,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service
     )
@@ -184,6 +190,8 @@ class BackendContainer(containers.DeclarativeContainer):
     upload_task = providers.Factory(
         UploadTask,
         upload_job=upload_job,
+        memory_pool=memory_pool,
+        database_provider=database_provider,
         logger=log_pool,
         time_counter=time_counter
     )
@@ -209,3 +217,4 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
         time_counter=time_counter
     )
+

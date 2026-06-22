@@ -24,7 +24,8 @@ from backend.apps.utils.get_instance_model_database import get_instance_model_da
 
 class ConversationJob(IConversationJob):
 
-    def __init__(self, llm_provider_factory: ILLMProviderFactory, llm_prompt_structure: ILLMPromptStructure, config_provider: IConfigProvider, 
+    def __init__(self, llm_provider_factory: ILLMProviderFactory, 
+                 llm_prompt_structure: ILLMPromptStructure, config_provider: IConfigProvider, 
                  database_provider: IDatabaseProvider,
                  logger: ILogger, hybrid_search_service: IHybridSearchService | None = None):
         self.llm_provider_factory = llm_provider_factory
