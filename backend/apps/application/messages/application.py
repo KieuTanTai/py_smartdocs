@@ -66,7 +66,6 @@ class MessageApplication():
         try:
             self.logger.info(f"Application routing get_history to Task...")
             
-            # Lệnh đọc cũng được giao phó cho Task! (Chuẩn ý bạn)
             return self.message_task.get_history(
                 conversation_id=conversation_id, 
                 limit=limit, 
