@@ -362,6 +362,16 @@ class UploadJob(IUploadJob):
         )
         return name
 
+    def list_files(self, conversation: ConversationModel, file_caller: str = "") -> list[ConversationFilesModel]:
+        self.logger.info(f"Listing files for conversation_id: {conversation.pk}", source=Path(__file__).name, call_by=file_caller, method_call=self.list_files.__name__)
+        try:
+            response = self.conversation_files_database.get_by_conversation(conversation)
+            self.logger.info(f"Successfully listed files for conversation_id: {conversation.pk}", source=Path(__file__).name, call_by=file_caller, method_call=self.list_files.__name__)
+            return [file for file in response if isinstance(file, ConversationFilesModel)]
+        except Exception as e:
+            self.logger.error(f"Error listing files for conversation_id: {conversation.pk}, error: {str(e)}", source=Path(__file__).name, call_by=file_caller, method_call=self.list_files.__name__)
+            raise e
+
     ## ------------------- PRIVATE METHODS -------------------
     async def __run_pipeline_create_retriever(
         self,

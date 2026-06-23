@@ -41,7 +41,7 @@ class ConversationTask(IConversationTask):
             call_by=file_caller,
             method_call=self.rename.__name__,
         )
-        return self.conversation_job.change_title_document(conversation_id, new_title, file_caller=file_caller)
+        return self.conversation_job.change_title_conversation(conversation_id, new_title, file_caller=file_caller)
 
     #! NOTE: Will continue fixing this after fix delete_job, tasks
     def remove(self, conversation_id: str, file_caller: str = "") -> int:
@@ -125,14 +125,12 @@ class ConversationTask(IConversationTask):
         self,
         provider_name: EProviderName,
         model_name: str,
-        conversation_id: uuid.UUID | None = None,
+        conversation: ConversationModel | None = None,
         summarize: str = "",
         file_caller: str = "",
     ) -> IConversationJobResponse | IConversationLoadResponse:
-        if conversation_id is not None:
-            conversation = self.conversation_job.check_existed_conversation(conversation_id, file_caller=file_caller)
-            if conversation is not None:
-                return self.__load_conversation(conversation, file_caller=file_caller)
+        if conversation is not None:
+            return self.__load_conversation(conversation, file_caller=file_caller)
             
         init_conversation = self.conversation_job.create_init_conversation(file_caller=file_caller)
         self.logger.info(
@@ -146,7 +144,7 @@ class ConversationTask(IConversationTask):
         self.time_counter.start()
 
         # Validate
-        self.__verify_documents_readiness(init_conversation.conversations_id)
+        self.__verify_documents_readiness(init_conversation)
 
         # Execute message generation logic
         result_dataclass = self.conversation_job.generate_bootstrap_message(init_conversation, provider_name, model_name, summarize, file_caller)
@@ -163,16 +161,16 @@ class ConversationTask(IConversationTask):
         return result_dataclass
 
     # --- SINGLE RESPONSIBILITY METHODS ---
-    def __verify_documents_readiness(self, conversation_id: uuid.UUID) -> None:
+    def __verify_documents_readiness(self, conversation: ConversationModel) -> None:
         """Check if the documents are ready for conversation using."""
-        is_ready = self.conversation_job.check_documents_ready(conversation_id)
+        is_ready = self.conversation_job.check_documents_ready(conversation)
         if not is_ready:
             self.logger.error(
-                f"Documents attached to conversation {conversation_id} are not completely indexed.",
+                f"Documents attached to conversation {conversation.conversations_id} are not completely indexed.",
                 source=Path(__file__).name,
                 call_by=Path(__file__).name,
                 method_call=self.__verify_documents_readiness.__name__,
             )
             raise DocumentsNotReadyError(
-                f"Documents attached to conversation {conversation_id} are not completely indexed."
+                f"Documents attached to conversation {conversation.conversations_id} are not completely indexed."
             )

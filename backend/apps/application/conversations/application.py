@@ -21,10 +21,10 @@ class ConversationApplication(IConversationApplication):
         return self.conversation_task.create_init_conversation(conversation_title=conversation_title)
 
     def run_application_pipeline(self, provider_name: EProviderName, 
-                                                 model_name: str, conversation_id: uuid.UUID | None = None, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
-        self.logger.info(f"Running application pipeline for provider: {provider_name}, model: {model_name}, conversation_id: {conversation_id}",
+                                                 model_name: str, conversation: ConversationModel | None = None, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
+        self.logger.info(f"Running application pipeline for provider: {provider_name}, model: {model_name}, conversation: {conversation.conversations_id if conversation else None}",
                          Path(__file__).name, file_caller, self.run_application_pipeline.__name__)
-        response = self.conversation_task.run(provider_name=provider_name, model_name=model_name, conversation_id=conversation_id, summarize=summarize, file_caller=file_caller)
+        response = self.conversation_task.run(provider_name=provider_name, model_name=model_name, conversation=conversation, summarize=summarize, file_caller=file_caller)
         if isinstance(response, IConversationJobResponse):
             self.logger.info(f"Application pipeline completed for conversation_id: {response.conversation_id}, provider: {provider_name}, model: {model_name}",
                              Path(__file__).name, file_caller, self.run_application_pipeline.__name__)

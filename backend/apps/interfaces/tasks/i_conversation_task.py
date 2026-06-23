@@ -17,12 +17,12 @@ class IConversationTask(ABC, Task):
         pass
 
     @abstractmethod
-    def run(self, provider_name: EProviderName, model_name: str, conversation_id: uuid.UUID | None = None, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
+    def run(self, provider_name: EProviderName, model_name: str, conversation: ConversationModel | None, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
         """
         Executes conversation bootstrap flow.
         Must return a JSON-serializable dictionary (Serialized BootstrapMessageResponse).
         Args:
-            conversation_id (uuid.UUID): The ID of the conversation for which to generate the bootstrap message.
+            conversation (ConversationModel | None): The conversation for which to generate the bootstrap message.
             provider_name (EProviderName): The LLM provider to use for generating the bootstrap message.
             model_name (str): The specific model name to use for generation.
             summarize (str): A summary of the conversation, if applicable. (Optional, if you already have a summary of the conversation that you want to use during the bootstrap message generation, you can pass it here. Otherwise, you can leave it empty and the implementation can decide how to handle it.)

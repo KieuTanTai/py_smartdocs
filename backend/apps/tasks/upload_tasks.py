@@ -80,6 +80,17 @@ class UploadTask(IUploadTask):
             self.logger.error(f"Error processing file paths {file_paths} for graph pipeline: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
             raise exc
 
+    def list_files(self, conversation_id: str, file_caller: str = "") -> list[ConversationFilesModel]:
+        self.logger.info(f"Listing files for conversation_id: {conversation_id}", source=Path(__file__).name, call_by=file_caller, method_call=self.list_files.__name__)
+        try:
+            conversation_model = self.conversation_database.get_by_id(conversation_id)
+            response = self.upload_job.list_files(conversation_model, file_caller=self.list_files.__name__)
+            self.logger.info(f"Successfully listed files for conversation_id: {conversation_id}", source=Path(__file__).name, call_by=file_caller, method_call=self.list_files.__name__)
+            return response
+        except Exception as e:
+            self.logger.error(f"Error listing files for conversation_id: {conversation_id}, error: {str(e)}", source=Path(__file__).name, call_by=file_caller, method_call=self.list_files.__name__)
+            raise e
+
     # --- SINGLE RESPONSIBILITY METHODS ---
 
     def __create_document_model(self, conversation_model: ConversationModel, file_path: Path | None = None, content: str | None = None) -> DocumentModel:

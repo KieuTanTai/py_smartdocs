@@ -13,7 +13,7 @@ from backend.apps.interfaces.application.document.i_document_application import 
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
-from backend.apps.services.chat.models import DocumentModel
+from backend.apps.services.chat.models import ConversationFilesModel, DocumentModel
 
 class DocumentApplication(IDocumentApplication):
 
@@ -29,6 +29,17 @@ class DocumentApplication(IDocumentApplication):
         self.logger.info(f"Starting document upload for conversation_id: {request.conversation_id}",
                          Path(__file__).name, file_caller, self.upload_document.__name__)
         return self.__upload_document_task(request, file_caller)
+
+    def list_files(self, conversation_id: str, file_caller: str = "") -> list[ConversationFilesModel]:
+        self.logger.info(f"Listing files for conversation_id: {conversation_id}",
+                         Path(__file__).name, file_caller, self.list_files.__name__)
+        try:
+            response = self.upload_task.list_files(conversation_id, file_caller)
+            return response
+        except Exception as e:
+            self.logger.error(f"Error listing files for conversation_id: {conversation_id}, error: {str(e)}",
+                              Path(__file__).name, file_caller, self.list_files.__name__)
+            raise e
 
     def __upload_document_task(self, request: ICreateConversationRequest, file_caller: str = "") -> IConversationPostResponse:
         response = self.__run_upload_task(request, file_caller)

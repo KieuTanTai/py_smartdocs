@@ -5,7 +5,7 @@ from backend.apps.core.enums.e_document_status import EDocumentStatus
 
 
 class ConversationModel(models.Model):
-    conversations_id = models.UUIDField(primary_key=True, default=uuid.uuid5, editable=False)
+    conversations_id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     conversations_name = models.CharField(max_length=255, db_index=True, default="", db_column="conversations_name")
     conversations_title = models.CharField(max_length=255, default="", db_column="conversations_title")
     conversations_created_at = models.DateTimeField(auto_now_add=True)
@@ -19,7 +19,7 @@ class DocumentModel(models.Model):
     Documents are using locate faiss index file to store embeddings and content for retrieval.
     """
     document_id = models.UUIDField(
-        primary_key=True, default=uuid.uuid5, editable=False
+        primary_key=True, default=uuid.uuid7, editable=False
     )
     documents_conversation = models.OneToOneField(ConversationModel, related_name="document", on_delete=models.CASCADE, db_column="documents_conversation_id")
     documents_is_active = models.BooleanField(default=True)
@@ -44,7 +44,7 @@ class ConversationCacheModel(models.Model):
      - conversation_cache_status: UUIDField to store the status of the cache metadata, which can be used to track the state of the cache (e.g., valid, expired, or in the process of being updated).
     """
     conversation_cache_id = models.UUIDField(
-        primary_key=True, default=uuid.uuid5, editable=False
+        primary_key=True, default=uuid.uuid7, editable=False
     )
     conversation_cache_conversation = models.OneToOneField(ConversationModel, related_name="conversation_cache", on_delete=models.CASCADE, db_column="conversation_cache_conversation_id")
     conversation_cache_is_active = models.BooleanField(default=True)
@@ -56,7 +56,7 @@ class ConversationCacheModel(models.Model):
 
 class ConversationFilesModel(models.Model):
     conversation_files_id = models.UUIDField(
-        primary_key=True, default=uuid.uuid5, editable=False
+        primary_key=True, default=uuid.uuid7, editable=False
     )
     conversation_files_cloud_id = models.CharField(
         max_length=255,
@@ -71,7 +71,7 @@ class ConversationFilesModel(models.Model):
         db_table = "conversation_files"
 
 class MessageModel(models.Model):
-    messages_id = models.UUIDField(primary_key=True, default=uuid.uuid5, editable=False)
+    messages_id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     messages_conversation = models.ForeignKey(
         ConversationModel, on_delete=models.CASCADE, related_name="messages", db_column="message_conversation_id"
     )

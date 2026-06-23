@@ -55,11 +55,12 @@ class ConversationJob(IConversationJob):
         self.conversation_database: IConversationDatabase = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
         self.conversation_cache_database: IConversationCacheDatabase = cast(IConversationCacheDatabase, self.database_provider.get_model_service(ConversationModel))
 
-    def check_documents_ready(self, conversation_key:uuid.UUID, file_caller: str = "") -> bool:
+    def check_documents_ready(self, conversation: ConversationModel, file_caller: str = "") -> bool:
         try:
-            existed = self.document_database.get_by_id(conversation_key)
+            existed = self.document_database.get_by_id(conversation.conversations_id)
+            cache_metadat_existed = self.conversation_cache_database.get_by_conversation(conversation)
             self.logger.info(
-                f"Checked document readiness for conversation {conversation_key}: {'Ready' if existed and existed.documents_status.lower().strip() == 'indexed' else 'Not Ready'}",
+                f"Checked document readiness for conversation {conversation.conversations_id}: {'Ready' if existed and existed.documents_status.lower().strip() == 'indexed' else 'Not Ready'}",
                 source=Path(__file__).name,
                 call_by=file_caller,
                 method_call=self.check_documents_ready.__name__,
@@ -69,7 +70,7 @@ class ConversationJob(IConversationJob):
             return True
         except Exception as e:
             self.logger.error(
-                f"Error checking document readiness for conversation {conversation_key}: {str(e)}",
+                f"Error checking document readiness for conversation {conversation.conversations_id}: {str(e)}",
                 source=Path(__file__).name,
                 call_by=file_caller,
                 method_call=self.check_documents_ready.__name__,
@@ -162,14 +163,14 @@ class ConversationJob(IConversationJob):
             )
         return 0
 
-    def change_title_document(self, conversation_id: str, new_title: str, file_caller: str = "") -> ConversationModel:
+    def change_title_conversation(self, conversation_id: str, new_title: str, file_caller: str = "") -> ConversationModel:
         try:
             updated_count = self.conversation_database.update_title(conversation_id, new_title)
             self.logger.info(
                 f"Renamed conversation {conversation_id} to '{new_title}'. Updated records count: {updated_count}",
                 source=Path(__file__).name,
                 call_by=file_caller,
-                method_call=self.change_title_document.__name__,
+                method_call=self.change_title_conversation.__name__,
             )
             return updated_count
         except Exception as e:
@@ -177,7 +178,7 @@ class ConversationJob(IConversationJob):
                 f"Error renaming conversation {conversation_id} to '{new_title}': {str(e)}",
                 source=Path(__file__).name,
                 call_by=file_caller,
-                method_call=self.change_title_document.__name__,
+                method_call=self.change_title_conversation.__name__,
             )
             raise ValueError(f"Failed to rename conversation {conversation_id} to '{new_title}'")
 
@@ -264,10 +265,12 @@ class ConversationJob(IConversationJob):
                 call_by=file_caller,
                 method_call=self.load_cache.__name__,
             )
-            
+
             service = cast(ICacheService, self.cache_session.connect(file_caller))
             service.clear(file_caller)
-            cache_param = service.load_from_file(conversation.conversations_id, file_caller)
+            cache_param = service.load_from_file(
+                str(conversation.conversations_id), file_caller
+            )
             if not cache_param:
                 self.logger.warning(
                     f"Failed to load cache for conversation {conversation.conversations_id}. Cache file may be missing or corrupted.",
@@ -337,7 +340,7 @@ class ConversationJob(IConversationJob):
                 method_call=self.load_faiss_index.__name__,
             )
             return None
-        
+
     def load_messages(self, conversation: ConversationModel, file_caller: str = "") -> list[MessageModel]:
         try:
             if not conversation:

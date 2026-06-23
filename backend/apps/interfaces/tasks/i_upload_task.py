@@ -8,7 +8,7 @@ from celery import Task
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IGraphRagUploadResponse, IUploadResponse
-from backend.apps.services.chat.models import ConversationModel
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel
 
 class IUploadTask(ABC, Task):
     """Contract for Celery Upload Processing Task."""
@@ -58,5 +58,17 @@ class IUploadTask(ABC, Task):
         Raises:
             ValueError: If provider_name is invalid or document is not found
             Exception: For any other processing errors
+        """
+        pass
+
+    @abstractmethod
+    def list_files(self, conversation_id: str, file_caller: str = "") -> list[ConversationFilesModel]:
+        """
+        Lists all files associated with a specific conversation.
+        Args:
+            conversation_id (str): The ID of the conversation for which to list files.
+            file_caller (str): The caller of the file listing operation.
+        Returns:
+            list[ConversationFilesModel]: A list of ConversationFilesModel objects representing the files in the conversation.
         """
         pass

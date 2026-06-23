@@ -30,28 +30,27 @@ from backend.apps.application.conversations.application import ConversationAppli
 from sys_services.system_dirs import METADATA_DIR
 
 # Singleton application instances
-_conversation_app = ConversationApplication()
+__container = container.BackendContainer()
 
 
 class DocumentListView(APIView):
     def get(self, request):
-        doc_app = container.document_application()
+        doc_app = __container.document_application()
         
-        result = doc_app.list_documents()
+        result = doc_app.list_files(request.GET.get("conversation_id", ""), file_caller="DocumentListView")
         data = []
-        for d in result.get("documents", []):
+        for file in result:
             data.append({
-                "id": str(d["id"]),
-                "title": d.get("title", ""),
-                "status": d.get("status", "unknown"),
-                "source": "local"
+                "id": str(file.conversation_files_id),
+                "cloud_id": str(file.conversation_files_cloud_id),
+                "vector_file": str(file.conversation_files_document.documents_file_path),
+                "uploaded_at": str(file.conversation_files_uploaded_at),
             })
         return Response(data, status=status.HTTP_200_OK)
 
-
 class DocumentUploadView(APIView):
     def post(self, request):
-        sys_logger = container.log_pool() # Lấy ILogger từ Container
+        sys_logger = __container.log_pool() # Lấy ILogger từ Container
 
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
@@ -59,18 +58,16 @@ class DocumentUploadView(APIView):
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            doc_app = container.document_application()
+            doc_app = __container.document_application()
             file_content = uploaded_file.read()
             
             doc_request = doc_app.upload_document(
-                file_content=file_content,
-                file_name=uploaded_file.name,
-                conversation_id=None,
+                request=request,
+                file_caller = Path(__file__).stem,
             )
             
             sys_logger.info(f"File uploaded successfully: {uploaded_file.name}", source="DocumentUploadView", call_by="post")
             return Response({
-                "id": doc_request["file_id"],
                 "title": uploaded_file.name,
                 "status": "uploaded"
             }, status=status.HTTP_201_CREATED)
@@ -86,7 +83,7 @@ class DocumentUploadView(APIView):
 class DocumentDetailView(APIView):
     def get(self, request, document_id: str):
         try:
-            doc_app = container.document_application()
+            doc_app = __container.document_application()
             doc = doc_app.get_document(document_id)
             return Response({
                 "id": str(doc["id"]),
@@ -97,10 +94,10 @@ class DocumentDetailView(APIView):
             return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, document_id: str):
-        sys_logger = container.log_pool()
+        sys_logger = __container.log_pool()
 
         try:
-            doc_app = container.document_application()
+            doc_app = __container.document_application()
             doc_app.delete_document(document_id=document_id, delete_file=True)
             
             try:
@@ -122,7 +119,7 @@ class DocumentDetailView(APIView):
 class DocumentStatusView(APIView):
     def get(self, request, document_id: str):
         try:
-            doc_app = container.document_application()
+            doc_app = __container.document_application()
             doc = doc_app.get_document(document_id)
             return Response({
                 "id": str(doc["id"]),
