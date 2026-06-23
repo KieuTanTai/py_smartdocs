@@ -1,4 +1,5 @@
 from pathlib import Path
+from backend.apps.interfaces.application.document.i_document_application import IDocumentApplication
 from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
@@ -222,8 +223,10 @@ class BackendContainer(containers.DeclarativeContainer):
     )
 
     document_application = providers.Factory(
+        IDocumentApplication,
         upload_task=upload_task,
         cache_session=cache_session,
         database_provider=database_provider,
         logger=log_pool,
         time_counter=time_counter)
+    

@@ -44,7 +44,7 @@ class ConversationCacheModel(models.Model):
      - conversation_cache_status: UUIDField to store the status of the cache metadata, which can be used to track the state of the cache (e.g., valid, expired, or in the process of being updated).
     """
     conversation_cache_id = models.UUIDField(
-        primary_key=True, default=uuid.uuid7, editable=False
+        primary_key=True, default=uuid.uuid5, editable=False
     )
     conversation_cache_conversation = models.OneToOneField(ConversationModel, related_name="conversation_cache", on_delete=models.CASCADE, db_column="conversation_cache_conversation_id")
     conversation_cache_is_active = models.BooleanField(default=True)
