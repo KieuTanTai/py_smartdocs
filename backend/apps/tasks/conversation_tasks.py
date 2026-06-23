@@ -9,7 +9,7 @@ from typing import Any, Dict
 import uuid
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IConversationLoadResponse, IConversationRelationshipResponse, IConversationPostResponse, IconversationDocumentGetResponse
 from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
@@ -55,22 +55,79 @@ class ConversationTask(IConversationTask):
         )
         return self.conversation_job.create_init_conversation(conversation_title=conversation_title, file_caller=file_caller)
 
-    def load_document(
-        self, conversation_id: str, file_caller: str = ""
-    ) -> IconversationDocumentGetResponse:
-        self.logger.info(
-            f"Loading document for conversation ID {conversation_id} called by {file_caller}",
-            source=Path(__file__).name,
-            call_by=file_caller,
-            method_call=self.load_document.__name__,
-        )
-        return self.conversation_job.load_document(
-            conversation_id, file_caller=self.load_document.__name__
-        )
+    def __load_conversation(
+        self, conversation: ConversationModel, file_caller: str = ""
+    ) -> IConversationLoadResponse:
+        """
+        Loads the conversation details along with the attached documents for a given conversation ID.
+        This method is REQUIREMENT for frontend when switching conversation, or restart server, because it 
+        will fetch the conversation, conversation files, caching files (must be existed if not deleted by remove_conversation) 
+        and return to frontend to display.
+        This method will clear cache, clear index of vector database, and re-cache the documents
+        if the conversation is loaded again when restart server or switching conversations.
+        Args:
+            conversation (ConversationModel): The conversation to load.
+            file_caller (str): The file caller for the conversation.
+        Returns:
+            IConversationLoadResponse: The response containing the conversation details, attached documents, and any relevant metadata.
+        Raises:
+            ValueError: If the conversation with the given ID does not exist or if there is an error loading the conversation details.
+        """
+        conversation_id = conversation.conversations_id
+        try:
+            self.logger.info(
+                f"Loading conversation {conversation_id} and associated resources",
+                source=Path(__file__).name,
+                call_by=file_caller,
+                method_call=self.__load_conversation.__name__,
+            )
+            result = self.conversation_job.check_conversation_is_valid(conversation, file_caller=file_caller)
+            if not result:
+                raise ValueError(f"Conversation with ID {conversation_id} not found.")
 
-    def run(self, conversation: ConversationModel, provider_name: EProviderName, model_name: str, summarize: str = "", file_caller: str = "") -> IConversationJobResponse:
+            # Load Cache
+            cache = self.conversation_job.load_cache(result.conversation, file_caller=file_caller)
+            if not cache:
+                raise ValueError(f"Cache for conversation {conversation_id} could not be loaded.")
+
+            # Load FAISS index for the conversation
+            faiss_response = self.conversation_job.load_faiss_index(result.conversation, file_caller=file_caller)
+            if not faiss_response or not faiss_response.index:
+                raise ValueError(f"FAISS index for conversation {conversation_id} could not be loaded.")
+
+            load_messages = self.conversation_job.load_messages(result.conversation, file_caller=file_caller)
+
+            return IConversationLoadResponse(
+                conversation=result.conversation,
+                cache=cache,
+                faiss_response=faiss_response,
+                conversation_files=result.conversation_files,
+                messages=load_messages
+            )
+        except Exception as e:
+            self.logger.error(
+                f"Error loading conversation {conversation_id}: {str(e)}",
+                source=Path(__file__).name,
+                call_by=file_caller,
+                method_call=self.__load_conversation.__name__,
+            )
+            raise ValueError(f"Failed to load conversation {conversation_id}")
+
+    def run(
+        self,
+        conversation_id: uuid.UUID,
+        provider_name: EProviderName,
+        model_name: str,
+        summarize: str = "",
+        file_caller: str = "",
+    ) -> IConversationJobResponse | IConversationLoadResponse:
+        conversation = self.conversation_job.check_existed_conversation(conversation_id, file_caller=file_caller)
+        if conversation is not None:
+            return self.__load_conversation(conversation, file_caller=file_caller)
+    
+        init_conversation = self.conversation_job.create_init_conversation(file_caller=file_caller)
         self.logger.info(
-            f"Starting ConversationTask for conversation_id: {conversation.conversations_id} with provider: {provider_name} and model: {model_name}",
+            f"Starting ConversationTask for conversation_id: {init_conversation.conversations_id} with provider: {provider_name} and model: {model_name}",
             source=Path(__file__).name,
             call_by=file_caller,
             method_call=self.run.__name__,
@@ -80,20 +137,20 @@ class ConversationTask(IConversationTask):
         self.time_counter.start()
 
         # Validate
-        self.__verify_documents_readiness(conversation.conversations_id)
+        self.__verify_documents_readiness(init_conversation.conversations_id)
 
         # Execute message generation logic
-        result_dataclass = self.conversation_job.generate_bootstrap_message(conversation, provider_name, model_name, summarize, file_caller)
+        result_dataclass = self.conversation_job.generate_bootstrap_message(init_conversation, provider_name, model_name, summarize, file_caller)
         self.time_counter.stop()
         self.logger.info(
-            f"Completed ConversationTask for conversation_id: {conversation.conversations_id}.\n Result: {asdict(result_dataclass)}",
+            f"Completed ConversationTask for conversation_id: {init_conversation.conversations_id}.\n Result: {asdict(result_dataclass)}",
             source=__file__,
             call_by=file_caller,
             method_call=self.run.__name__,
         )
 
         elapsed = self.time_counter.get_elapsed_time()
-        self.logger.info(f"ConversationTask completed in {elapsed} seconds for conversation {conversation.conversations_id}")
+        self.logger.info(f"ConversationTask completed in {elapsed} seconds for conversation {init_conversation.conversations_id}")
         return result_dataclass
 
     # --- SINGLE RESPONSIBILITY METHODS ---

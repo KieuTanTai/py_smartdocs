@@ -223,6 +223,26 @@ class DocumentModel(models.Model):
     class Meta:
         db_table = "documents"
 
+class ConversationCacheModel(models.Model):
+    """
+    Model representing metadata for conversation cache.(this model is the same to DocumentModel but for cache data, not the metadata of document)
+     - conversation_cache_id: Unique identifier for the cache metadata.
+     - conversation_cache_conversation: One-to-one relationship with the ConversationModel, linking the cache metadata to a specific conversation.
+     - conversation_cache_is_active: Boolean field indicating whether the cache metadata is active or not.
+     - conversation_cache_file_path: CharField to store the file path of the cached data, allowing for efficient retrieval of cached content.
+     - conversation_cache_created_at: DateTimeField to track when the cache metadata was created, useful for cache management and expiration strategies.
+     - conversation_cache_status: UUIDField to store the status of the cache metadata, which can be used to track the state of the cache (e.g., valid, expired, or in the process of being updated).
+    """
+    conversation_cache_id = models.UUIDField(
+        primary_key=True, default=uuid.uuid7, editable=False
+    )
+    conversation_cache_conversation = models.OneToOneField(ConversationModel, related_name="conversation_cache", on_delete=models.CASCADE, db_column="conversation_cache_conversation_id")
+    conversation_cache_is_active = models.BooleanField(default=True)
+    conversation_cache_file_path = models.CharField(max_length=512, null=True, blank=True)
+    conversation_cache_created_at = models.DateTimeField(auto_now=True)
+    conversation_cache_status = models.UUIDField(null=True, blank=True)
+    class Meta:
+        db_table = "conversation_cache"
 
 class ConversationFilesModel(models.Model):
     conversation_files_id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)

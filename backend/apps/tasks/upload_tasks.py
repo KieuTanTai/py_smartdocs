@@ -54,7 +54,7 @@ class UploadTask(IUploadTask):
 
     # * New run method to handle for new interface with file paths,
     # * this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def run_with_paths(self, conversation_id: str, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller: str = "") -> IUploadResponse:
+    def run_with_paths(self, conversation_id: uuid.UUID, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller: str = "") -> IUploadResponse:
         self.logger.info(f"Starting UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
         try:
             # Chạy luồng lõi
@@ -69,7 +69,7 @@ class UploadTask(IUploadTask):
             self.logger.error(f"Error processing file paths {file_paths}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             raise exc
 
-    async def run_graph_pipeline_with_paths(self, conversation_id: str, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
+    async def run_graph_pipeline_with_paths(self, conversation_id: uuid.UUID, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller: str = "") -> IGraphRagUploadResponse:
         self.logger.info(f"Starting Graph RAG UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_graph_pipeline_with_paths.__name__)
         try:
             conversation_model = self.conversation_database.get_by_id(conversation_id)

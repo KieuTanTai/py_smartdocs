@@ -2,16 +2,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
+import uuid
 
 import faiss
 
 from backend.apps.core.enums.e_provider_name import EProviderName
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBLoadResponse
-from backend.apps.services.chat.models import ConversationFilesModel
+from backend.apps.services.chat.models import ConversationCacheModel, ConversationFilesModel, ConversationModel, DocumentModel, MessageModel
 
 @dataclass
 class IConversationInfoResponse:
     conversation_name: str
+    conversation_title: str
     provider: EProviderName
     model_name: str
     document_urls: list[str]
@@ -44,6 +47,22 @@ class IconversationDocumentGetResponse:
     document_url: Path
     files: list[ConversationFilesModel]
     db_load: Optional[IVectorDBLoadResponse] = field(default=None)
+
+@dataclass 
+class IConversationRelationshipResponse:
+    conversation: ConversationModel
+    cache: ConversationCacheModel
+    faiss_document: DocumentModel
+    conversation_files: list[ConversationFilesModel]
+    messages: list[MessageModel] = field(default_factory=list)
+
+@dataclass
+class IConversationLoadResponse:
+    conversation: ConversationModel
+    cache: ICacheParam
+    faiss_response: IVectorDBLoadResponse
+    conversation_files: list[ConversationFilesModel]
+    messages: list[MessageModel] = field(default_factory=list)
 
 @dataclass
 class IRetrievalTimeCounterResponse:
