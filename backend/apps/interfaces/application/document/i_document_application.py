@@ -6,12 +6,13 @@ from backend.apps.core.interfaces.dataclass.response.i_conversation_response imp
 
 class IDocumentApplication(ABC):
     @abstractmethod
-    def upload_document(self, request: ICreateConversationRequest) -> IConversationPostResponse:
+    def upload_document(self, request: ICreateConversationRequest, file_caller: str = "") -> IConversationPostResponse:
         """
         Uploads a document to the system.
         using process pool executor for upload files, embedding and indexing, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
         Args:
             request (ICreateConversationRequest): The request object containing document upload details.
+            file_caller (str): The caller of the file upload operation.
         Returns:
             IConversationPostResponse: A response object containing the result of the upload operation.
         """

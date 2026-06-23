@@ -46,6 +46,17 @@ class IConversationJob(ABC):
         pass
 
     @abstractmethod
+    def get_all_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
+        """Retrieves all conversations for a given user.
+        Args:
+            user_id (str): The ID of the user whose conversations to retrieve.
+            file_caller (str): The file caller for the conversation.
+        Returns:
+            list[ConversationModel]: A list of ConversationModel instances representing the user's conversations.
+        """
+        pass
+
+    @abstractmethod
     def create_init_conversation(self, conversation_title: str = "Initial Conversation", file_caller: str = "") -> ConversationModel:
         """Creates an initial conversation entry in the database.
         Args:

@@ -18,6 +18,11 @@ class IConversationDatabase(IModelDatabase[ConversationModel]):
     """Abstract database service for ConversationModel."""
 
     @abstractmethod
+    def get_all(self) -> QuerySet[ConversationModel]:
+        """Retrieve all conversations."""
+        pass
+
+    @abstractmethod
     def create_conversation(
         self,
         conversations_name: str = "",

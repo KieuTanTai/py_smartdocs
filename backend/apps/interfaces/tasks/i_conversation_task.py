@@ -17,7 +17,7 @@ class IConversationTask(ABC, Task):
         pass
 
     @abstractmethod
-    def run(self, conversation_id: uuid.UUID, provider_name: EProviderName, model_name: str, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
+    def run(self, provider_name: EProviderName, model_name: str, conversation_id: uuid.UUID | None = None, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
         """
         Executes conversation bootstrap flow.
         Must return a JSON-serializable dictionary (Serialized BootstrapMessageResponse).
@@ -41,6 +41,20 @@ class IConversationTask(ABC, Task):
             file_caller (str): The file that called this method, for logging purposes.
         Returns:
             ConversationModel: The model containing the created conversation details.
+        Raises:
+            ValueError: If the conversation creation fails for any reason.
+        """
+        pass
+
+    @abstractmethod
+    def get_all_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
+        """
+        Retrieves all conversations for a given user.
+        Args:
+            user_id (str): The ID of the user whose conversations to retrieve.
+            file_caller (str): The file caller for the conversation.
+        Returns:
+            list[ConversationModel]: A list of ConversationModel instances representing the user's conversations.
         """
         pass
 
@@ -69,5 +83,7 @@ class IConversationTask(ABC, Task):
             file_caller (str): The file that called this method, for logging purposes.
         Returns:
             int: The number of records removed (should be 1 if successful, 0 if no conversation with the given ID exists).
+        Raises:
+            ValueError: If the conversation with the given ID does not exist or if the removal operation fails.
         """
         pass

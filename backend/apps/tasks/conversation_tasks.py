@@ -25,6 +25,15 @@ class ConversationTask(IConversationTask):
         self.time_counter = time_counter
 
     # --- MAIN ENTRY POINT ---
+    def get_all_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
+        self.logger.info(
+            f"Fetching all conversations for user_id: {user_id}",
+            source=Path(__file__).name,
+            call_by=file_caller,
+            method_call=self.get_all_conversations.__name__,
+        )
+        return self.conversation_job.get_all_conversations(user_id, file_caller=file_caller)
+
     def rename(self, conversation_id: str, new_title: str, file_caller: str = "") -> ConversationModel:
         self.logger.info(
             f"Renaming conversation {conversation_id} to new title: {new_title}",
@@ -114,16 +123,17 @@ class ConversationTask(IConversationTask):
 
     def run(
         self,
-        conversation_id: uuid.UUID,
         provider_name: EProviderName,
         model_name: str,
+        conversation_id: uuid.UUID | None = None,
         summarize: str = "",
         file_caller: str = "",
     ) -> IConversationJobResponse | IConversationLoadResponse:
-        conversation = self.conversation_job.check_existed_conversation(conversation_id, file_caller=file_caller)
-        if conversation is not None:
-            return self.__load_conversation(conversation, file_caller=file_caller)
-    
+        if conversation_id is not None:
+            conversation = self.conversation_job.check_existed_conversation(conversation_id, file_caller=file_caller)
+            if conversation is not None:
+                return self.__load_conversation(conversation, file_caller=file_caller)
+            
         init_conversation = self.conversation_job.create_init_conversation(file_caller=file_caller)
         self.logger.info(
             f"Starting ConversationTask for conversation_id: {init_conversation.conversations_id} with provider: {provider_name} and model: {model_name}",

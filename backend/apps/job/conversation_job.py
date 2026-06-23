@@ -181,6 +181,25 @@ class ConversationJob(IConversationJob):
             )
             raise ValueError(f"Failed to rename conversation {conversation_id} to '{new_title}'")
 
+    def get_all_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
+        try:
+            conversations = self.conversation_database.get_all()
+            self.logger.info(
+                f"Retrieved {len(conversations)} conversations for user_id: {user_id}",
+                source=Path(__file__).name,
+                call_by=file_caller,
+                method_call=self.get_all_conversations.__name__,
+            )
+            return [conversation for conversation in conversations if conversation.conversations_id is not None]
+        except Exception as e:
+            self.logger.error(
+                f"Error retrieving conversations for user_id: {user_id}: {str(e)}",
+                source=Path(__file__).name,
+                call_by=file_caller,
+                method_call=self.get_all_conversations.__name__,
+            )
+            return []
+
     def check_conversation_is_valid(self, conversation: ConversationModel, file_caller: str = "") -> IConversationRelationshipResponse:
         try:
             if conversation is None:

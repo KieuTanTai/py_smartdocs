@@ -9,7 +9,6 @@ import numpy as np
 
 # Import Interface và DTO
 
-from backend.apps.application.conversations import conversation
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
