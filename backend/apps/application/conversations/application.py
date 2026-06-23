@@ -30,8 +30,8 @@ class ConversationApplication:
         provider_name: Optional[str] = None,
         model_name: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        document_ids: Optional[List[UUID]] = None,
-    ) -> Dict[str, Any]:
+        document_ids: Optional[list[UUID]] = None,
+    ) -> dict[str, Any]:
         """
         Create a new conversation with optional documents.
 
@@ -76,7 +76,7 @@ class ConversationApplication:
             self.logger.error(f"Error creating conversation: {e}")
             raise
 
-    def get_conversation(self, conversation_id: UUID) -> Dict[str, Any]:
+    def get_conversation(self, conversation_id: UUID) -> dict[str, Any]:
         """
         Get conversation details.
 
@@ -98,7 +98,7 @@ class ConversationApplication:
             self.logger.error(f"Error retrieving conversation: {e}")
             raise
 
-    def list_conversations(self) -> List[Dict[str, Any]]:
+    def list_conversations(self) -> list[dict[str, Any]]:
         """
         List all conversations.
 
@@ -115,8 +115,8 @@ class ConversationApplication:
             raise
 
     def add_documents_to_conversation(
-        self, conversation_id: UUID, document_ids: List[UUID]
-    ) -> Dict[str, Any]:
+        self, conversation_id: UUID, document_ids: list[UUID]
+    ) -> dict[str, Any]:
         """
         Add documents to an existing conversation.
 
@@ -146,8 +146,8 @@ class ConversationApplication:
             raise
 
     def remove_documents_from_conversation(
-        self, conversation_id: UUID, document_ids: List[UUID]
-    ) -> Dict[str, Any]:
+        self, conversation_id: UUID, document_ids: list[UUID]
+    ) -> dict[str, Any]:
         """
         Remove documents from conversation.
 
@@ -200,7 +200,7 @@ class ConversationApplication:
             self.logger.error(f"Error deleting conversation: {e}")
             raise
 
-    def get_conversation_documents(self, conversation_id: UUID) -> List[Dict[str, Any]]:
+    def get_conversation_documents(self, conversation_id: UUID) -> list[dict[str, Any]]:
         """
         Get documents attached to conversation.
 
@@ -238,7 +238,7 @@ class ConversationApplication:
     # ==================== Private Helper Methods ====================
 
     def _attach_documents_to_conversation(
-        self, conversation_id: UUID, document_ids: List[UUID]
+        self, conversation_id: UUID, document_ids: list[UUID]
     ) -> None:
         """
         Attach documents to conversation (internal helper).
@@ -270,7 +270,7 @@ class ConversationApplication:
                 self.logger.warning(f"Document {doc_id} not found, skipping")
                 continue
 
-    def _serialize_conversation(self, conversation: ConversationModel) -> Dict[str, Any]:
+    def _serialize_conversation(self, conversation: ConversationModel) -> dict[str, Any]:
         """
         Serialize conversation model to dictionary.
 

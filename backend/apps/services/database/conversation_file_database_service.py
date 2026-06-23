@@ -11,7 +11,7 @@ from django.db.models import QuerySet
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import (
     IConversationFileDatabase,
 )
-from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel
 
 
 class ConversationFileDatabaseService(IConversationFileDatabase):
@@ -22,15 +22,30 @@ class ConversationFileDatabaseService(IConversationFileDatabase):
 
     def create_conversation_file(
         self,
-        conversation: ConversationModel,
+        document: DocumentModel,
         cloud_id: str,
         **extra_fields: Any,
     ) -> ConversationFilesModel:
         return self.create(
-            conversation_files_conversation=conversation,
+            conversation_files_document=document,
             conversation_files_cloud_id=cloud_id,
             **extra_fields,
         )
+
+    def create_conversation_files_bulk(
+        self,
+        document_cloud_id_pairs: list[tuple[DocumentModel, str]],
+        **extra_fields: Any,
+    ) -> list[ConversationFilesModel]:
+        conversation_files = [
+            ConversationFilesModel(
+                conversation_files_document=document,
+                conversation_files_cloud_id=cloud_id,
+                **extra_fields,
+            )
+            for document, cloud_id in document_cloud_id_pairs
+        ]
+        return ConversationFilesModel.objects.bulk_create(conversation_files)
 
     def get_by_id(self, model_id: Any) -> ConversationFilesModel:
         return ConversationFilesModel.objects.get(pk=model_id)
@@ -41,13 +56,17 @@ class ConversationFileDatabaseService(IConversationFileDatabase):
     def get_by_cloud_ids(self, cloud_ids: list[str]) -> QuerySet[ConversationFilesModel]:
         return ConversationFilesModel.objects.filter(conversation_files_cloud_id__in=cloud_ids)
 
-    def get_by_conversation(
-        self, conversation: ConversationModel
+    def get_by_document(
+        self, document: DocumentModel
     ) -> QuerySet[ConversationFilesModel]:
-        return ConversationFilesModel.objects.filter(conversation_files_conversation=conversation)
+        return ConversationFilesModel.objects.filter(conversation_files_document=document)
 
     def get_by_cloud_id(self, cloud_id: str) -> QuerySet[ConversationFilesModel]:
         return ConversationFilesModel.objects.filter(conversation_files_cloud_id=cloud_id)
+
+    def get_by_conversation(self, conversation: ConversationModel) -> QuerySet[ConversationFilesModel]:
+        document = DocumentModel.objects.get(document_conversation=conversation)
+        return ConversationFilesModel.objects.filter(conversation_files_document=document)
 
     def list(self, **filters: Any) -> QuerySet[ConversationFilesModel]:
         queryset = ConversationFilesModel.objects.all()
@@ -71,8 +90,8 @@ class ConversationFileDatabaseService(IConversationFileDatabase):
         return deleted_count
 
     @transaction.atomic
-    def delete_by_conversation(self, conversation: ConversationModel) -> int:
+    def delete_by_document(self, document: DocumentModel) -> int:
         deleted_count, _ = ConversationFilesModel.objects.filter(
-            conversation_files_conversation=conversation
+            conversation_files_document=document
         ).delete()
         return deleted_count

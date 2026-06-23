@@ -10,8 +10,8 @@ class IMessageJobContextHit:
 @dataclass
 class IMessageJobResponse:
     conversation_id: str
-    assistant: str
     provider: str
     model: str
     latency_ms: int
-    retrieval_hits: List[IMessageJobContextHit] = field(default_factory=list)
+    mode: str
+    retrieval_hits: list[IMessageJobContextHit] = field(default_factory=list)

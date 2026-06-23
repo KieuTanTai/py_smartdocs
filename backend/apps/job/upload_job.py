@@ -1,15 +1,15 @@
 import asyncio
 import hashlib
 from pathlib import Path
-from typing import List, Tuple
 import uuid
 from venv import create
 import faiss
-from typing import Any
+from typing import Any, cast
 import numpy as np
 
 # Import Interface và DTO
 
+from backend.apps.application.conversations import conversation
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
@@ -18,12 +18,19 @@ from backend.apps.core.interfaces.core.normalize.i_normalize import INormalize
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
-from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBUpsertResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import IChunkAndCacheResponse, IChunkResponse
-from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IDocumentResponse, IEmbedResponse, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
+from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
+from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBLoadResponse, IVectorDBLoadResponse, IVectorDBUpsertResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import ICacheResponse, IChunkResponse
+from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
+from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
+from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
+from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import (
     INeo4jService,
 )
@@ -43,6 +50,8 @@ from backend.apps.core.interfaces.services.repository.i_connect_graph_db_session
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel
+from backend.apps.utils.get_instance_model_database import get_embedding_model
 from backend.apps.utils.hash_content import hash_to_numpy_int64_by_str_content
 from neo4j_graphrag.llm.base import LLMInterface
 from neo4j_graphrag.embeddings import Embedder
@@ -63,6 +72,7 @@ class UploadJob(IUploadJob):
         locate_service: ILocateService,
         config_provider: IConfigProvider,
         logger: ILogger,
+        database_provider: IDatabaseProvider,
         session_provider: IConnectGraphDBSession,
         llm_prompt_structure: ILLMPromptStructure,
     ):
@@ -76,6 +86,11 @@ class UploadJob(IUploadJob):
         self.logger = logger
         self.llm_prompt_structure = llm_prompt_structure
         self.session_provider = session_provider
+        self.database_provider = database_provider
+        self.document_database = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
+        self.conversation_files_database = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
+        self.conversation_database = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
+        self.faiss_store = cast(IVectorStoreService, self.locate_service.get_vector_store(EBackendStorageName.FAISS))
 
     def step_extract_and_normalize(
         self, file_path: Path, provider: EProviderName, file_caller: str = ""
@@ -129,7 +144,7 @@ class UploadJob(IUploadJob):
         # * NOTE: change chunk keys to tuple[np.int64, str] to store in cache and using for ids in faiss service
         chunk_keys_tuples = self.build_chunk_keys(document_id, chunk_texts, file_caller=file_caller)
 
-        # * NOTE: change field chunk_keys from List[str] to List[np.int64] to store the hashed keys for faiss ids, the original keys are stored in cache with the hashed keys as reference
+        # * NOTE: change field chunk_keys from list[str] to list[np.int64] to store the hashed keys for faiss ids, the original keys are stored in cache with the hashed keys as reference
         response = IChunkResponse(
             document_id=document_id,
             chunk_keys=[k for k, _ in chunk_keys_tuples],
@@ -163,15 +178,14 @@ class UploadJob(IUploadJob):
     def step_save(
         self,
         provider: EProviderName,
-        faiss_file_id: uuid.UUID,
-        document_ids: List[str],
-        embedding_batches: List[np.ndarray],
-        chunk_texts: List[str],
-        paths: List[Path],
+        conversation_id: uuid.UUID,
+        document_ids: list[str],
+        embedding_batches: list[np.ndarray],
+        chunk_texts: list[str],
         ids: np.ndarray,
         file_caller: str = "",
     ) -> IUploadResponse | None:
-        self.__validate_before_save(embedding_batches, ids, document_ids, paths, chunk_texts, provider, file_caller=file_caller)
+        self.__validate_before_save(embedding_batches, ids, document_ids, chunk_texts, provider, file_caller=file_caller)
         embed_stack = np.vstack(embedding_batches)
         self.logger.info(
             f"Stacked embeddings shape: {embed_stack.shape} for provider {provider}",
@@ -181,21 +195,19 @@ class UploadJob(IUploadJob):
         )
 
         faiss_upsert_response, faiss_index = self.__save_to_faiss(
-            provider, embed_stack, faiss_file_id, ids, file_caller=file_caller
+            provider, embed_stack, conversation_id, ids, file_caller=file_caller
         )
 
         bm25_response = self.__save_to_bm25(
-            provider, chunk_texts, faiss_file_id, file_caller=file_caller
+            provider, chunk_texts, conversation_id, file_caller=file_caller
         )
 
-        documents = [IDocumentResponse(document_id=doc_id, path=path) for doc_id, path in zip(document_ids, paths)]
-
         return IUploadResponse(
+            conversation_id=conversation_id,
+            conversation_name=self.build_name(document_ids, file_caller=file_caller),
             faiss_index=faiss_index,
-            faiss_file_id=faiss_file_id,
             vector_ids=ids.tolist(),
             embeddings_stack=embed_stack,
-            documents=documents,
             faiss_upsert=faiss_upsert_response,
             bm25_upsert=bm25_response,
             created_at= np.datetime64("now"),
@@ -203,37 +215,29 @@ class UploadJob(IUploadJob):
 
     def summarize_document(self, 
                             faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap, 
-                            faiss_file_id: uuid.UUID,
-                            embeddings_stack: np.ndarray,
-                            cache_params: List[ICacheParam],
+                            conversation_id: uuid.UUID,
+                            cache_param_values: list[ICacheParamValue],
                             provider: EProviderName,
                             model_name: str,
-                            file_caller: str = "") -> str:
-        faiss_service = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
-        if not isinstance(faiss_service, IVectorStoreService) or faiss_service is None:
-            self.logger.error(
-                f"Vector store service for FAISS is not properly initialized",
-                Path(__file__).name,
-                self.step_embed.__name__,
-            )
-            raise ValueError(
-                "Vector store service for FAISS is not properly initialized"
-            )
-        original_texts = self.__get_orriginal_texts(faiss_service, faiss_index, faiss_file_id, embeddings_stack, cache_params, file_caller)
-
+                            file_caller: str = "") -> IGenerateResponse:
         llm_client = self.llm_provider_factory.get_provider(provider)
+        embedding_model_name = get_embedding_model(self.config_provider, provider)
+        embedding_request = ICompletionRequest(provider, embedding_model_name, "summarize document")
+        embedding_result = llm_client.embedding(embedding_request, file_caller=self.summarize_document.__name__).embedding
+        original_texts = self.__get_orriginal_texts(self.faiss_store, faiss_index, conversation_id, embedding_result, cache_param_values, file_caller)
+        
         template = self.llm_prompt_structure.build_summary_prompt(original_texts)
         request = ICompletionRequest(provider, model_name, template)
         return llm_client.generate(request, file_caller=self.summarize_document.__name__)
 
     def step_cache(
         self,
-        chunk_response: IChunkResponse,
-        embedding_response: IEmbedResponse,
+        conversation_id: uuid.UUID,
+        chunk_responses: list[IChunkResponse],
         file_caller: str = "",
-    ) -> IChunkAndCacheResponse:
+    ) -> ICacheResponse:
         self.logger.info(
-            f"Creating cache for document {chunk_response.document_id}",
+            f"Creating cache for conversation {conversation_id} with {len(chunk_responses)} chunk responses",
             Path(__file__).name,
             file_caller,
             self.step_cache.__name__,
@@ -245,32 +249,29 @@ class UploadJob(IUploadJob):
             if not isinstance(cache_service, ICacheService):
                 raise ValueError("Cache service is not properly initialized")
             # * NOTE: convert chunk and embedding responses to ICacheParamValue list to store in cache, because cache only accept string key and ICacheParamValue list as value, the original chunk keys are stored in cache with the hashed keys as reference, so when get from cache, we can use the hashed keys to get the original chunk keys and chunk texts for further processing
-            cache_param = ICacheParam(
-                key=chunk_response.document_id,
-                values=self.__convert_to_cache_param_value(chunk_response, embedding_response),
-            )
+            cache_param = ICacheParam(key=str(conversation_id), values=self.__convert_to_cache_param_value(chunk_responses))
             path = cache_service.set(
                 cache_param, file_caller=self.step_cache.__name__
             )
             if path is None:
                 self.logger.error(
-                    f"Failed to cache chunked data for document {chunk_response.document_id}",
+                    f"Failed to cache chunked data for conversation {conversation_id}",
                     Path(__file__).name,
                     file_caller,
                     self.step_cache.__name__,
                 )
                 raise ValueError(
-                    f"Failed to cache chunked data for document {chunk_response.document_id}"
+                    f"Failed to cache chunked data for conversation {conversation_id}"
                 )
             self.logger.info(
-                f"Chunked data cached for document {chunk_response.document_id} at '{path}'",
+                f"Chunked data cached for conversation {conversation_id} at '{path}'",
                 Path(__file__).name,
                 file_caller,
                 self.step_cache.__name__,
             )
         finally:
             self.logger.info(
-                f"Disconnecting cache session for document {chunk_response.document_id}",
+                f"Disconnecting cache session for conversation {conversation_id}",
                 Path(__file__).name,
                 file_caller,
                 self.step_cache.__name__,
@@ -278,12 +279,12 @@ class UploadJob(IUploadJob):
             self.cache_session.disconnect(
                 file_caller=self.step_cache.__name__
             )
-        return IChunkAndCacheResponse(chunk_response, cache_param, path)
+        return ICacheResponse(conversation_id, cache_param, path)
 
     async def step_build_knowledge_graph(
         self,
         conversation_id: uuid.UUID,
-        graph_params: List[IGraphRagParam],
+        graph_params: list[IGraphRagParam],
         model_name: str,
         embedding_model_name: str,
         provider: EProviderName = EProviderName.GEMINI,
@@ -318,9 +319,11 @@ class UploadJob(IUploadJob):
             created_at=np.datetime64("now"),
         )
 
+
+
     def build_chunk_keys(
-        self, file_id: str, chunk_texts: List[str], file_caller: str = ""
-    ) -> List[Tuple[np.int64, str]]:
+        self, file_id: str, chunk_texts: list[str], file_caller: str = ""
+    ) -> list[tuple[np.int64, str]]:
         """create chunk keys based on file_id with structure: file_id:chunk_index
         after that hashing this key to 64 bit integer for numpy array dtype int64
         """
@@ -348,7 +351,7 @@ class UploadJob(IUploadJob):
         return chunk_keys_tuples
 
     def build_name(
-        self, document_ids: List[str], split_by: str = "_", file_caller: str = ""
+        self, document_ids: list[str], split_by: str = "_", file_caller: str = ""
     ) -> str:
         sorted_ids = sorted(document_ids)
         name = split_by.join(sorted_ids)
@@ -367,7 +370,7 @@ class UploadJob(IUploadJob):
         embedder: Embedder,
         llm_model: LLMInterface,
         template: str,
-        params: List[IGraphRagParam],
+        params: list[IGraphRagParam],
         similarity_fn: ESimilarityFn,
         file_caller: str = "",
     ) -> VectorCypherRetriever:
@@ -401,9 +404,12 @@ class UploadJob(IUploadJob):
             )
             raise e
         finally:
+            self.logger.info(
+                f"Disconnecting session provider after building knowledge graph for conversation {conversation_id}", Path(__file__).name, file_caller, self.step_build_knowledge_graph.__name__
+            )
             self.session_provider.disconnect(file_caller=self.step_build_knowledge_graph.__name__)
 
-    def __validate_before_save(self, embedding_batches: List[np.ndarray], ids: np.ndarray, document_ids: List[str], chunk_paths: List[Path], chunk_texts: List[str], provider: EProviderName, file_caller: str = "") -> None:
+    def __validate_before_save(self, embedding_batches: list[np.ndarray], ids: np.ndarray, document_ids: list[str], chunk_texts: list[str], provider: EProviderName, file_caller: str = "") -> None:
         if embedding_batches is None or len(embedding_batches) == 0:
             self.logger.error(
                 f"No embeddings to save for provider {provider} for document ids: {document_ids}",
@@ -424,28 +430,6 @@ class UploadJob(IUploadJob):
             )
             raise ValueError(
                 f"No chunk texts to save for provider {provider} for document ids: {document_ids}"
-            )
-
-        if chunk_paths is None or len(chunk_paths) == 0:
-            self.logger.error(
-                f"No chunk paths provided for provider {provider} for document ids: {document_ids}",
-                Path(__file__).name,
-                file_caller,
-                self.step_save.__name__,
-            )
-            raise ValueError(
-                f"No chunk paths provided for provider {provider} for document ids: {document_ids}"
-            )        
-
-        if len(chunk_paths) != len(document_ids):
-            self.logger.error(
-                f"Length of chunk paths {len(chunk_paths)} does not match length of document ids {len(document_ids)} for provider {provider} and document ids: {document_ids}",
-                Path(__file__).name,
-                file_caller,
-                self.step_save.__name__,
-            )
-            raise ValueError(
-                f"Length of chunk paths {len(chunk_paths)} does not match length of document ids {len(document_ids)} for provider {provider} and document ids: {document_ids}"
             )
 
         if len(chunk_texts) != len(ids):
@@ -473,23 +457,10 @@ class UploadJob(IUploadJob):
             file_caller,
             self.__save_to_faiss.__name__,
         )
-        vector_store = self.locate_service.get_vector_store(EBackendStorageName.FAISS)
-
-        if not isinstance(vector_store, IVectorStoreService) or vector_store is None:
-            self.logger.error(
-                f"Vector store service for FAISS is not properly initialized",
-                Path(__file__).name,
-                file_caller,
-                self.__save_to_faiss.__name__,
-            )
-            raise ValueError(
-                "Vector store service for FAISS is not properly initialized"
-            )
-
-        index = vector_store.create_index(
+        index = self.faiss_store.create_index(
             embed_stack, ids, file_caller=self.__save_to_faiss.__name__
         )
-        faiss_file_name = vector_store.upsert(
+        faiss_file_name = self.faiss_store.upsert(
             index, file_name, file_caller=self.__save_to_faiss.__name__
         )
         self.logger.info(
@@ -498,7 +469,7 @@ class UploadJob(IUploadJob):
             file_caller,
             self.__save_to_faiss.__name__,
         )
-        upsert_response = vector_store.upsert(
+        upsert_response = self.faiss_store.upsert(
             index, file_name, file_caller=self.__save_to_faiss.__name__
         )
         return upsert_response, index
@@ -506,7 +477,7 @@ class UploadJob(IUploadJob):
     def __save_to_bm25(
         self,
         provider: EProviderName,
-        chunk_texts: List[str],
+        chunk_texts: list[str],
         file_name: uuid.UUID,
         file_caller: str = "",
     ) -> IVectorDBUpsertResponse | None:
@@ -549,33 +520,34 @@ class UploadJob(IUploadJob):
         return upsert_response
 
     def __convert_to_cache_param_value(
-        self, chunk_response: IChunkResponse, embedding_response: IEmbedResponse
-    ) -> List[ICacheParamValue]:
+        self, chunk_responses: list[IChunkResponse]
+    ) -> list[ICacheParamValue]:
         """Convert chunk and embedding responses to list of ICacheParamValue"""
-        return [
-            ICacheParamValue(index=chunk_key, text_value=chunk_text, embedding=embedding)
-            for chunk_key, chunk_text, embedding in zip(chunk_response.chunk_keys, chunk_response.chunk_texts, embedding_response.embeddings.tolist())
-        ]
+        result: list[ICacheParamValue] = []
+        for chunk_response in chunk_responses:
+            for key, text in zip(chunk_response.chunk_keys, chunk_response.chunk_texts):
+                result.append(ICacheParamValue(index=key, text_value=text, document_id=chunk_response.document_id))
+        return result
 
     def __get_orriginal_texts(
         self,
         faiss_service: IVectorStoreService,
         faiss_index: faiss.IndexFlatL2 | faiss.IndexIDMap,
-        faiss_file_id: uuid.UUID,
-        embeddings_stack: np.ndarray,
-        cache_params: List[ICacheParam],
+        conversation_id: uuid.UUID,
+        embedding_query: np.ndarray,
+        cache_param_values: list[ICacheParamValue],
         file_caller: str = "",
     ) -> str:
         response = faiss_service.search(
             faiss_index,
-            faiss_file_id,
-            embeddings_stack,
+            conversation_id,
+            embedding_query,
             limit=5,
             file_caller=self.summarize_document.__name__,
         )
         indices = response.indices
         rows_by_id = {
-            int(value.index): value for param in cache_params for value in param.values
+            int(value.index): value for value in cache_param_values
         }
 
         filtered_cache_values = [
@@ -601,7 +573,7 @@ class UploadJob(IUploadJob):
         raise ValueError(f"Embedding model not configured for provider {provider}")
 
     def __embed_chunk_texts(
-        self, chunk_texts: List[str], provider: EProviderName
+        self, chunk_texts: list[str], provider: EProviderName
     ) -> np.ndarray:
         llm_client = self.llm_provider_factory.get_provider(provider)
         model_name = self.__get_embedding_model(provider)

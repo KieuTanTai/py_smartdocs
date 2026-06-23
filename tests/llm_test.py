@@ -175,9 +175,9 @@ embed_results = {
 }
 
 generate_results = {
-    "gemini": "",
-    "mistral": "",
-    "ollama": "",
+    "gemini": None,
+    "mistral": None,
+    "ollama": None,
 }
 
 models = {
@@ -234,7 +234,7 @@ def test_gemini():
             model=models["gemini_embedding"],
             prompt=build_prompt,
         )
-        generate_results["gemini"] = gemini_client.generate(request, file_caller=Path(__file__).name)
+        generate_results["gemini"] = gemini_client.generate(request, file_caller=Path(__file__).name) # type: ignore
         embed_results["gemini"] = gemini_client.embedding(embed_request, file_caller=Path(__file__).name)  # type: ignore
         embedder_model["gemini"] = gemini_client.get_embedder_model(models["gemini_embedding"], file_caller=Path(__file__).name)  # type: ignore
         llm_models["gemini"] = gemini_client.get_llm_model(models["gemini"], file_caller=Path(__file__).name)  # type: ignore
@@ -254,7 +254,7 @@ def test_mistral():
             model=models["mistral_embedding"],
             prompt=build_prompt,
         )
-        generate_results["mistral"] = mistral_client.generate(request, file_caller=Path(__file__).name)
+        generate_results["mistral"] = mistral_client.generate(request, file_caller=Path(__file__).name) # type: ignore
         embed_results["mistral"] = mistral_client.embedding(embed_request, file_caller=Path(__file__).name)  # type: ignore
         embedder_model["mistral"] = mistral_client.get_embedder_model(models["mistral_embedding"], file_caller=Path(__file__).name)  # type: ignore
         llm_models["mistral"] = mistral_client.get_llm_model(models["mistral"], file_caller=Path(__file__).name)  # type: ignore
@@ -273,7 +273,7 @@ def test_ollama():
             model=models["ollama_embedding"],
             prompt=build_prompt,
         )
-        generate_results["ollama"] = ollama_client.generate(request, file_caller=Path(__file__).name)
+        generate_results["ollama"] = ollama_client.generate(request, file_caller=Path(__file__).name) # type: ignore
         embed_results["ollama"] = ollama_client.embedding(embed_request, file_caller=Path(__file__).name)  # type: ignore
         embedder_model["ollama"] = ollama_client.get_embedder_model(models["ollama_embedding"], file_caller=Path(__file__).name)  # type: ignore
         llm_models["ollama"] = ollama_client.get_llm_model(models["ollama"], file_caller=Path(__file__).name)  # type: ignore

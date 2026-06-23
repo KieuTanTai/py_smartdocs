@@ -48,16 +48,16 @@ class IVectorStoreService(IVectorDBService, ABC):
     def upsert(
         self,
         index: Any,
-        vector_id: uuid.UUID,
+        conversation_id: uuid.UUID,
         file_caller: str = ""
     ) -> IVectorDBUpsertResponse:
         """
         Insert or update vector in store.
-        Requires provider-specific index object or identifier to perform upsert operation, and vector_id for metadata and cache management.
+        Requires provider-specific index object or identifier to perform upsert operation, and conversation_id for metadata and cache management.
         Args:
             index: Provider-specific index object or identifier
-            vector_id: Unique identifier for vector (create by plus document_id type string split by `_`: exp: 1234_5678_9012 where 1234 is document_id of file 1, 5678 is document_id of file 2, 
-                9012 is document_id of file 3, this is for example when we want to upsert vector of multiple files into same index, so we can use this vector_id to manage metadata and cache for this vector)
+            conversation_id: Unique identifier for vector (create by plus document_id type string split by `_`: exp: 1234_5678_9012 where 1234 is document_id of file 1, 5678 is document_id of file 2, 
+                9012 is document_id of file 3, this is for example when we want to upsert vector of multiple files into same index, so we can use this conversation_id to manage metadata and cache for this vector)
             dimension: Dimensionality of the vector
             np_vectors: Array of vector embeddings (list of floats)
             file_caller: Identifier for the calling file
@@ -69,14 +69,14 @@ class IVectorStoreService(IVectorDBService, ABC):
         pass
 
     @abstractmethod
-    def search(self, index: Any, vector_id: uuid.UUID, query_vector: np.ndarray,  limit=5, 
+    def search(self, index: Any, conversation_id: uuid.UUID, query_vector: np.ndarray,  limit=5, 
                allow_ids: set | None = None, chunk_file_map: dict | None = None, file_caller: str = "") -> IVectorDBQueryResponse:
         """
         Perform similarity search.
 
         Args:
             index: Provider-specific index object or identifier
-            vector_id: Unique identifier use like name of faiss file (id for searching datablocks on cache)
+            conversation_id: Unique identifier use like name of faiss file (id for searching datablocks on cache)
             query_vector: Query embedding vector
             limit: Maximum number of results
             allow_ids: Optional set of allowed vector IDs
@@ -90,12 +90,12 @@ class IVectorStoreService(IVectorDBService, ABC):
         pass
 
     @abstractmethod
-    def delete(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:
+    def delete(self, conversation_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:
         """
         Delete vector from store.
 
         Args:
-            vector_id: Vector identifier
+            conversation_id: Vector identifier
             file_caller: Identifier for the calling file
 
         Returns:
@@ -104,24 +104,24 @@ class IVectorStoreService(IVectorDBService, ABC):
         pass
 
     @abstractmethod
-    def is_existed_in_metadata(self, vector_id: uuid.UUID) -> Path | None:
+    def is_existed_in_metadata(self, conversation_id: uuid.UUID) -> Path | None:
         """
-        Check if vector_id exists in metadata.
+        Check if conversation_id exists in metadata.
 
         Args:
-            vector_id: Vector identifier to check.
+            conversation_id: Vector identifier to check.
         Returns:
             Path to metadata file if exists, otherwise None.
         """
         pass
 
     @abstractmethod
-    def load(self, vector_id: uuid.UUID, file_caller: str = "") -> IVectorDBLoadResponse:
+    def load(self, conversation_id: uuid.UUID, file_caller: str = "") -> IVectorDBLoadResponse:
         """
         Load vector into store and cache.
 
         Args:
-            vector_id: Unique identifier for vector
+            conversation_id: Unique identifier for vector
             file_caller: Identifier for the calling file
 
         Returns:

@@ -10,6 +10,43 @@ class LLMPromptStructure(ILLMPromptStructure):
     def __init__(self):
         pass
 
+    def build_init_processed_prompt(self, user_input: str) -> str:
+        """
+        Creates a structured prompt for LLM interactions based on the user input and retrieved chunks of information.
+        The prompt is designed to provide clear instructions to the LLM, along with relevant context from the retrieved chunks, to facilitate accurate and relevant response generation.
+        :param user_input: The user's input or question that the LLM needs to respond to.
+        :return: The structured prompt as a string.
+        """
+        prompt = f"""
+        You are an assistant that helps answer questions based on the following retrieved information, now just the user input is provided (maybe file paths that have been uploaded), no retrieved information is available:
+        
+        ---------------------
+        {user_input}
+        ---------------------
+
+        Please provide a comprehensive answer based on the above information. 
+        If the information is insufficient to answer the question, please indicate that you do not have enough information to provide an answer.
+        NOT ALLOWED TO MAKE UP ANSWERS. ONLY USE THE INFORMATION PROVIDED ABOVE.
+        """
+        return prompt.strip()
+
+    def build_prompt_for_graph_context(self, content: str, context_hits: list[dict], graph_context: str) -> str:
+        context_text = "\n".join(hit["text"] for hit in context_hits)
+        prompt = f"""
+        You are an assistant that helps answer questions based on the following retrieved information:
+        ---------------------
+        {context_text}
+        ---------------------
+        Graph Context:
+        {graph_context}
+        User question: {content}
+        Please provide a comprehensive answer based on the above information.
+        If the information is insufficient to answer the question, please indicate that you do not have enough information to provide an answer.
+        NOT ALLOWED TO MAKE UP ANSWERS. ONLY USE THE INFORMATION PROVIDED ABOVE.
+        """
+        return prompt.strip()
+    
+    
     def build_summary_prompt(self, user_input: str) -> str:
         """
         Creates a structured prompt for LLM interactions based on the user input and retrieved chunks of information.

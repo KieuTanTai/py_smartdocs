@@ -13,7 +13,7 @@ class HybridSearchService(IHybridSearchService):
         # rrf_k = 60 là tham số chuẩn hóa do Elasticsearch khuyến nghị cho RRF
         self.rrf_k = rrf_k
 
-    def fuse_results(self, dense_hits: List[IMessageJobContextHit], sparse_hits: List[IMessageJobContextHit], top_k: int = 5) -> List[IMessageJobContextHit]:
+    def fuse_results(self, dense_hits: list[IMessageJobContextHit], sparse_hits: list[IMessageJobContextHit], top_k: int = 5) -> list[IMessageJobContextHit]:
         """Dung hợp kết quả từ Dense Vector (FAISS) và Sparse Vector (BM25)."""
         fused_scores = {}
         hit_map = {}

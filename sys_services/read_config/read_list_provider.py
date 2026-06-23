@@ -11,7 +11,7 @@ from sys_services.system_dirs import ROOT_DIR
 
 load_dotenv(ROOT_DIR / ".env")
 
-def get_ai_providers_config() -> List[IProvider]:
+def get_ai_providers_config() -> list[IProvider]:
     pattern_embedding = re.compile(r"^(?=.*EMBED).*MODEL$", re.IGNORECASE)
     pattern_model = re.compile(r"^(?!.*(?:EMBED|OCR)).*_MODEL$", re.IGNORECASE)
     pattern_provider = re.compile(r"^([A-Z0-9]+)_(?:.*_)?MODEL$", re.IGNORECASE)
@@ -48,7 +48,7 @@ def get_ai_providers_config() -> List[IProvider]:
 
     return __mapping_results(temp_data)
 
-def __mapping_results(temp_data: dict) -> List[IProvider]:
+def __mapping_results(temp_data: dict) -> list[IProvider]:
     providers = list[IProvider]()
     for name, data in temp_data.items():
         if data["model_name"] is not None and data["embed_model_name"] is not None:

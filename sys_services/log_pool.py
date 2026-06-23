@@ -90,7 +90,7 @@ class LogPool(ILogger):
         finally:
             self._pool.clear()  # Chắc chắn xóa pool sau khi đã flush
 
-    def __create_log_formatter(self, log: dict) -> List[str]:
+    def __create_log_formatter(self, log: dict) -> list[str]:
         return [
             f"\n{self._separator}\n",
             f"[{log['timestamp']}] [{log['type_message']}]\n",

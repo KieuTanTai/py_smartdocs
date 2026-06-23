@@ -3,13 +3,17 @@ from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
 from backend.apps.core.normalize.normalize import Normalize
-from backend.apps.job.delete_job import DeleteJob
 from backend.apps.llm.llm_prompt_structure import LLMPromptStructure
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.job.message_job import MessageJob
+from backend.apps.job.delete_job import DeleteJob
 from backend.apps.job.conversation_job import ConversationJob
 from backend.apps.job.upload_job import UploadJob
-from backend.apps.services.cache.faiss_memory_pool import FaissMemoryPool
+from backend.apps.tasks.upload_tasks import UploadTask
+from backend.apps.tasks.message_tasks import MessageTask
+from backend.apps.tasks.delete_task import DeleteTask
+from backend.apps.tasks.conversation_tasks import ConversationTask
+from backend.apps.services.cache.memory_pool import FaissMemoryPool
 from backend.apps.services.cache.radis_cache_service import RedisCacheService
 from backend.apps.services.cache.redis_cache_session import RedisCacheSession
 from backend.apps.services.database.database_provider import DatabaseProvider
@@ -39,6 +43,7 @@ from sys_services.log_pool import LogPool
 from sys_services.logging import Logger
 from sys_services.read_config.config_provider import EnvConfigProvider
 from sys_services.system_dirs import LOGS_DIR, METADATA_DIR
+from sys_services.time_counter import TimeCounter
 
 
 class BackendContainer(containers.DeclarativeContainer):
@@ -69,7 +74,7 @@ class BackendContainer(containers.DeclarativeContainer):
     #* singleton memory pool for faiss index, to avoid create multiple index for the same conversation, and to improve the performance of locate service by caching the index in memory. 
     #* The pool is a dictionary with conversation_id as key and faiss index as value. 
     #*The pool provides methods to add, get, remove and clear index in the pool, and it also logs the operations for debugging and monitoring purposes.
-    faiss_memory_pool = providers.Singleton(FaissMemoryPool, logger=log_pool) 
+    memory_pool = providers.Singleton(FaissMemoryPool, logger=log_pool) 
 
     # Storage
     llm_ocr_factory = providers.Singleton(LLMOCRFactory, config_provider=config_provider, logger=log_pool)
@@ -88,6 +93,8 @@ class BackendContainer(containers.DeclarativeContainer):
         storage=file_storage,
         logger=log_pool,
     )
+    
+    time_counter = providers.Factory(TimeCounter)
 
     # Normalize
     normalize = providers.Singleton(Normalize, logger=log_pool)
@@ -96,7 +103,7 @@ class BackendContainer(containers.DeclarativeContainer):
     chunker = providers.Singleton(Chunker, logger=log_pool)
 
     # Caching
-    cache_service = providers.Factory(
+    cache_session = providers.Factory(
         RedisCacheSession,
         config_provider=config_provider,
         metadata_dir=METADATA_DIR,
@@ -129,7 +136,7 @@ class BackendContainer(containers.DeclarativeContainer):
     hybrid_search_service = providers.Factory(
         HybridSearchService,
         locate_service=locate_service,
-        logger=log_pool,
+        logger=log_pool
     )
 
     upload_job = providers.Factory(
@@ -137,20 +144,24 @@ class BackendContainer(containers.DeclarativeContainer):
         extract_service=extract_content_service,
         normalize=normalize,
         chunker=chunker,
-        cache_session=cache_service,
+        cache_session=cache_session,
         llm_provider_factory=llm_provider_factory,
         locate_service=locate_service,
         config_provider=config_provider,
         logger=log_pool,
-        neo4j_service=neo4j_service,
+        database_provider=database_provider,
+        session_provider=neo4j_session,
+        llm_prompt_structure=llm_prompt_structure
     )
     
     delete_job = providers.Factory(
         DeleteJob,
         locate_service=locate_service,
-        neo4j_service=neo4j_service,
-        cache_session=cache_service,
+        database_provider=database_provider,
+        session_provider=neo4j_session,
+        cache_session=cache_session,
         logger=log_pool,
+        storage_service=file_storage
     )
 
     message_job = providers.Factory(
@@ -158,17 +169,61 @@ class BackendContainer(containers.DeclarativeContainer):
         llm_provider_factory=llm_provider_factory,
         config_provider=config_provider,
         locate_service=locate_service,
-        cache_session=cache_service,
+        cache_session=cache_session,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,
-        neo4j_service=neo4j_service,
+        database_provider=database_provider,
+        session_provider=neo4j_session
     )
 
     conversation_job = providers.Factory(
         ConversationJob,
         llm_provider_factory=llm_provider_factory,
+        llm_prompt_structure=llm_prompt_structure,
         config_provider=config_provider,
+        database_provider=database_provider,
+        locate_service=locate_service,
+        cache_session=cache_session,
+        memory_pool=memory_pool,
         logger=log_pool,
-        hybrid_search_service=hybrid_search_service,
+        hybrid_search_service=hybrid_search_service
     )
+    
+    upload_task = providers.Factory(
+        UploadTask,
+        upload_job=upload_job,
+        memory_pool=memory_pool,
+        database_provider=database_provider,
+        logger=log_pool,
+        time_counter=time_counter
+    )
+
+    message_task = providers.Factory(
+        MessageTask,
+        message_job=message_job,
+        logger=log_pool,
+        time_counter=time_counter
+    )
+
+    delete_task = providers.Factory(
+        DeleteTask,
+        delete_job=delete_job,
+        logger=log_pool,
+        time_counter=time_counter
+    )
+
+    conversation_task = providers.Factory(
+        ConversationTask,
+        conversation_job=conversation_job,
+        memory_pool=memory_pool,
+        logger=log_pool,
+        time_counter=time_counter
+    )
+
+    document_application = providers.Factory(
+        upload_task=upload_task,
+        cache_session=cache_session,
+        database_provider=database_provider,
+        logger=log_pool,
+        time_counter=time_counter)

@@ -30,11 +30,29 @@ class RedisCacheService(ICacheService):
         self.logger.info(f"Cache key: {input.key} set", Path(__file__).name, file_caller, self.set.__name__)
         return self.__write_metadata(input.key, value_str)
     
+    def set_unpersisted(self, input: ICacheParam, file_caller: str = "") -> None:
+        self.logger.info(f"Setting unpersisted cache key: {input.key}", Path(__file__).name, file_caller, self.set_unpersisted.__name__)
+        value_str = self.__convert_to_serializable(input.key, input.values, input.expire)
+        self.pipeline.set(input.key, value_str, ex=input.expire)
+        self.pipeline.execute()
+        self.logger.info(f"Unpersisted cache key: {input.key} set", Path(__file__).name, file_caller, self.set_unpersisted.__name__)
+
     def get(self, key: str, file_caller: str = "") -> ICacheParam | None:
         self.logger.info(f"Getting cache key: {key}", Path(__file__).name, file_caller, self.get.__name__)
         result = self.redis_client.get(key)
         self.logger.info(f"Cache key: {key} retrieved with value: {result}", Path(__file__).name, file_caller, self.get.__name__)
         return self.__convert_to_origin_type(result)
+
+    def load_from_file(self, key: str, file_caller: str = "") -> ICacheParam | None:
+        self.logger.info(f"Loading cache key: {key} from file", Path(__file__).name, file_caller, self.load_from_file.__name__)
+        metadata_file_path = self.metadata_dir / f"{key}.json"
+        if not metadata_file_path.exists():
+            self.logger.warning(f"Metadata file for cache key: {key} does not exist at path: {metadata_file_path}", Path(__file__).name, file_caller, self.load_from_file.__name__)
+            return None
+        with open(metadata_file_path, "r") as f:
+            value_str = f.read()
+        self.logger.info(f"Cache key: {key} loaded from file with value: {value_str}", Path(__file__).name, file_caller, self.load_from_file.__name__)
+        return self.__convert_to_origin_type(value_str)
 
     def delete(self, key: str, file_caller: str = "") -> int:
         self.logger.info(f"Deleting cache key: {key}", Path(__file__).name, file_caller, self.delete.__name__)
@@ -68,12 +86,12 @@ class RedisCacheService(ICacheService):
         self.logger.info(f"Metadata for cache key: {key} written to '{destination_path}'", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
         return destination_path
 
-    def __convert_to_serializable(self, value_key: str, value: List[ICacheParamValue], expire: int | None = None) -> str:
+    def __convert_to_serializable(self, value_key: str, value: list[ICacheParamValue], expire: int | None = None) -> str:
         return json.dumps({"key": value_key, "values": self.__normalize_value(value), "expire": expire})
     
-    def __normalize_value(self, values: List[ICacheParamValue]):
+    def __normalize_value(self, values: list[ICacheParamValue]):
         result = [
-            {"index": int(value.index), "text_value": value.text_value, "embedding": value.embedding} for value in values
+            {"index": int(value.index), "text_value": value.text_value} for value in values
         ]
         return result
 
@@ -84,7 +102,7 @@ class RedisCacheService(ICacheService):
                 return None
             return ICacheParam(
                 key=loads["key"],
-                values=[ICacheParamValue(index=np.int64(item["index"]), text_value=item["text_value"], embedding=item["embedding"]) for item in loads["values"]]
+                values=[ICacheParamValue(index=np.int64(item["index"]), text_value=item["text_value"]) for item in loads["values"]]
             )
         except json.JSONDecodeError as e:
             self.logger.error(f"Error decoding cache value: {e}", Path(__file__).name, Path(__file__).name, self.__convert_to_origin_type.__name__)
