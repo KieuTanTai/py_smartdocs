@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
+import uuid
 
 from celery import Task
 
@@ -22,7 +23,7 @@ class IUploadTask(ABC, Task):
         pass
 
     @abstractmethod
-    def run_with_paths(self, conversation_id: str, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller:str = "") -> IUploadResponse:
+    def run_with_paths(self, conversation_id: uuid.UUID, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller:str = "") -> IUploadResponse:
         """
         Executes document RAG pipeline via UploadJob.
         Must return a JSON-serializable dictionary.
@@ -41,7 +42,7 @@ class IUploadTask(ABC, Task):
         pass
 
     @abstractmethod
-    async def run_graph_pipeline_with_paths(self, conversation_id: str, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller:str = "") -> IGraphRagUploadResponse:
+    async def run_graph_pipeline_with_paths(self, conversation_id: uuid.UUID, file_paths: list[Path], provider_name: EProviderName, embed_model_name: str, model_name: str, file_caller:str = "") -> IGraphRagUploadResponse:
         """
         Executes document RAG pipeline with graph retriever via UploadJob.
         Must return a JSON-serializable dictionary.

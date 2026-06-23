@@ -43,6 +43,17 @@ class RedisCacheService(ICacheService):
         self.logger.info(f"Cache key: {key} retrieved with value: {result}", Path(__file__).name, file_caller, self.get.__name__)
         return self.__convert_to_origin_type(result)
 
+    def load_from_file(self, key: str, file_caller: str = "") -> ICacheParam | None:
+        self.logger.info(f"Loading cache key: {key} from file", Path(__file__).name, file_caller, self.load_from_file.__name__)
+        metadata_file_path = self.metadata_dir / f"{key}.json"
+        if not metadata_file_path.exists():
+            self.logger.warning(f"Metadata file for cache key: {key} does not exist at path: {metadata_file_path}", Path(__file__).name, file_caller, self.load_from_file.__name__)
+            return None
+        with open(metadata_file_path, "r") as f:
+            value_str = f.read()
+        self.logger.info(f"Cache key: {key} loaded from file with value: {value_str}", Path(__file__).name, file_caller, self.load_from_file.__name__)
+        return self.__convert_to_origin_type(value_str)
+
     def delete(self, key: str, file_caller: str = "") -> int:
         self.logger.info(f"Deleting cache key: {key}", Path(__file__).name, file_caller, self.delete.__name__)
         self.pipeline.delete(key)

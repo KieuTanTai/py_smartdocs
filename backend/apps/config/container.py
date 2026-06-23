@@ -184,6 +184,8 @@ class BackendContainer(containers.DeclarativeContainer):
         config_provider=config_provider,
         database_provider=database_provider,
         locate_service=locate_service,
+        cache_session=cache_session,
+        memory_pool=memory_pool,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service
     )

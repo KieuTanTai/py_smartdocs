@@ -95,3 +95,14 @@ class ICacheService(ABC):
             Return value from cache if exists, otherwise None or False
         """
         pass
+
+    @abstractmethod
+    def load_from_file(self, key: str, file_caller: str = "") -> ICacheParam | None:
+        """Load a cache entry from a metadata file and store it in the cache.
+        This method reads the metadata file associated with the given key, retrieves the value, and stores it back in the cache. It is useful for restoring cache entries after a service restart or for loading pre-cached data.
+        Args:
+            key: The key of the cache entry to load from the metadata file.
+            file_caller: Optional string to indicate the caller file for logging purposes.
+        Returns:
+            The ICacheParam object containing the key, value, and expiration time if the metadata file exists and is successfully loaded, or None if the metadata file does not exist or fails to load. 
+        """
