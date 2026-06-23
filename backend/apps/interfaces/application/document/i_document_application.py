@@ -16,16 +16,3 @@ class IDocumentApplication(ABC):
             IConversationPostResponse: A response object containing the result of the upload operation.
         """
         pass
-
-    @abstractmethod
-    def get_document(self, conversation_id: str) -> IconversationDocumentGetResponse:
-        """
-        Retrieves a document from the system. this require conversation_id
-        this method will use this id for get documents of this conversation
-        using thread pool executor for get document, this will help to reduce the time of get document, and also can handle multiple get document at the same time
-        Args:
-            conversation_id: The unique identifier of the conversation to retrieve.
-        Returns:
-            IconversationDocumentGetResponse: A response object containing the retrieved document details.
-        """
-        pass

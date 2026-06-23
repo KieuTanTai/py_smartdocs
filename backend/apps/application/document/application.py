@@ -33,17 +33,16 @@ class DocumentApplication(IDocumentApplication):
     def upload_document(self, request: ICreateConversationRequest) -> IConversationPostResponse:
         return self.__upload_document_task(request)
 
-    def get_document(self, conversation_id: str) -> IconversationDocumentGetResponse:
-        return self.upload_task.load_document(conversation_id, file_caller=self.get_document.__name__)
-
     def __upload_document_task(self, request: ICreateConversationRequest) -> IConversationPostResponse:
         paths = request.document_paths if request.document_paths else []
         provider = request.provider
         response = self.upload_task.run_with_paths(request.conversation_id, paths, provider, request.model_name)
+        title = response.summarize.content[:50] if response.summarize else None
         metadata = IConversationInfoResponse(
             conversation_name=response.conversation_name,
             provider=provider,
             model_name=request.model_name,
+            conversation_title=title if title else "",
             document_urls=request.document_urls,
             document_paths=request.document_paths,
             type=request.type,
