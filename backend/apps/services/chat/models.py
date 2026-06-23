@@ -76,7 +76,7 @@ class DocumentModel(models.Model):
     Documents are using locate faiss index file to store embeddings and content for retrieval.
     """
     document_id = models.UUIDField(
-        primary_key=True, default=uuid.uuid7, editable=False
+        primary_key=True, default=uuid.uuid5, editable=False
     )
     conversation = models.ForeignKey(
         ConversationModel, on_delete=models.CASCADE, db_column="documents_conversation_id", null=True, blank=True
@@ -290,7 +290,7 @@ class ConversationFilesModel(models.Model):
 class MessageModel(models.Model):
     message_id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False, db_column="messages_id")
     conversation = models.ForeignKey(
-        ConversationModel, on_delete=models.CASCADE, db_column="message_conversation_id", null=True, blank=True
+        ConversationModel, on_delete=models.CASCADE, related_name="messages", db_column="message_conversation_id", null=True, blank=True
     )
     is_user_send = models.BooleanField(default=False, db_column="messages_is_user_send")
     content = models.TextField(null=True, blank=True, db_column="messages_content")

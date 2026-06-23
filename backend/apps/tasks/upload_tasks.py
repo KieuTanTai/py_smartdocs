@@ -61,8 +61,8 @@ class UploadTask(IUploadTask):
             conversation_model = self.conversation_database.get_by_id(conversation_id)
             result_dataclass = self.__execute_base_pipeline_with_paths(conversation_model, file_paths, provider_name, model_name)
             # Lưu index vào memory pool
-            self.logger.info(f"Adding FAISS index to memory pool with file ID {result_dataclass.faiss_file_id} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
-            self.memory_pool.add_to_pool(result_dataclass.faiss_file_id, result_dataclass.faiss_index, file_caller)
+            self.logger.info(f"Adding FAISS index to memory pool with file ID {result_dataclass.conversation_id} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
+            self.memory_pool.add_to_pool(result_dataclass.conversation_id, result_dataclass.faiss_index, file_caller)
             self.logger.info(f"Successfully completed UploadTask for file paths {file_paths} and provider {provider_name}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             return result_dataclass
         except Exception as exc:
@@ -223,8 +223,7 @@ class UploadTask(IUploadTask):
 
         # start summarize time counter
         # * Step 6: Sumarize the document and get the summary text
-        summarize = self.upload_job.summarize_document(upload_response.faiss_index, upload_response.faiss_file_id, 
-                                                       upload_response.embeddings_stack, cache_param_values, provider, model_name, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+        summarize = self.upload_job.summarize_document(upload_response.faiss_index, upload_response.conversation_id, cache_param_values, provider, model_name, file_caller=self.__execute_base_pipeline_with_paths.__name__)
         upload_response.summarize = summarize
         summarize_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed document summarization for file paths {file_paths} in {summarize_time:.2f} seconds", source=Path(__file__).name, 
@@ -244,18 +243,18 @@ class UploadTask(IUploadTask):
         self.logger.info(f"Built document tuples: {[(doc.pk, doc_id) for doc, doc_id in result]}", source=Path(__file__).name, call_by=self.__build_documents.__name__, method_call=self.__build_documents.__name__)
         return result
 
-    def __upload_to_vector_store(self, provider: EProviderName, document_ids: list[str], faiss_file_id: uuid.UUID,
+    def __upload_to_vector_store(self, provider: EProviderName, document_ids: list[str], conversation_id: uuid.UUID,
                                  embedding_batches: list[np.ndarray], chunk_texts: list[str] = [], ids: np.ndarray = np.ndarray([], dtype=np.int64), file_caller: str = "") -> IUploadResponse:
         try:            
-            upload_response = self.upload_job.step_save(provider, faiss_file_id, document_ids, embedding_batches, chunk_texts, ids, file_caller=self.__upload_to_vector_store.__name__)
+            upload_response = self.upload_job.step_save(provider, conversation_id, document_ids, embedding_batches, chunk_texts, ids, file_caller=self.__upload_to_vector_store.__name__)
             if upload_response is None:
-                self.__update_document_status_and_path(faiss_file_id, EDocumentStatus.FAILED)
+                self.__update_document_status_and_path(conversation_id, EDocumentStatus.FAILED)
                 raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
         except Exception as exc:
-            self.__update_document_status_and_path(faiss_file_id, EDocumentStatus.FAILED)
+            self.__update_document_status_and_path(conversation_id, EDocumentStatus.FAILED)
             self.logger.error(f"Error saving embeddings to vector store for document ids {document_ids} and provider {provider}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.__upload_to_vector_store.__name__)
             raise exc
-        self.__update_document_status_and_path(faiss_file_id, EDocumentStatus.INDEXED)
+        self.__update_document_status_and_path(conversation_id, EDocumentStatus.INDEXED)
         return upload_response
 
     def __embed_chunks(self, chunk_responses: list[IChunkResponse], provider: EProviderName) -> tuple[list[IEmbedResponse], list[np.ndarray]]:
