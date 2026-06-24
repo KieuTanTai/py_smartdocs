@@ -5,7 +5,6 @@ Handles conversation bootstrapping via background workers.
 
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict
 import uuid
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.response.i_conversation_job_response import IConversationJobResponse
@@ -26,6 +25,15 @@ class ConversationTask(IConversationTask):
         self.time_counter = time_counter
 
     # --- MAIN ENTRY POINT ---
+    def get_all_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
+        self.logger.info(
+            f"Fetching all conversations for user_id: {user_id}",
+            source=Path(__file__).name,
+            call_by=file_caller,
+            method_call=self.get_all_conversations.__name__,
+        )
+        return self.conversation_job.get_all_conversations(user_id, file_caller=file_caller)
+
     def rename(self, conversation_id: str, new_title: str, file_caller: str = "") -> ConversationModel:
         self.logger.info(
             f"Renaming conversation {conversation_id} to new title: {new_title}",
@@ -33,7 +41,7 @@ class ConversationTask(IConversationTask):
             call_by=file_caller,
             method_call=self.rename.__name__,
         )
-        return self.conversation_job.change_title_document(conversation_id, new_title, file_caller=file_caller)
+        return self.conversation_job.change_title_conversation(conversation_id, new_title, file_caller=file_caller)
 
     #! NOTE: Will continue fixing this after fix delete_job, tasks
     def remove(self, conversation_id: str, file_caller: str = "") -> int:
@@ -115,16 +123,15 @@ class ConversationTask(IConversationTask):
 
     def run(
         self,
-        conversation_id: uuid.UUID,
         provider_name: EProviderName,
         model_name: str,
+        conversation: ConversationModel | None = None,
         summarize: str = "",
         file_caller: str = "",
     ) -> IConversationJobResponse | IConversationLoadResponse:
-        conversation = self.conversation_job.check_existed_conversation(conversation_id, file_caller=file_caller)
         if conversation is not None:
             return self.__load_conversation(conversation, file_caller=file_caller)
-    
+            
         init_conversation = self.conversation_job.create_init_conversation(file_caller=file_caller)
         self.logger.info(
             f"Starting ConversationTask for conversation_id: {init_conversation.conversations_id} with provider: {provider_name} and model: {model_name}",
@@ -137,7 +144,7 @@ class ConversationTask(IConversationTask):
         self.time_counter.start()
 
         # Validate
-        self.__verify_documents_readiness(init_conversation.conversations_id)
+        self.__verify_documents_readiness(init_conversation)
 
         # Execute message generation logic
         result_dataclass = self.conversation_job.generate_bootstrap_message(init_conversation, provider_name, model_name, summarize, file_caller)
@@ -154,16 +161,16 @@ class ConversationTask(IConversationTask):
         return result_dataclass
 
     # --- SINGLE RESPONSIBILITY METHODS ---
-    def __verify_documents_readiness(self, conversation_id: uuid.UUID) -> None:
+    def __verify_documents_readiness(self, conversation: ConversationModel) -> None:
         """Check if the documents are ready for conversation using."""
-        is_ready = self.conversation_job.check_documents_ready(conversation_id)
+        is_ready = self.conversation_job.check_documents_ready(conversation)
         if not is_ready:
             self.logger.error(
-                f"Documents attached to conversation {conversation_id} are not completely indexed.",
+                f"Documents attached to conversation {conversation.conversations_id} are not completely indexed.",
                 source=Path(__file__).name,
                 call_by=Path(__file__).name,
                 method_call=self.__verify_documents_readiness.__name__,
             )
             raise DocumentsNotReadyError(
-                f"Documents attached to conversation {conversation_id} are not completely indexed."
+                f"Documents attached to conversation {conversation.conversations_id} are not completely indexed."
             )

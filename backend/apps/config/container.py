@@ -1,4 +1,8 @@
 from pathlib import Path
+from backend.apps.application.conversations.application import ConversationApplication
+from backend.apps.application.document.application import DocumentApplication
+from backend.apps.application.messages.application import MessageApplication
+from backend.apps.interfaces.application.document.i_document_application import IDocumentApplication
 from dependency_injector import containers, providers
 import redis
 from backend.apps.core.chunk.chunker import Chunker
@@ -237,8 +241,22 @@ class BackendContainer(containers.DeclarativeContainer):
     )
 
     document_application = providers.Factory(
+        DocumentApplication,
         upload_task=upload_task,
         cache_session=cache_session,
         database_provider=database_provider,
         logger=log_pool,
-        time_counter=time_counter)
+        time_counter=time_counter
+    )
+
+    message_application = providers.Factory(
+        MessageApplication,
+        message_task=message_task,
+        logger=log_pool
+    )
+
+    conversation_application = providers.Factory(
+        ConversationApplication,
+        conversation_task=conversation_task,
+        logger=log_pool
+    )

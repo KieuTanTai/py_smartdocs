@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.request.i_chat_message import IChatMessage
-from backend.apps.core.interfaces.dataclass.response.i_chat_response import IChatResponse
+from backend.apps.core.interfaces.dataclass.response.i_chat_response import IChatMetrics, IChatResponse
 from sys_services.api_client import ApiClient, ApiError
 
 
@@ -12,30 +13,6 @@ def build_message(
     role: str, content: str, meta: Optional[dict] = None
 ) -> IChatMessage:
     return IChatMessage(role=role, content=content, meta=meta or {})
-
-#! NOTE RECOMMEND USE THAT WHEN HAVE DATACLASS FOR RESPONSE, DONT USE dict[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-# def _extract_id(payload: dict[str, Any]) -> Optional[str]:
-#     for key in ("id", "conversation_id", "uuid"):
-#         if key in payload:
-#             return str(payload[key])
-#     data = payload.get("data", {})
-#     if isinstance(data, dict):
-#         for key in ("id", "conversation_id", "uuid"):
-#             if key in data:
-#                 return str(data[key])
-#     return None
-
-#! NOTE RECOMMEND USE THAT WHEN HAVE DATACLASS FOR RESPONSE, DONT USE dict[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-# def _extract_text(payload: dict[str, Any]) -> str:
-#     for key in ("message", "content", "answer", "text", "assistant"):
-#         if key in payload and payload[key]:
-#             return str(payload[key])
-#     data = payload.get("data", {})
-#     if isinstance(data, dict):
-#         for key in ("message", "content", "answer", "text", "assistant"):
-#             if key in data and data[key]:
-#                 return str(data[key])
-#     return ""
 
 
 def _extract_metrics(payload: dict[str, Any]) -> dict[str, Any]:

@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-
 @dataclass
 class IGenerateResponseMetadata:
     done: Optional[bool] = None
@@ -28,7 +27,6 @@ class IGenerateResponseMetadata:
 
     total_tokens: Optional[int] = None
     'Total number of tokens evaluated (prompt + completion).'
-
 
 @dataclass
 class IGenerateResponse:

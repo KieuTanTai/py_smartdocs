@@ -17,12 +17,12 @@ class IConversationTask(ABC, Task):
         pass
 
     @abstractmethod
-    def run(self, conversation_id: uuid.UUID, provider_name: EProviderName, model_name: str, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
+    def run(self, provider_name: EProviderName, model_name: str, conversation: ConversationModel | None, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
         """
         Executes conversation bootstrap flow.
         Must return a JSON-serializable dictionary (Serialized BootstrapMessageResponse).
         Args:
-            conversation_id (uuid.UUID): The ID of the conversation for which to generate the bootstrap message.
+            conversation (ConversationModel | None): The conversation for which to generate the bootstrap message.
             provider_name (EProviderName): The LLM provider to use for generating the bootstrap message.
             model_name (str): The specific model name to use for generation.
             summarize (str): A summary of the conversation, if applicable. (Optional, if you already have a summary of the conversation that you want to use during the bootstrap message generation, you can pass it here. Otherwise, you can leave it empty and the implementation can decide how to handle it.)
@@ -41,6 +41,20 @@ class IConversationTask(ABC, Task):
             file_caller (str): The file that called this method, for logging purposes.
         Returns:
             ConversationModel: The model containing the created conversation details.
+        Raises:
+            ValueError: If the conversation creation fails for any reason.
+        """
+        pass
+
+    @abstractmethod
+    def get_all_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
+        """
+        Retrieves all conversations for a given user.
+        Args:
+            user_id (str): The ID of the user whose conversations to retrieve.
+            file_caller (str): The file caller for the conversation.
+        Returns:
+            list[ConversationModel]: A list of ConversationModel instances representing the user's conversations.
         """
         pass
 
@@ -69,5 +83,7 @@ class IConversationTask(ABC, Task):
             file_caller (str): The file that called this method, for logging purposes.
         Returns:
             int: The number of records removed (should be 1 if successful, 0 if no conversation with the given ID exists).
+        Raises:
+            ValueError: If the conversation with the given ID does not exist or if the removal operation fails.
         """
         pass

@@ -34,6 +34,9 @@ class ConversationDatabaseService(IConversationDatabase):
             **extra_fields,
         )
 
+    def get_all(self) -> QuerySet[ConversationModel]:
+        return ConversationModel.objects.all()
+
     def get_by_id(self, model_id: Any) -> ConversationModel:
         return ConversationModel.objects.get(pk=model_id)
 

@@ -55,6 +55,6 @@ class IGraphRagUploadResponse:
     created_at: Any = None
     conversation_files: list[ConversationFilesModel] = field(default_factory=list)
     time_counter: IGraphTimeCounterResponse | None = None
-    conversation_id: uuid.UUID = field(default_factory=uuid.uuid7)
+    conversation_id: uuid.UUID = field(default_factory=uuid.uuid5)
     conversation_name: str = ""
     conversation_cache_path: Path = field(default_factory=Path)

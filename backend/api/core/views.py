@@ -9,6 +9,7 @@ import json
 import time
 from typing import Optional
 
+from backend.apps.core.interfaces.system.i_logging import ILogger
 import numpy as np
 from rest_framework import status
 from rest_framework.response import Response
@@ -20,13 +21,13 @@ from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import IComp
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.services.rag_base.locate.locate_service import LocateService
-from sys_services.logging import DEFAULT_LOGGER
+
 from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from sys_services.system_dirs import METADATA_DIR
 
 
 def _embed_query(query: str) -> np.ndarray:
-    factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, DEFAULT_LOGGER)
+    factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, ILogger)
     client = factory.get_provider(EProviderName.GEMINI)
     req = ICompletionRequest(
         provider=EProviderName.GEMINI,
