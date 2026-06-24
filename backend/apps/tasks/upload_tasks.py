@@ -242,8 +242,8 @@ class UploadTask(IUploadTask):
         # start summarize time counter
         # * Step 6: Sumarize the document and get the summary text
         print("SI<<")
-        summarize = self.upload_job.summarize_document(upload_response.faiss_index, upload_response.conversation_id, cache_param_values, provider, model_name, file_caller=self.__execute_base_pipeline_with_paths.__name__)
-        upload_response.summarize = summarize
+        # summarize = self.upload_job.summarize_document(upload_response.faiss_index, upload_response.conversation_id, cache_param_values, provider, model_name, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+        # upload_response.summarize = ""
         summarize_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed document summarization for file paths {file_paths} in {summarize_time:.2f} seconds", source=Path(__file__).name, 
                          call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
