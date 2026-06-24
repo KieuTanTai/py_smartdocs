@@ -30,12 +30,13 @@ from backend.apps.application.conversations.application import ConversationAppli
 from sys_services.system_dirs import METADATA_DIR
 
 # Singleton application instances
-__container = container.BackendContainer()
+container_instance = container.BackendContainer()
 
 
 class DocumentListView(APIView):
     def get(self, request):
-        doc_app = __container.document_application()
+        container_instance = container.BackendContainer()
+        doc_app = container_instance.document_application()
         
         result = doc_app.list_files(request.GET.get("conversation_id", ""), file_caller="DocumentListView")
         data = []
@@ -50,7 +51,8 @@ class DocumentListView(APIView):
 
 class DocumentUploadView(APIView):
     def post(self, request):
-        sys_logger = __container.log_pool() # Lấy ILogger từ Container
+        container_instance = container.BackendContainer()
+        sys_logger = container_instance.log_pool() # Lấy ILogger từ Container
 
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
@@ -58,7 +60,7 @@ class DocumentUploadView(APIView):
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            doc_app = __container.document_application()
+            doc_app = container_instance.document_application()
             file_content = uploaded_file.read()
             
             doc_request = doc_app.upload_document(
@@ -83,7 +85,8 @@ class DocumentUploadView(APIView):
 class DocumentDetailView(APIView):
     def get(self, request, document_id: str):
         try:
-            doc_app = __container.document_application()
+            container_instance = container.BackendContainer()
+            doc_app = container_instance.document_application()
             doc = doc_app.get_document(document_id)
             return Response({
                 "id": str(doc["id"]),
@@ -94,10 +97,11 @@ class DocumentDetailView(APIView):
             return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, document_id: str):
-        sys_logger = __container.log_pool()
+        container_instance = container.BackendContainer()
+        sys_logger = container_instance.log_pool()
 
         try:
-            doc_app = __container.document_application()
+            doc_app = container_instance.document_application()
             doc_app.delete_document(document_id=document_id, delete_file=True)
             
             try:
@@ -119,7 +123,8 @@ class DocumentDetailView(APIView):
 class DocumentStatusView(APIView):
     def get(self, request, document_id: str):
         try:
-            doc_app = __container.document_application()
+            container_instance = container.BackendContainer()
+            doc_app = container_instance.document_application()
             doc = doc_app.get_document(document_id)
             return Response({
                 "id": str(doc["id"]),

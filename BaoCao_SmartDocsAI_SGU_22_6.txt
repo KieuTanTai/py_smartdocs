@@ -1,0 +1,1063 @@
+﻿
+
+
+ỦY BAN NHÂN DÂN TP HỒ CHÍ MINH
+TRƯỜNG ĐẠI HỌC SÀI GÒN
+KHOA CÔNG NGHỆ THÔNG TIN
+
+
+
+
+
+			
+
+BÁO CÁO ĐỒ ÁN
+
+XÂY DỰNG ỨNG DỤNG SMARTDOCS AI
+HỖ TRỢ ĐỌC VÀ PHÂN TÍCH TÀI LIỆU
+BẰNG TRÍ TUỆ NHÂN TẠO
+
+
+
+
+
+Giảng viên :
+Sinh viên : …
+		
+
+
+
+
+
+TP. Hồ Chí Minh, tháng ….. năm 2018
+MỤC LỤC
+NHẬN XÉT CỦA GIẢNG VIÊN	5
+LỜI MỞ ĐẦU	6
+CHƯƠNG 1: MỞ ĐẦU	7
+1.1. LÝ DO CHỌN ĐỀ TÀI	7
+1.2. MỤC TIÊU ĐỀ TÀI	7
+1.3. ĐỐI TƯỢNG VÀ PHẠM VI NGHIÊN CỨU	8
+1.3.1. Đối tượng người dùng	8
+1.3.2. Phạm vi chức năng	8
+1.4. PHƯƠNG PHÁP NGHIÊN CỨU	9
+1.5. ĐÓNG GÓP CỦA ĐỀ TÀI	9
+1.6. CẤU TRÚC BÁO CÁO	10
+CHƯƠNG 2: CƠ SỞ LÝ LUẬN VÀ TỔNG QUAN CÔNG NGHỆ	10
+2.1. MÔ HÌNH NGÔN NGỮ LỚN (LLM)	10
+2.2. KỸ THUẬT RAG (RETRIEVAL-AUGMENTED GENERATION)	11
+2.2.1. Giai đoạn Indexing (Lập chỉ mục)	11
+2.2.2. Giai đoạn Retrieval & Generation (Truy vấn và Sinh câu trả lời)	12
+2.3. VECTOR EMBEDDING VÀ CƠ SỞ DỮ LIỆU VECTOR	12
+2.3.1. Vector Embedding	12
+2.3.2. FAISS (Facebook AI Similarity Search)	13
+2.4. TÌM KIẾM LAI VÀ THUẬT TOÁN RRF	13
+2.4.1. BM25 Okapi	13
+2.4.2. Hybrid Search	14
+2.4.3. Reciprocal Rank Fusion (RRF)	14
+2.5. GRAPHRAG VÀ ĐỒ THỊ TRI THỨC (KNOWLEDGE GRAPH)	15
+2.6. KIẾN TRÚC PHẦN MỀM	16
+2.6.1. Django REST Framework	16
+2.6.2. Shiny for Python	16
+2.6.3. Clean Architecture và Dependency Injection	16
+2.7. XỬ LÝ BẤT ĐỒNG BỘ (CELERY + REDIS)	16
+2.8. OCR VÀ TRÍCH XUẤT TÀI LIỆU	17
+2.9. CÁC CÔNG NGHỆ VÀ THƯ VIỆN CHÍNH	17
+CHƯƠNG 3: PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG	20
+3.1. YÊU CẦU HỆ THỐNG	20
+3.1.1. Yêu cầu chức năng	20
+3.1.2. Yêu cầu phi chức năng	22
+3.2. KIẾN TRÚC HỆ THỐNG	22
+3.2.1. Giao diện người dùng (Frontend — Shiny App)	23
+3.2.2. Backend — Django REST Framework	23
+3.2.3. Hạ tầng triển khai	24
+3.3. SƠ ĐỒ HỆ THỐNG	24
+3.3.1. Sơ đồ Use Case tổng quát	25
+3.3.2. Sơ đồ kiến trúc hệ thống	25
+3.3.3. Sơ đồ pipeline xử lý tài liệu RAG	26
+3.3.4. Sơ đồ Sequence của luồng Upload tài liệu	27
+3.3.5. Sơ đồ Sequence của chức năng hỏi đáp RAG	27
+3.3.6. Sơ đồ Sequence của luồng xoá hội thoại	28
+3.3.7. Sơ đồ phân rã thành phần (component/module)	28
+3.3.8. UC01 — Upload tài liệu	29
+3.3.9. UC02 — Chat / Hỏi đáp (RAG)	29
+3.4. THIẾT KẾ CƠ SỞ DỮ LIỆU	30
+3.4.1. Sơ đồ thực thể quan hệ (ERD)	30
+3.4.2. Mô tả các bảng dữ liệu	31
+3.5. THIẾT KẾ API	33
+3.6. THIẾT KẾ DI CONTAINER	34
+3.7. THIẾT KẾ API ENDPOINTS	36
+3.8. THIẾT KẾ GIAO DIỆN NGƯỜI DÙNG	37
+3.8.1. Cấu trúc giao diện	37
+3.8.2. Danh sách hình ảnh minh họa	38
+3.9. PHÂN TÍCH PIPELINE XỬ LÝ TÀI LIỆU VÀ AI	38
+3.9.1. Luồng Indexing (Lập chỉ mục)	38
+3.9.2. Luồng Retrieval & Generation (Truy vấn)	39
+3.10. PHÂN TÍCH THUẬT TOÁN CHÍNH	39
+3.10.1. Thuật toán Reciprocal Rank Fusion (RRF)	40
+CHƯƠNG 4: TRIỂN KHAI VÀ KẾT QUẢ	41
+4.1. MÔI TRƯỜNG TRIỂN KHAI VÀ CÀI ĐẶT	41
+4.1.1. Yêu cầu môi trường	41
+4.1.2. Hướng dẫn cài đặt	41
+4.2. GIAO DIỆN NGƯỜI DÙNG	42
+4.2.1. Trang chính — Giao diện Chat	42
+4.2.2. Modal Upload tài liệu	43
+4.2.3. Kết quả chat với số liệu hiệu suất	44
+4.2.4. Modal cài đặt hệ thống	44
+4.3. TRIỂN KHAI CHI TIẾT CÁC MODULE	44
+4.3.1. Module OCR — Trích xuất tài liệu (ExtractContentService)	44
+4.3.2. Module Normalize & Chunking	45
+4.3.3. Module Embedding & Vector Store (FAISS)	46
+4.3.4. Module BM25 (Sparse Search)	47
+4.3.5. Module Hybrid Search + RRF (HybridSearchService)	47
+4.3.6. Module GraphRAG (Neo4j Knowledge Graph)	48
+4.3.7. Module Cache (Redis + FaissMemoryPool)	49
+4.4. KẾT QUẢ THỰC NGHIỆM	49
+4.4.1. Kịch bản thử nghiệm 1 — Tải lên và xử lý tệp PDF	49
+4.4.2. Kịch bản thử nghiệm 2 — Hỏi đáp theo tài liệu	50
+4.4.3. Thống kê hiệu năng pipeline xử lý	50
+4.4.4. Đánh giá chất lượng Hybrid Search	52
+4.4.5. So sánh hiệu năng Graph RAG và Vector RAG	52
+4.4.6. Chi tiết thời gian xử lý pipeline	53
+4.5. KIỂM THỬ	55
+4.5.1. Tổng quan kiểm thử	55
+4.5.2. Các test case tiêu biểu	56
+4.6. ĐÁNH GIÁ HỆ THỐNG	57
+4.6.1. Bảo mật và giới hạn	57
+4.6.2. Điểm mạnh của hệ thống	58
+4.6.3. Hạn chế hiện tại	58
+CHƯƠNG 5: KẾT LUẬN VÀ KIẾN NGHỊ	60
+5.1. KẾT LUẬN	60
+5.2. HẠN CHẾ	60
+5.3. HƯỚNG PHÁT TRIỂN	61
+5.3.1. Cải thiện trải nghiệm người dùng	61
+5.3.2. Nâng cấp hạ tầng	61
+5.3.3. Nâng cao chất lượng RAG	61
+TÀI LIỆU THAM KHẢO	64
+
+NHẬN XÉT CỦA GIẢNG VIÊN
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+......................................................................................................................................................................................................
+LỜI MỞ ĐẦU
+Trong thời đại chuyển đổi số hiện nay, trí tuệ nhân tạo (AI) đang trở thành công cụ thiết yếu hỗ trợ con người trong nhiều lĩnh vực. Đặc biệt, nhu cầu đọc hiểu và phân tích tài liệu một cách nhanh chóng và chính xác ngày càng gia tăng trong môi trường học thuật và doanh nghiệp.
+Báo cáo đồ án "Xây dựng ứng dụng SmartDocs AI hỗ trợ đọc và phân tích tài liệu bằng Trí tuệ nhân tạo" trình bày quá trình nghiên cứu, thiết kế và triển khai một hệ thống chatbot thông minh ứng dụng kỹ thuật RAG (Retrieval-Augmented Generation), kết hợp tìm kiếm lai (Hybrid Search) và nhiều nhà cung cấp mô hình ngôn ngữ lớn (LLM) để trả lời câu hỏi của người dùng dựa trên nội dung tài liệu tải lên.
+Nhóm tác giả xin chân thành cảm ơn giảng viên hướng dẫn đã tận tình chỉ dạy, góp ý và hỗ trợ trong suốt quá trình thực hiện đồ án. Mọi thiếu sót, nếu có, nhóm rất mong nhận được sự góp ý từ quý thầy cô và bạn đọc.
+Báo cáo được tổ chức thành 5 chương:
+Chương 1: Mở đầu — Trình bày lý do, mục tiêu, phạm vi và phương pháp nghiên cứu.
+Chương 2: Cơ sở lý luận và Tổng quan Công nghệ — Giới thiệu các khái niệm nền tảng và công nghệ sử dụng.
+Chương 3: Phân tích và Thiết kế Hệ thống — Mô tả kiến trúc, các sơ đồ UML và thiết kế chi tiết.
+Chương 4: Triển khai và Kết quả — Trình bày quá trình cài đặt, giao diện và kết quả thực nghiệm.
+Chương 5: Kết luận và Kiến nghị — Tổng kết và đề xuất hướng phát triển.
+
+
+CHƯƠNG 1: MỞ ĐẦU
+1.1. LÝ DO CHỌN ĐỀ TÀI
+Trong bối cảnh bùng nổ thông tin hiện nay, nhu cầu xử lý và khai thác tri thức từ khối lượng tài liệu lớn ngày càng trở nên cấp thiết. Sinh viên, nhà nghiên cứu, nhân viên văn phòng và chuyên viên pháp lý thường xuyên phải đối mặt với hàng trăm đến hàng nghìn trang tài liệu chuyên ngành cần được đọc, tóm tắt và tra cứu nhanh chóng. Theo báo cáo của McKinsey (2023), trung bình một nhân viên tri thức dành khoảng 19% thời gian làm việc cho việc tìm kiếm và thu thập thông tin — con số này tương đương gần một ngày làm việc mỗi tuần.
+Các mô hình ngôn ngữ lớn (LLM) như GPT, Gemini hay Mistral đã cho thấy khả năng xử lý ngôn ngữ tự nhiên vượt trội, tuy nhiên chúng tồn tại hai hạn chế lớn:
+    • Hiện tượng "ảo tưởng" (Hallucination): Mô hình sinh ra thông tin không chính xác hoặc không có trong tài liệu gốc, dẫn đến mất độ tin cậy khi ứng dụng trong môi trường chuyên nghiệp.
+    • Giới hạn ngữ cảnh (Context Window Limit): Không thể xử lý toàn bộ tài liệu lớn trong một lần gọi API. Ví dụ, GPT-4 có giới hạn khoảng 128K tokens, Gemini Flash hỗ trợ tới 1M tokens nhưng chi phí và thời gian xử lý tăng đáng kể với tài liệu lớn.
+Kỹ thuật RAG (Retrieval-Augmented Generation) ra đời như một giải pháp hiệu quả khắc phục cả hai hạn chế trên, bằng cách chỉ trích xuất và cung cấp cho LLM những đoạn văn bản thực sự liên quan đến câu hỏi của người dùng. Thay vì đưa toàn bộ tài liệu vào prompt, RAG thực hiện ba giai đoạn: phân đoạn tài liệu (Chunking), tạo vector biểu diễn ngữ nghĩa (Embedding) và truy vấn vector (Retrieval) để chọn ra các đoạn ngữ cảnh phù hợp nhất trước khi gọi LLM sinh câu trả lời.
+Hơn nữa, việc kết hợp tìm kiếm ngữ nghĩa sâu (Dense Search) với tìm kiếm từ khóa (Sparse Search) — gọi là Tìm kiếm lai (Hybrid Search) — đã được chứng minh cho kết quả truy xuất vượt trội so với việc dùng một phương pháp duy nhất. Thuật toán Reciprocal Rank Fusion (RRF) là phương pháp gộp xếp hạng hiệu quả, đã được Elasticsearch áp dụng trong thực tế.
+Đây chính là lý do nhóm lựa chọn đề tài "Xây dựng ứng dụng SmartDocs AI hỗ trợ đọc và phân tích tài liệu bằng Trí tuệ nhân tạo", với mong muốn phát triển một công cụ hỗ trợ đọc hiểu tài liệu hiệu quả, an toàn và dễ sử dụng.
+1.2. MỤC TIÊU ĐỀ TÀI
+Đề tài hướng đến các mục tiêu cụ thể sau:
+    • Xây dựng một ứng dụng web hoàn chỉnh cho phép người dùng tải lên và phân tích tài liệu đa định dạng (PDF, DOCX, TXT, MD) bằng trí tuệ nhân tạo.
+    • Triển khai pipeline RAG (Retrieval-Augmented Generation) hoàn chỉnh từ trích xuất văn bản, chuẩn hóa, phân đoạn, tạo embedding đến truy vấn và sinh câu trả lời có căn cứ.
+    • Tích hợp cơ chế Tìm kiếm lai (Hybrid Search) kết hợp FAISS (Dense Vector) và BM25 (Sparse Vector) với thuật toán gộp RRF (Reciprocal Rank Fusion) để tối ưu độ chính xác truy xuất ngữ cảnh.
+    • Hỗ trợ đa nhà cung cấp LLM (Gemini, Mistral, Ollama) thông qua Factory Pattern, cho phép người dùng linh hoạt lựa chọn mô hình phù hợp.
+    • Tích hợp GraphRAG sử dụng Neo4j để xây dựng đồ thị tri thức (Knowledge Graph) từ tài liệu, mở rộng khả năng truy vấn ngữ nghĩa nhiều bước (Multi-hop Reasoning).
+    • Cung cấp giao diện chatbot thân thiện, hiện đại với hiệu ứng Glassmorphism, hiển thị câu trả lời có định dạng Markdown và số liệu thống kê hiệu suất thời gian thực.
+1.3. ĐỐI TƯỢNG VÀ PHẠM VI NGHIÊN CỨU
+1.3.1. Đối tượng người dùng
+    • Sinh viên, nghiên cứu sinh cần đọc hiểu nhanh các bài báo khoa học, luận văn, tài liệu học thuật.
+    • Nhân viên văn phòng, chuyên viên pháp lý cần tra cứu hợp đồng, chính sách nội bộ, văn bản pháp quy.
+    • Các nhà phát triển phần mềm cần tích hợp tính năng đọc tài liệu thông minh vào hệ thống lớn hơn thông qua API RESTful.
+1.3.2. Phạm vi chức năng
+    • Quản lý tài liệu: tải lên cục bộ hoặc từ Google Drive, xóa tài liệu đã tải.
+    • Trích xuất văn bản: hỗ trợ định dạng PDF (văn bản thuần và scan qua OCR sử dụng Mistral OCR), DOCX, TXT, MD.
+    • Lập chỉ mục vector (Vector Indexing): phân đoạn văn bản (Chunking), chuẩn hóa (Normalization), tạo embedding, lưu trữ FAISS và BM25.
+    • Trò chuyện thông minh (RAG Chatbot): truy vấn lai (Hybrid Search), gọi LLM, hiển thị kết quả và số liệu hiệu suất.
+    • Quản lý lịch sử hội thoại: tạo mới, xem lại, xóa phiên trò chuyện.
+    • Xây dựng đồ thị tri thức (Knowledge Graph) bằng Neo4j GraphRAG cho truy vấn nâng cao.
+    • Xử lý tác vụ nền (Background Task Processing) bằng Celery + Redis.
+1.4. PHƯƠNG PHÁP NGHIÊN CỨU
+Đề tài sử dụng phương pháp kết hợp giữa nghiên cứu lý thuyết và thực nghiệm:
+    • Nghiên cứu lý thuyết: Tìm hiểu các bài báo khoa học về RAG (Lewis et al., 2020), Hybrid Search, thuật toán RRF (Cormack et al., 2009), và các mô hình LLM hiện đại. Nghiên cứu mẫu kiến trúc Clean Architecture (Robert C. Martin, 2018) và Dependency Injection Pattern.
+    • Phân tích yêu cầu: Khảo sát nhu cầu thực tế của sinh viên và nhân viên văn phòng trong việc đọc hiểu tài liệu, từ đó xác định các chức năng cần thiết cho hệ thống.
+    • Thiết kế kiến trúc: Áp dụng Clean Architecture phân tầng rõ ràng (API → Application → Job → Task → Core/Services), sử dụng Dependency Injection Container để quản lý vòng đời các thành phần.
+    • Thực nghiệm kỹ thuật: Xây dựng và kiểm thử từng module của hệ thống theo hướng phát triển tăng dần (Incremental Development), bao gồm trích xuất OCR, chunking, embedding, FAISS/BM25 indexing, và LLM generation.
+    • Đánh giá và so sánh: Đo lường hiệu suất của hệ thống qua các tiêu chí thời gian phản hồi (response time), so sánh hiệu suất giữa các nhà cung cấp LLM (Gemini, Mistral, Ollama).
+1.5. ĐÓNG GÓP CỦA ĐỀ TÀI
+Đề tài có những đóng góp chính sau:
+    • Xây dựng một hệ thống RAG hoàn chỉnh end-to-end, từ trích xuất tài liệu đến sinh câu trả lời, có thể được sử dụng làm tài liệu tham khảo cho các dự án tương tự.
+    • Triển khai cơ chế Hybrid Search kết hợp Dense Search (FAISS) và Sparse Search (BM25) với thuật toán RRF, chứng minh hiệu quả vượt trội so với các phương pháp đơn lẻ.
+    • Thiết kế kiến trúc phần mềm theo Clean Architecture với Dependency Injection, dễ dàng mở rộng thêm các nhà cung cấp LLM hoặc cơ sở dữ liệu vector mới.
+    • Tích hợp GraphRAG sử dụng Neo4j cho khả năng truy vấn tri thức đa bước (Multi-hop Reasoning) trên đồ thị kiến thức.
+1.6. CẤU TRÚC BÁO CÁO
+Báo cáo được tổ chức thành 5 chương:
+Chương 1: Mở đầu — Trình bày lý do, mục tiêu, phạm vi, phương pháp nghiên cứu và đóng góp của đề tài.
+Chương 2: Cơ sở lý luận và Tổng quan Công nghệ — Giới thiệu các khái niệm nền tảng (LLM, RAG, Vector Embedding, Hybrid Search, GraphRAG) và các công nghệ sử dụng (Django, Shiny, Celery, Redis, Neo4j).
+Chương 3: Phân tích và Thiết kế Hệ thống — Mô tả kiến trúc tổng thể, các sơ đồ UML (Use Case, ERD, Sequence, Deployment) và thiết kế chi tiết các module.
+Chương 4: Triển khai và Kết quả — Trình bày quá trình cài đặt, giao diện người dùng, triển khai các module kỹ thuật và kết quả thực nghiệm.
+Chương 5: Kết luận và Kiến nghị — Tổng kết thành tựu, nhận diện hạn chế và đề xuất hướng phát triển trong tương lai.
+
+CHƯƠNG 2: CƠ SỞ LÝ LUẬN VÀ TỔNG QUAN CÔNG NGHỆ
+2.1. MÔ HÌNH NGÔN NGỮ LỚN (LLM)
+Mô hình ngôn ngữ lớn (Large Language Model — LLM) là các mô hình học sâu được huấn luyện trên khối lượng dữ liệu văn bản khổng lồ, có khả năng hiểu và tạo sinh ngôn ngữ tự nhiên. Dựa trên kiến trúc Transformer (Vaswani et al., 2017), LLM sử dụng cơ chế Self-Attention để nắm bắt mối quan hệ ngữ nghĩa giữa các từ trong văn bản, cho phép thực hiện các tác vụ như trả lời câu hỏi, tóm tắt văn bản, dịch thuật và phân tích cảm xúc.
+Mặc dù LLM có năng lực xử lý ngôn ngữ vượt trội, chúng tồn tại hai hạn chế cốt lõi cần được giải quyết trong ứng dụng thực tiễn:
+    • Hallucination (Ảo tưởng): Mô hình tạo ra thông tin có vẻ hợp lý nhưng không chính xác hoặc không tồn tại trong dữ liệu nguồn. Đây là rủi ro nghiêm trọng khi ứng dụng trong các lĩnh vực đòi hỏi độ chính xác cao như y tế, pháp lý, tài chính.
+    • Context Window Limitation: Mỗi LLM có giới hạn số lượng token đầu vào. Khi tài liệu vượt quá giới hạn này, thông tin sẽ bị cắt bớt hoặc không thể xử lý, dẫn đến câu trả lời thiếu ngữ cảnh.
+Hệ thống SmartDocs AI tích hợp ba nhà cung cấp LLM thông qua Factory Pattern, cho phép người dùng linh hoạt lựa chọn mô hình phù hợp với nhu cầu:
+
+Nhà cung cấp	Mô hình tiêu biểu	Đặc điểm	Loại triển khai
+Google Gemini	gemini-2.0-flash, gemini-2.5-pro	Đa phương thức (text, image, video), tốc độ nhanh, hỗ trợ embedding tích hợp	Cloud API
+Mistral AI	mistral-large, pixtral	Hiệu suất cao, hỗ trợ OCR tài liệu, chi phí hợp lý	Cloud API
+Ollama	qwen2.5, llama3, phi3	Chạy local, không cần API key, bảo mật dữ liệu tuyệt đối, miễn phí	Local (Self-hosted)
+Bảng 2.1. So sánh các nhà cung cấp LLM được tích hợp
+
+2.2. KỸ THUẬT RAG (RETRIEVAL-AUGMENTED GENERATION)
+RAG (Retrieval-Augmented Generation) là kỹ thuật do Lewis et al. đề xuất năm 2020, kết hợp giữa truy vấn thông tin (Information Retrieval) và khả năng sinh ngôn ngữ của LLM. Thay vì gửi toàn bộ tài liệu vào prompt — điều không khả thi với tài liệu lớn — hệ thống RAG thực hiện hai giai đoạn chính:
+2.2.1. Giai đoạn Indexing (Lập chỉ mục)
+Trong giai đoạn này, tài liệu thô được xử lý qua một pipeline nhiều bước:
+    • Trích xuất văn bản (Text Extraction): Chuyển đổi nội dung từ các định dạng file (PDF, DOCX, TXT, MD) sang văn bản thuần. Đối với file PDF scan, sử dụng OCR (Optical Character Recognition) để nhận dạng chữ từ hình ảnh.
+    • Chuẩn hóa (Normalization): Loại bỏ ký tự thừa, chuẩn hóa khoảng trắng, xuống dòng, đảm bảo văn bản sạch và nhất quán trước khi phân đoạn.
+    • Phân đoạn (Chunking): Chia văn bản dài thành các đoạn nhỏ (chunk) có kích thước cố định (chunk_size) với phần chồng lấp (overlap) giữa các đoạn liền kề để tránh mất ngữ cảnh tại ranh giới cắt.
+    • Tạo Vector Embedding: Mỗi đoạn văn bản được chuyển thành một vectơ số học trong không gian nhiều chiều bằng mô hình embedding (Gemini Embedding, Mistral Embedding, v.v.). Các đoạn có nghĩa tương đồng sẽ có vector gần nhau.
+    • Lưu trữ chỉ mục (Index Storage): Các vector embedding được lưu vào cơ sở dữ liệu vector (FAISS) và văn bản gốc được lưu vào chỉ mục BM25 để phục vụ tìm kiếm lai.
+2.2.2. Giai đoạn Retrieval & Generation (Truy vấn và Sinh câu trả lời)
+Khi người dùng gửi câu hỏi, hệ thống thực hiện các bước sau:
+    • Tạo embedding cho câu hỏi: Câu hỏi của người dùng được chuyển thành vector embedding cùng không gian với các chunk đã lập chỉ mục.
+    • Truy vấn vector (Vector Search): Tìm Top-K đoạn văn bản có vector gần nhất với vector câu hỏi (FAISS search) — tìm kiếm ngữ nghĩa.
+    • Truy vấn từ khóa (Keyword Search): Song song, BM25 tìm các đoạn chứa từ khóa trùng khớp với câu hỏi — tìm kiếm từ vựng.
+    • Gộp kết quả (Fusion): Thuật toán RRF kết hợp kết quả từ hai nguồn, xếp hạng lại để chọn ra các đoạn ngữ cảnh chất lượng nhất.
+    • Xây dựng prompt: Các đoạn ngữ cảnh được chọn được ghép cùng câu hỏi gốc thành một prompt hoàn chỉnh.
+    • Sinh câu trả lời (Generation): LLM nhận prompt và sinh ra câu trả lời có căn cứ từ tài liệu gốc.
+RAG giúp hệ thống trả lời chính xác dựa trên nguồn tài liệu cụ thể, giảm thiểu đáng kể hiện tượng hallucination và vượt qua giới hạn context window. Prompt được thiết kế với chỉ dẫn rõ ràng: "NOT ALLOWED TO MAKE UP ANSWERS. ONLY USE THE INFORMATION PROVIDED" để đảm bảo LLM không tạo thông tin ngoài nguồn.
+2.3. VECTOR EMBEDDING VÀ CƠ SỞ DỮ LIỆU VECTOR
+2.3.1. Vector Embedding
+Vector Embedding là quá trình chuyển đổi văn bản thành vectơ số học trong không gian nhiều chiều (thường 768 đến 3072 chiều), trong đó các đoạn văn có nghĩa tương tự nhau sẽ có vector gần nhau về mặt hình học. Quá trình này sử dụng các mô hình embedding được huấn luyện sẵn (pre-trained) trên tập dữ liệu khổng lồ.
+Hệ thống SmartDocs AI hỗ trợ nhiều mô hình embedding:
+    • Gemini Embedding (gemini-embedding-2): Mô hình embedding đa phương thức của Google, tạo vector với số chiều 768, tích hợp trực tiếp qua Google GenAI SDK.
+    • Mistral Embedding: Mô hình embedding văn bản của Mistral AI, phù hợp với tài liệu đa ngữ.
+    • Ollama Embedding: Sử dụng các mô hình embedding local như nomic-embed-text, đảm bảo dữ liệu không rời khỏi máy chủ nội bộ.
+2.3.2. FAISS (Facebook AI Similarity Search)
+FAISS là thư viện mã nguồn mở do Meta AI phát triển, cho phép tìm kiếm các vector tương đồng với tốc độ cực nhanh, hỗ trợ xử lý hàng triệu đến hàng tỷ vector. Hệ thống SmartDocs AI sử dụng hai loại chỉ mục FAISS:
+    • IndexFlatL2: Chỉ mục tìm kiếm chính xác (Exact Search) sử dụng khoảng cách Euclidean L2 để so sánh vector. Phù hợp với tập dữ liệu vừa phải (dưới 1 triệu vector), đảm bảo kết quả truy vấn chính xác 100%.
+    • IndexIDMap: Bọc ngoài IndexFlatL2, cho phép gán ID tùy chỉnh (int64) cho mỗi vector thay vì dùng chỉ số tuần tự. SmartDocs AI sử dụng hash SHA-256 của nội dung chunk làm ID, giúp dễ dàng mapping ngược từ kết quả FAISS về đoạn văn bản gốc trong cache.
+Công thức khoảng cách L2 (Euclidean Distance):
+    d(x, y) = √(Σᵢ(xᵢ - yᵢ)²)
+Trong đó x và y là hai vector embedding, giá trị d càng nhỏ thì hai đoạn văn bản càng tương đồng về ngữ nghĩa.
+2.4. TÌM KIẾM LAI VÀ THUẬT TOÁN RRF
+2.4.1. BM25 Okapi
+BM25 (Best Matching 25) là thuật toán xếp hạng tìm kiếm dựa trên tần suất xuất hiện từ, được phát triển từ mô hình xác suất TF-IDF cải tiến (Robertson & Zaragoza, 2009). BM25 đặc biệt hiệu quả với các câu hỏi chứa từ khóa chuyên ngành, tên riêng hoặc thuật ngữ kỹ thuật mà tìm kiếm ngữ nghĩa có thể bỏ sót.
+Trong SmartDocs AI, BM25 được triển khai thông qua thư viện rank-bm25 với lớp BM25Okapi. Corpus được tokenize bằng cách tách từ và chuyển về chữ thường (lowercase splitting). Kết quả BM25 trả về danh sách các đoạn văn bản có chứa ít nhất một từ khóa trùng khớp, được xếp hạng theo điểm BM25.
+2.4.2. Hybrid Search
+Tìm kiếm lai (Hybrid Search) kết hợp kết quả từ hai hệ thống tìm kiếm bổ sung cho nhau:
+    • Dense Search (FAISS): Tìm kiếm ngữ nghĩa sâu — hiệu quả với câu hỏi diễn đạt bằng ngôn ngữ tự nhiên, tìm được đoạn văn có nghĩa tương đương nhưng dùng từ ngữ khác.
+    • Sparse Search (BM25): Tìm kiếm từ khóa — hiệu quả với thuật ngữ chuyên ngành, tên riêng, mã số mà embedding có thể bỏ sót.
+Sự kết hợp này đảm bảo hệ thống không bỏ sót kết quả dù câu hỏi được diễn đạt ở dạng nào, nâng cao đáng kể chất lượng truy xuất ngữ cảnh cho LLM.
+
+Tiêu chí	Dense Search (FAISS)	Sparse Search (BM25)
+Cơ chế	So sánh vector ngữ nghĩa	So khớp từ khóa
+Điểm mạnh	Hiểu ngữ nghĩa, paraphrase	Chính xác với từ khóa, tên riêng
+Điểm yếu	Bỏ sót từ khóa hiếm	Không hiểu ngữ cảnh
+Phù hợp	Câu hỏi ngôn ngữ tự nhiên	Truy vấn thuật ngữ chuyên môn
+Ví dụ	"Làm thế nào để giảm hallucination?"	"FAISS IndexFlatL2"
+
+Bảng 2.2. So sánh Dense Search và Sparse Search
+
+2.4.3. Reciprocal Rank Fusion (RRF)
+RRF (Cormack et al., 2009) là thuật toán gộp xếp hạng, tính điểm cho mỗi kết quả dựa trên vị trí thứ hạng của nó trong từng danh sách kết quả thành phần. Công thức RRF:
+    Score(d) = Σᵣ 1 / (k + rankᵣ(d))
+Trong đó k là tham số làm mịn (thường k = 60 theo khuyến nghị của Elasticsearch), và rankᵣ(d) là thứ hạng của tài liệu d trong danh sách kết quả r.
+Ưu điểm của RRF so với các phương pháp gộp khác (Weighted Sum, Borda Count):
+    • Không cần chuẩn hóa điểm số giữa các nguồn kết quả khác nhau.
+    • Kết quả ổn định, ít bị ảnh hưởng bởi outlier.
+    • Đã được chứng minh hiệu quả trong thực tế bởi Elasticsearch.
+Trong SmartDocs AI, lớp HybridSearchService triển khai thuật toán RRF với k = 60, nhận đầu vào là danh sách dense_hits (từ FAISS) và sparse_hits (từ BM25), trả về top_k kết quả đã được xếp hạng lại.
+2.5. GRAPHRAG VÀ ĐỒ THỊ TRI THỨC (KNOWLEDGE GRAPH)
+GraphRAG là phương pháp mở rộng của RAG truyền thống, sử dụng đồ thị tri thức (Knowledge Graph) để biểu diễn và truy vấn thông tin. Thay vì chỉ tìm kiếm các đoạn văn bản tương đồng, GraphRAG xây dựng một đồ thị gồm các thực thể (entity) và mối quan hệ (relationship) được trích xuất từ tài liệu, cho phép thực hiện các truy vấn phức tạp đa bước (multi-hop reasoning).
+Hệ thống SmartDocs AI sử dụng Neo4j — cơ sở dữ liệu đồ thị hàng đầu — kết hợp với thư viện neo4j-graphrag để:
+    • Tự động trích xuất các thực thể và mối quan hệ từ tài liệu bằng LLM.
+    • Lưu trữ đồ thị tri thức với các node (Chunk, Entity) và edge (FROM_CHUNK, relationship).
+    • Tạo vector index trên các node Chunk để kết hợp tìm kiếm ngữ nghĩa với duyệt đồ thị.
+    • Sử dụng VectorCypherRetriever để thực hiện truy vấn kết hợp: tìm node gần nhất (vector search) → mở rộng 2 bước qua các mối quan hệ (graph traversal) → tổng hợp ngữ cảnh.
+Hình 2.2. Minh họa đồ thị tri thức (Knowledge Graph) trong SmartDocs AI
+2.6. KIẾN TRÚC PHẦN MỀM
+2.6.1. Django REST Framework
+Django là web framework Python bậc cao theo mô hình MTV (Model-Template-View), được thiết kế để phát triển ứng dụng web nhanh chóng và bảo mật. Django REST Framework (DRF) mở rộng Django để xây dựng API RESTful chuyên nghiệp với serializer, permission, throttling và pagination tích hợp. SmartDocs AI sử dụng Django làm nền tảng Backend, xử lý HTTP request, quản lý database (SQLite/MariaDB) và routing API.
+2.6.2. Shiny for Python
+Shiny for Python là framework xây dựng ứng dụng web reactive theo mô hình lập trình hướng sự kiện (Event-Driven Reactive Programming), cho phép lập trình viên Python tạo giao diện tương tác phức tạp mà không cần viết nhiều mã JavaScript. SmartDocs AI sử dụng Shiny làm Frontend, giao tiếp với Backend qua API RESTful JSON thông qua lớp ApiClient tùy chỉnh.
+2.6.3. Clean Architecture và Dependency Injection
+Clean Architecture (Robert C. Martin, 2018) là mẫu kiến trúc phân tầng, tổ chức code theo các vòng tròn phụ thuộc một chiều: Entity → Use Case → Interface Adapter → Framework/Driver. Nguyên tắc cốt lõi: tầng trong không được phụ thuộc vào tầng ngoài.
+Hệ thống SmartDocs AI áp dụng Clean Architecture với 5 tầng phân cấp rõ ràng:
+    • API Layer (api/): Nhận yêu cầu HTTP, validate input cơ bản, điều phối sang Application Layer.
+    • Application Layer (application/): Kiểm tra tính toàn vẹn nghiệp vụ (business validation), phối hợp các domain service, xử lý transaction.
+    • Job Layer (job/): Điều phối pipeline xử lý — thứ tự các bước trong luồng nghiệp vụ (extract → normalize → chunk → embed → save).
+    • Task Layer (tasks/): Quản lý tác vụ nền, đóng gói Job thành Celery task cho xử lý bất đồng bộ.
+    • Core/Services Layer: Chứa các interface (abstract class), business entity, và implementation cụ thể của từng service (FAISS, BM25, Redis, Neo4j, LLM clients).
+Dependency Injection (DI) được triển khai thông qua thư viện dependency-injector với lớp BackendContainer, quản lý vòng đời của tất cả các service (Singleton cho config/logger, Factory cho mỗi request).
+2.7. XỬ LÝ BẤT ĐỒNG BỘ (CELERY + REDIS)
+Celery là framework xử lý tác vụ bất đồng bộ (Distributed Task Queue) cho Python, cho phép thực hiện các tác vụ tốn thời gian (upload/extract/embed document) trong nền mà không chặn (block) luồng request chính của web server.
+Trong SmartDocs AI, Celery được cấu hình với:
+    • Redis làm Message Broker: Nhận và phân phối các task message giữa web server và worker.
+    • Redis làm Result Backend: Lưu trữ kết quả của các task đã hoàn thành.
+    • Celery Worker: Process riêng biệt chạy song song với web server, xử lý các task upload, message, delete.
+    • Celery Beat: Scheduler cho các tác vụ định kỳ (periodic tasks).
+Kiến trúc này cho phép hệ thống xử lý upload tài liệu lớn mà không ảnh hưởng đến trải nghiệm người dùng — API trả về ngay lập tức với trạng thái "processing" trong khi tài liệu được xử lý trong nền.
+2.8. OCR VÀ TRÍCH XUẤT TÀI LIỆU
+Optical Character Recognition (OCR) là công nghệ nhận dạng ký tự từ hình ảnh, cho phép trích xuất văn bản từ các file PDF scan hoặc hình ảnh chứa chữ. SmartDocs AI tích hợp Mistral OCR — dịch vụ OCR dựa trên AI của Mistral AI — để xử lý các tài liệu dạng hình ảnh.
+Pipeline trích xuất tài liệu gồm 3 bước:
+    • Upload file lên Mistral Files API: File được tải lên server Mistral để xử lý.
+    • Gọi Mistral OCR API: Dịch vụ phân tích hình ảnh trong tài liệu, nhận dạng ký tự và trả về văn bản Markdown có cấu trúc.
+    • Chuẩn hóa kết quả: Loại bỏ metadata thừa, ghép nối các trang, trả về văn bản thuần cho pipeline RAG tiếp theo.
+Đối với file văn bản thuần (TXT, MD, DOCX không scan), hệ thống sử dụng pypdf hoặc đọc trực tiếp mà không cần qua OCR, tiết kiệm thời gian và chi phí API.
+2.9. CÁC CÔNG NGHỆ VÀ THƯ VIỆN CHÍNH
+
+Tên công nghệ/Thư viện	Phiên bản	Vai trò
+Python	3.14	Ngôn ngữ lập trình chính
+Django	5.2.7	Web framework Backend (MTV pattern)
+Django REST Framework	3.16.1	Xây dựng API RESTful
+Shiny for Python	1.6.3	Frontend reactive web framework
+Celery	5.5.3	Xử lý tác vụ bất đồng bộ (Task Queue)
+Redis	6.4.0 (client)	Message broker, caching, result backend
+FAISS	1.14.3	Vector similarity search (Dense Search)
+rank-bm25	0.2.2	Keyword search (Sparse Search — BM25 Okapi)
+Google GenAI SDK	1.75.0	Tích hợp Gemini LLM & Embedding
+Mistral AI SDK	2.4.13	Tích hợp Mistral LLM & OCR
+Ollama SDK	0.6.2	Tích hợp LLM local (Ollama)
+Neo4j Driver	6.2.0	Kết nối cơ sở dữ liệu đồ thị Neo4j
+neo4j-graphrag	1.17.0	Xây dựng Knowledge Graph + Retriever
+LangChain Text Splitters	0.3.11	Phân đoạn văn bản thông minh (NLTK-based)
+NLTK	3.9.4	Xử lý ngôn ngữ tự nhiên, tokenize câu
+NumPy	2.4.6	Xử lý mảng vector, tính toán số học
+dependency-injector	4.49.0	Dependency Injection Container
+Docker Compose	3.9	Container orchestration cho deployment
+Gunicorn + Uvicorn	26.0.0 / 0.49.0	ASGI web server cho production
+Nginx	-	Reverse proxy, load balancing
+SQLite / MariaDB	-	Relational database cho metadata
+pypdf	6.13.3	Trích xuất text từ PDF
+scikit-learn	1.9.0	Tiện ích ML, tiền xử lý dữ liệu
+
+Bảng 2.3. Tổng hợp công nghệ và thư viện sử dụng
+CHƯƠNG 3: PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG
+3.1. YÊU CẦU HỆ THỐNG
+3.1.1. Yêu cầu chức năng
+
+Mã CN	Tên chức năng	Mô tả	Module	Trạng thái	Ghi chú
+CN01	Upload tài liệu cục bộ	Tải lên file từ máy tính (PDF, DOCX, TXT, MD)	Frontend, API, UploadTask	Hoàn thành	Tối đa 3 file/lần, 500MB/file
+CN02	Upload từ Google Drive	Kết nối Google Drive, chọn file tải về	Frontend (JS), API	Hoàn thành	Sử dụng Google Picker API
+CN03	Trích xuất OCR	Nhận dạng chữ từ PDF scan bằng Mistral OCR	LLM OCR, ExtractService	Hoàn thành	Trả về Markdown
+CN04	Chuẩn hóa văn bản	Loại bỏ ký tự thừa, chuẩn hóa khoảng trắng	Normalize	Hoàn thành	Regex-based
+CN05	Phân đoạn văn bản	Chia text thành chunk 1000 ký tự, overlap 200	Chunker (NLTK)	Hoàn thành	Fallback manual chunking
+CN06	Tạo embedding	Chuyển chunk thành vector bằng LLM	LLM Provider	Hoàn thành	Gemini/Mistral/Ollama
+CN07	Lưu FAISS index	Lưu vector vào FAISS IndexIDMap	FaissService	Hoàn thành	File-based metadata
+CN08	Lưu BM25 index	Lưu tokenized corpus cho BM25	BM25Service	Hoàn thành	Pickle serialization
+CN09	Cache chunks	Lưu chunk text vào Redis cache	RedisCacheService	Hoàn thành	Key: conversation_id
+CN10	Chat / Hỏi đáp	Gửi câu hỏi, nhận câu trả lời từ LLM	MessageJob, LLM	Hoàn thành	Hybrid Search + RAG
+CN11	Hybrid Search	Kết hợp FAISS + BM25 + RRF	HybridSearchService	Hoàn thành	k=60 (RRF)
+CN12	Quản lý hội thoại	Tạo, xem, xóa conversation	ConversationJob	Hoàn thành	UUID7 identifier
+CN13	Xóa tài liệu	Xóa document + FAISS + BM25 + Cache + Graph	DeleteJob	Hoàn thành	Cascade delete
+CN14	Chọn LLM Provider	Chuyển đổi Gemini/Mistral/Ollama	LLMProviderFactory	Hoàn thành	Factory Pattern
+CN15	Chọn Pipeline Mode	Normal / Graph / Hybrid	MessageJob	Hoàn thành	EPipelineType enum
+CN16	Tóm tắt tài liệu	Tự động tóm tắt sau upload	UploadJob	Hoàn thành	LLM summarization
+CN17	Knowledge Graph	Xây dựng đồ thị tri thức từ tài liệu	UploadJob, Neo4j	Hoàn thành	neo4j-graphrag pipeline
+CN18	Health Check	Kiểm tra trạng thái hệ thống	HealthView	Hoàn thành	API /api/health/
+CN19	Hiển thị metrics	Hiển thị thời gian embed, query, response	Frontend	Hoàn thành	Real-time metrics panel
+
+Bảng 3.1 liệt kê tất cả chức năng hệ thống được phân tích từ mã nguồn:
+
+3.1.2. Yêu cầu phi chức năng
+    • Hiệu suất: Thời gian phản hồi câu hỏi dưới 10 giây đối với tài liệu cỡ vừa (< 50 trang).
+    • Bảo mật: Che giấu API key trong biến môi trường (.env), không lưu trữ key trong mã nguồn. Kiểm tra định dạng và kích thước tệp tải lên. Xử lý an toàn tài liệu rỗng hoặc lỗi.
+    • Khả năng mở rộng: Kiến trúc Clean Architecture và Dependency Injection cho phép dễ dàng bổ sung LLM provider mới hoặc thay thế vector store backend mà không ảnh hưởng đến các module khác.
+    • Giới hạn file: Tối đa 500MB mỗi file, tối đa 3 file mỗi lần upload. Hỗ trợ các định dạng: .pdf, .docx, .doc, .txt, .md.
+    • Logging: Hệ thống ghi nhật ký chi tiết (source, call_by, method_call) cho mọi thao tác, hỗ trợ debug và giám sát.
+    • Khả năng chịu lỗi: Mỗi tầng có try-catch riêng, log flush ở tầng cao nhất (Application Layer). Upload fail sẽ tự động rollback (xóa conversation vừa tạo).
+3.2. KIẾN TRÚC HỆ THỐNG
+Hệ thống SmartDocs AI được xây dựng theo mô hình kiến trúc Client–Server tách biệt, kết hợp Clean Architecture ở Backend. Các thành phần chính được tổ chức như sau:
+
+3.2.1. Giao diện người dùng (Frontend — Shiny App)
+Ứng dụng Shiny Python đóng vai trò Client, giao tiếp với Backend hoàn toàn qua API RESTful JSON thông qua lớp ApiClient tùy chỉnh. Giao diện được phân chia thành ba vùng chức năng rõ ràng:
+    • Sidebar trái: Quản lý upload tài liệu (local + Google Drive), danh sách tài liệu đã tải, nút xóa.
+    • Vùng chính (Main): Khung chat (box_chat_ui) hiển thị tin nhắn, ô nhập câu hỏi, lựa chọn provider/model/mode.
+    • Sidebar phải: Hiển thị lịch sử hội thoại, số liệu hiệu suất (metrics), retrieval hits, timing panel.
+3.2.2. Backend — Django REST Framework
+Backend tổ chức theo 5 tầng phân cấp rõ ràng theo nguyên tắc Clean Architecture:
+
+Tầng	Thư mục	Vai trò	Ví dụ
+API Layer	backend/api/	Nhận HTTP request, validate input, điều phối	DocumentsView, ConversationsView
+Application Layer	backend/apps/application/	Validate nghiệp vụ, phối hợp service, handle transaction	RunApplication (upload, send_message, delete)
+Job Layer	backend/apps/job/	Điều phối pipeline xử lý, thứ tự các bước	UploadJob, MessageJob, DeleteJob, ConversationJob
+Task Layer	backend/apps/tasks/	Đóng gói Job thành Celery task	UploadTask, MessageTask, DeleteTask, ConversationTask
+Core/Services	backend/apps/core/, services/	Interface, Entity, Implementation	FaissService, BM25Service, RedisCacheService, LLM clients
+
+Bảng 3.2. Phân tầng kiến trúc Backend
+
+
+
+Hình 3.2. Sơ đồ phân rã thành phần và cấu trúc các module (Backend Components)
+
+3.2.3. Hạ tầng triển khai
+Hệ thống được containerized hoàn toàn bằng Docker Compose, bao gồm các service:
+    • Nginx: Reverse proxy, route /api/* → Backend (port 8000), /* → Frontend (port 8001).
+    • Backend: Django API chạy qua Gunicorn + Uvicorn (ASGI), 4 workers.
+    • Celery Worker: Xử lý tác vụ bất đồng bộ (upload, message processing).
+    • Celery Beat: Scheduler cho các tác vụ định kỳ.
+    • Redis: Message broker (port 6379), caching, result backend.
+    • Frontend: Shiny web app chạy qua Uvicorn (port 8001).
+3.3. SƠ ĐỒ HỆ THỐNG
+3.3.1. Sơ đồ Use Case tổng quát
+
+
+
+Hình 3.1: Sơ đồ Use Case mô tả các ca sử dụng của hệ thống SmartDocs AI
+
+Hệ thống có hai tác nhân chính: (1) Người dùng — tải tài liệu, lập chỉ mục, hỏi đáp theo tài liệu và quản lý lịch sử hội thoại; (2) Hệ thống AI/LLM — tạo embedding và sinh câu trả lời dựa trên ngữ cảnh được truy vấn.
+3.3.2. Sơ đồ kiến trúc hệ thống
+
+
+Hình 3.2: Sơ đồ kiến trúc hệ thống mô tả luồng dữ liệu giữa các thành phần
+
+3.3.3. Sơ đồ pipeline xử lý tài liệu RAG
+
+
+Hình 3.3 mô tả quy trình xử lý tài liệu từ khi người dùng tải lên đến
+khi hệ thống sẵn sàng trả lời câu hỏi
+
+Pipeline gồm hai luồng song song: luồng Indexing (tải lên → trích xuất → chunk → embedding → FAISS/BM25) và luồng Retrieval & Generation (câu hỏi → tìm kiếm lai RRF → đóng gói prompt → gọi LLM → hiển thị kết quả).
+3.3.4. Sơ đồ Sequence của luồng Upload tài liệu
+
+
+
+Hình 3.4 trình bày sơ đồ sequence mô tả luồng tương tác giữa người dùng và các thành phần hệ thống khi thực hiện chức năng hỏi đáp
+3.3.5. Sơ đồ Sequence của chức năng hỏi đáp RAG
+
+3.3.6. Sơ đồ Sequence của luồng xoá hội thoại
+
+
+3.3.7. Sơ đồ phân rã thành phần (component/module)
+Ngoài sơ đồ kiến trúc tổng quát, hệ thống còn được phân rã chi tiết thành các module mã nguồn. Tầng backend/api điều phối ba nhóm chức năng chính: documents (xử lý tài liệu), conversations (hội thoại) và core search (tìm kiếm). Nhóm documents gồm các module application/document, core/normalize, core/chunk và rag_base/locate (kết nối faiss_service và neo4j_service); nhóm conversations gồm application/conversations và llm_prompt_structure (giao tiếp Gemini/Mistral/Ollama).
+
+Hình 3.5: Sơ đồ phân rã thành phần (component/module) của hệ thống
+
+3.3.8. UC01 — Upload tài liệu
+
+Thuộc tính	Mô tả
+Tên	Upload tài liệu
+Tác nhân	Người dùng
+Mô tả	Người dùng tải lên tài liệu (1-3 file, < 500MB) từ máy tính hoặc Google Drive
+Tiền điều kiện	Hệ thống đang hoạt động, LLM provider đã cấu hình
+Luồng chính	1. Chọn file → 2. Gửi API upload → 3. Tạo conversation → 4. Extract text → 5. Normalize → 6. Chunk → 7. Embed → 8. Save FAISS+BM25 → 9. Cache → 10. Summarize → 11. Trả kết quả
+Ngoại lệ	File không hợp lệ → thông báo lỗi. Extract fail → rollback conversation. LLM API fail → thông báo lỗi.
+Hậu điều kiện	Tài liệu được lập chỉ mục, conversation mới được tạo, summary hiển thị
+
+Bảng 3.3. Use Case UC01 — Upload tài liệu
+
+3.3.9. UC02 — Chat / Hỏi đáp (RAG)
+
+Thuộc tính	Mô tả
+Tên	Chat / Hỏi đáp
+Tác nhân	Người dùng
+Mô tả	Người dùng gửi câu hỏi, hệ thống truy xuất ngữ cảnh và sinh câu trả lời
+Tiền điều kiện	Đã upload ít nhất 1 tài liệu, đã chọn document
+Luồng chính	1. Nhập câu hỏi → 2. Embed query → 3. FAISS search (Dense) → 4. BM25 search (Sparse) → 5. RRF fusion → 6. Build prompt → 7. LLM generate → 8. Save messages → 9. Hiển thị kết quả + metrics
+Ngoại lệ	Không tìm thấy ngữ cảnh → LLM trả lời "không đủ thông tin"
+Hậu điều kiện	Câu trả lời hiển thị, metrics cập nhật, message lưu vào DB
+
+Bảng 3.4. Use Case UC03 — Chat / Hỏi đáp
+
+3.4. THIẾT KẾ CƠ SỞ DỮ LIỆU
+Hệ thống sử dụng cơ sở dữ liệu quan hệ SQLite (môi trường phát triển) / MySQL (môi trường sản xuất) thông qua Django ORM để quản lý thông tin cấu trúc, kết hợp với lưu trữ file vector index (FAISS/BM25) và chunk metadata (JSON) trên hệ thống file.
+
+3.4.1. Sơ đồ thực thể quan hệ (ERD)
+
+Hình 3.6 — Sơ đồ ERD của hệ thống SmartDocs AI
+
+3.4.2. Mô tả các bảng dữ liệu
+
+Bảng 3.2 — Mô tả chi tiết cấu trúc các bảng trong cơ sở dữ liệu
+
+
+3.5. THIẾT KẾ API
+
+Backend cung cấp hệ thống RESTful API đầy đủ phục vụ cho Frontend. 
+
+Method	Endpoint	Chức năng	Request	Response
+GET	/api/health/	Kiểm tra trạng thái server	Không có	{ status: ok }
+GET	/api/documents/	Lấy danh sách tài liệu	Không có	[{id, title, status}]
+POST	/api/documents/upload/	Tải lên tài liệu mới	Multipart: file	{ id, title, status: uploaded }
+POST	/api/documents/<id>/index/	Lập chỉ mục tài liệu	Không có	{ id, status: indexed, chunks }
+DELETE	/api/documents/<id>/	Xóa tài liệu	Không có	{ status: deleted }
+GET	/api/conversations/	Lấy danh sách hội thoại	Không có	[{id, title, status}]
+POST	/api/conversations/	Tạo hội thoại mới	title, provider, model, document_ids	{ conversation_id, title, status }
+POST	/api/conversations/<id>/messages/	Gửi câu hỏi RAG	content, provider, model	{ assistant, metrics }
+                                  
+Bảng 3.3 liệt kê tất cả các endpoint
+3.6. THIẾT KẾ DI CONTAINER
+Lớp BackendContainer sử dụng dependency-injector để quản lý vòng đời của tất cả các service. Dưới đây là bảng tổng hợp các provider đã khai báo:
+
+Provider	Loại	Lớp triển khai	Phụ thuộc chính
+config_provider	Singleton	EnvConfigProvider	Đọc biến môi trường (.env)
+logger / log_pool	Singleton	Logger / LogPool	LOGS_DIR
+llm_prompt_structure	Singleton	LLMPromptStructure	-
+llm_provider_factory	Singleton	LLMProviderFactory	config_provider, log_pool
+database_provider	Singleton	DatabaseProvider	log_pool
+memory_pool	Singleton	FaissMemoryPool	log_pool
+llm_ocr_factory	Singleton	LLMOCRFactory	config_provider, log_pool
+llm_uploader	Factory	MistralUploader	log_pool
+file_storage	Factory	FileStorageService	METADATA_DIR, llm_uploader, log_pool
+extract_content_service	Factory	ExtractContentService	llm_ocr_factory, file_storage, log_pool
+normalize	Singleton	Normalize	log_pool
+chunker	Singleton	Chunker	log_pool (chunk_size=1000, overlap=200)
+cache_session	Factory	RedisCacheSession	config_provider, METADATA_DIR, log_pool
+locate_service	Factory	LocateService	METADATA_DIR, log_pool
+neo4j_session	Factory	Neo4jSession	config_provider, METADATA_DIR, node_labels_config
+hybrid_search_service	Factory	HybridSearchService	locate_service, log_pool
+upload_job	Factory	UploadJob	extract, normalize, chunker, cache, llm, locate, ...
+message_job	Factory	MessageJob	llm, config, prompt, locate, cache, hybrid_search, ...
+delete_job	Factory	DeleteJob	locate, neo4j, cache, storage, time_counter
+conversation_job	Factory	ConversationJob	llm, config, db, locate, cache, memory_pool, ...
+run_application	Factory	RunApplication	upload_task, message_job, delete_job, db, logger
+
+Bảng 3.6. Chi tiết DI Container (BackendContainer)
+
+3.7. THIẾT KẾ API ENDPOINTS
+Bảng 3.7 liệt kê các API endpoint được thiết kế:
+
+Method	Endpoint	Mô tả	Request Body	Response
+GET	/api/health/	Kiểm tra trạng thái hệ thống	-	{ status: 'ok' }
+POST	/api/documents/upload/	Upload tài liệu (multipart form)	file, provider, model	{ id, title, status, conversation_id }
+DELETE	/api/documents/<id>/	Xóa tài liệu	-	{ success: true }
+GET	/api/conversations/	Danh sách hội thoại	-	[{ id, title, date }]
+GET	/api/conversations/<id>/	Chi tiết hội thoại	-	{ id, title, messages }
+POST	/api/conversations/<id>/messages/	Gửi tin nhắn (RAG query)	{ message, provider, model }	{ message, metrics }
+DELETE	/api/conversations/<id>/	Xóa hội thoại	-	{ success: true }
+POST	/api/application/upload/	Upload qua Application layer	files, provider, model, type	{ id, conversation_id, status }
+POST	/api/application/message/	Gửi tin nhắn qua Application layer	{ conversation_id, message, provider, model }	{ message, conversation_id }
+GET	/api/providers/	Danh sách LLM providers	-	[{ name, models }]
+
+Bảng 3.7. Thiết kế API Endpoints
+
+
+
+3.8. THIẾT KẾ GIAO DIỆN NGƯỜI DÙNG
+Giao diện ứng dụng SmartDocs AI được xây dựng bằng Shiny for Python với phong cách thiết kế hiện đại sử dụng hiệu ứng Glassmorphism (kính mờ), nền Gradient đa sắc và bố cục 3 cột linh hoạt.
+3.8.1. Cấu trúc giao diện
+    • Header: Thanh tiêu đề chứa logo SmartDocs AI và nút cài đặt hệ thống.
+    • Sidebar trái: Danh sách tài liệu đã tải lên với trạng thái lập chỉ mục, nút tải lên file cục bộ và Google Drive.
+    • Vùng chat chính: Khung hiển thị lịch sử tin nhắn dạng bong bóng, thanh nhập câu hỏi và nút gửi.
+    • Sidebar phải: Bảng số liệu thời gian thực (Timing Metrics): provider, model, thời gian embedding, truy vấn, LLM; danh sách retrieval hits.
+3.8.2. Danh sách hình ảnh minh họa
+    • Các màn hình giao diện chính cần chụp để đưa vào báo cáo (tương ứng Hình 4.1 đến 4.4 ở Chương 4):
+    • Hình 4.1: Giao diện tổng quan trang chủ với hiệu ứng Glassmorphism.
+    • Hình 4.2: Hộp thoại Cấu hình hệ thống (System Settings).
+    • Hình 4.3: Màn hình tải lên tài liệu và thanh trạng thái xử lý.
+    • Hình 4.4: Giao diện hỏi đáp với câu trả lời Markdown và bảng thống kê timing.
+3.9. PHÂN TÍCH PIPELINE XỬ LÝ TÀI LIỆU VÀ AI
+Hệ thống hoạt động theo mô hình Hybrid RAG với hai luồng xử lý chính:
+3.9.1. Luồng Indexing (Lập chỉ mục)
+
+Bước	Mục đích	Input	Output	Hàm/Module	Thư viện
+1	Kiểm tra & Lưu file	File tải lên	File hợp lệ trên đĩa	DocumentApplication._validate_upload_input	Python built-in
+2	Trích xuất văn bản	File .pdf/.docx/.txt/.md	Chuỗi văn bản thô	DocumentIndexView._extract_text	pypdf, zipfile
+3	Chuẩn hóa văn bản	Chuỗi thô	Chuỗi đã làm sạch	Normalize.normalize	Python re, unicodedata
+4	Phân đoạn (Chunking)	Chuỗi đã chuẩn hóa	Danh sách chunks	Chunker.create_chunks	langchain-text-splitters, NLTK
+5	Tạo Dense Embedding	Danh sách chunk text	Vector float32 3072-dim	gemini.embedding()	google-genai
+6	Lập FAISS Index	Vector float32 array	File .faiss trên đĩa	FaissService.create_index	faiss-cpu
+7	Lập BM25 Index	Danh sách chunk text đã tokenize	File .bm25 Pickle	BM25Service.upsert	rank_bm25, pickle
+8	Lưu chunk metadata	Danh sách chunk text	File JSON metadata	Upload Job	json module
+
+Bảng 3.4 — Các bước trong pipeline Indexing
+
+3.9.2. Luồng Retrieval & Generation (Truy vấn)
+
+Bước	Mục đích	Hàm/Module	Ghi chú kỹ thuật
+1	Tạo embedding câu hỏi	gemini.embedding()	Sinh vector 3072-dim cho query
+2	Tìm kiếm Dense (FAISS)	FaissService.search()	Lấy top-K chunk theo khoảng cách L2
+3	Tìm kiếm Sparse (BM25)	BM25Service.search()	Lấy top-K chunk theo điểm BM25
+4	Gộp kết quả RRF	HybridSearchService.fuse_results()	Score = Σ 1/(60 + rank); chọn top-5
+5	Đóng gói prompt	MessageJob (nội bộ)	System prompt + 5 chunks ngữ cảnh + câu hỏi
+6	Lưu tin nhắn & trả về	MessageListView	Lưu vào DB, trả JSON kèm timing metrics
+
+Bảng 3.5 — Các bước trong pipeline Retrieval & Generation
+
+3.10. PHÂN TÍCH THUẬT TOÁN CHÍNH
+3.10.1. Thuật toán Reciprocal Rank Fusion (RRF)
+Thuật toán RRF được hiện thực trong lớp HybridSearchService.fuse_results() với mô tả pseudocode như sau:
+Đầu vào:
+  dense_hits: Danh sách kết quả FAISS (sắp xếp theo khoảng cách L2 tăng dần)
+  sparse_hits: Danh sách kết quả BM25 (sắp xếp theo điểm BM25 giảm dần)
+  rrf_k = 60 (tham số làm mịn); top_k = 5
+
+Bắt đầu:
+  fused_scores = {}; hit_map = {}
+  Với mỗi (rank, hit) trong dense_hits:
+    fused_scores[hit.text] += 1.0 / (rrf_k + rank + 1)
+  Với mỗi (rank, hit) trong sparse_hits:
+    fused_scores[hit.text] += 1.0 / (rrf_k + rank + 1)
+  Sắp xếp fused_scores giảm dần theo điểm số.
+  Lấy top_k kết quả đầu tiên → trả về results
+Kết thúc.
+
+CHƯƠNG 4: TRIỂN KHAI VÀ KẾT QUẢ
+4.1. MÔI TRƯỜNG TRIỂN KHAI VÀ CÀI ĐẶT
+4.1.1. Yêu cầu môi trường
+Thành phần	Chi tiết
+Hệ điều hành	Windows 11 (phát triển), Linux (deployment)
+Ngôn ngữ	Python 3.14
+IDE	Visual Studio Code
+Version Control	Git + GitHub
+Container	Docker Desktop, Docker Compose v3.9
+Database	SQLite (development), MariaDB (production)
+Cache / Broker	Redis 7 Alpine
+Graph Database	Neo4j (optional, cho GraphRAG)
+Web Server	Gunicorn 26.0.0 + Uvicorn 0.49.0 (ASGI)
+Reverse Proxy	Nginx
+
+4.1.2. Hướng dẫn cài đặt
+Bước 1: Tạo và kích hoạt môi trường ảo
+# Tạo môi trường ảo
+python -m venv .venv
+
+# Kích hoạt (Windows)
+.venv\Scripts\activate
+
+# Kích hoạt (macOS / Linux)
+source .venv/bin/activate
+
+Bước 2: Cài đặt thư viện phụ thuộc
+pip install -r frontend/requirements/dev.txt
+pip install -r backend/requirements/dev.txt
+
+Bước 3: Cấu hình biến môi trường (.env)
+DEBUG=1
+SECRET_KEY=<khoa-bi-mat-django>
+GEMINI_API_KEY=AIzaSy...
+MISTRAL_API_KEY=<khoa-api-mistral>
+OLLAMA_BASE_URL=http://localhost:11434
+
+Bước 4: Khởi tạo cơ sở dữ liệu và chạy hệ thống
+# Tạo cấu trúc bảng cơ sở dữ liệu
+python manage.py migrate
+
+# Chạy Backend Django (cổng 8000)
+python manage.py runserver 0.0.0.0:8000
+
+# Chạy tác vụ nền Celery (terminal mới)
+celery -A app worker --loglevel=info --queues=indexing,default
+
+# Chạy Frontend Shiny (cổng 8001)
+python -m shiny run --app-dir frontend --reload --port 8001
+
+Sau khi khởi động thành công, truy cập ứng dụng tại: http://127.0.0.1:8001
+4.2. GIAO DIỆN NGƯỜI DÙNG
+Giao diện SmartDocs AI được thiết kế theo phong cách hiện đại với hiệu ứng Glassmorphism, nền gradient tối kết hợp các quả cầu phát sáng (bg-orb) tạo cảm giác chuyên nghiệp và thân thiện.
+4.2.1. Trang chính — Giao diện Chat
+Hình 4.1. Giao diện trang chính SmartDocs AI
+Giao diện chính được chia thành ba vùng:
+    • Sidebar trái: Hiển thị danh sách tài liệu đã upload, nút upload mới (local/Drive), nút xóa tài liệu đã chọn. Mỗi tài liệu hiển thị trạng thái (uploaded, processing, indexed).
+    • Vùng chat chính: Hiển thị tin nhắn theo luồng hội thoại, hỗ trợ Markdown rendering cho câu trả lời. Ô nhập câu hỏi ở dưới cùng. Thanh chọn Provider/Model/Mode ở phía trên.
+    • Sidebar phải: Lịch sử hội thoại, panel metrics (Provider, Model, Mode), panel timing (Embed ms, Query ms, Response ms, Total ms), panel retrieval hits.
+4.2.2. Modal Upload tài liệu
+Hình 4.2. Modal upload tài liệu
+Modal upload hỗ trợ hai nguồn tài liệu:
+    • Upload cục bộ (Local): Kéo thả hoặc chọn file từ máy tính, hỗ trợ đa file (tối đa 3 file), hiển thị tiến trình upload.
+    • Google Drive: Tích hợp Google Picker API, cho phép người dùng duyệt và chọn file trực tiếp từ tài khoản Google Drive mà không cần tải về máy trước.
+4.2.3. Kết quả chat với số liệu hiệu suất
+Hình 4.3. Kết quả chat với metrics panel
+Mỗi câu trả lời từ hệ thống đi kèm các thông tin meta:
+    • Provider và Model đã sử dụng.
+    • Thời gian tổng (Total ms) và chi tiết từng giai đoạn (Embed ms, Query ms, Response ms).
+    • Số lượng retrieval hits tìm được.
+    • Câu trả lời được hiển thị với định dạng Markdown (headings, bullet list, code blocks, bảng).
+4.2.4. Modal cài đặt hệ thống
+Hình 4.4. Modal cài đặt hệ thống (Settings)
+4.3. TRIỂN KHAI CHI TIẾT CÁC MODULE
+4.3.1. Module OCR — Trích xuất tài liệu (ExtractContentService)
+Module OCR chịu trách nhiệm chuyển đổi nội dung file thô sang văn bản thuần. Quá trình xử lý:
+
+Bước	Thành phần	Mô tả	Input	Output
+1	FileStorageService	Lưu file vào thư mục metadata/storage	File upload	File path trên server
+2	MistralUploader	Upload file lên Mistral Files API	File path	Mistral file_id
+3	LLMOCRFactory	Chọn OCR extractor theo provider	provider name	ILLMOCRExtractor instance
+4	MistralOCR	Gọi Mistral OCR API trích xuất văn bản	file_id	Markdown text từ tài liệu
+5	ExtractContentService	Ghép nối kết quả, trả về IExtractResponse	OCR result	IExtractResponse (extracted_text)
+
+Bảng 4.2. Pipeline trích xuất tài liệu
+
+Đoạn mã 4.1. Trích xuất tài liệu
+# Ví dụ code: ExtractContentService.extract()
+class ExtractContentService(IExtractContent):
+    def extract(self, file_path: Path, provider: EProviderName) -> IExtractResponse:
+        # 1. Lưu file vào storage
+        stored_path = self.storage.save(file_path)
+        # 2. Tạo OCR extractor theo provider
+        extractor = self.factory.create(provider)
+        # 3. Trích xuất văn bản
+        result = extractor.extract(stored_path)
+        return IExtractResponse(extracted_text=result.text, ...)
+4.3.2. Module Normalize & Chunking
+Sau khi trích xuất, văn bản thô cần được chuẩn hóa và phân đoạn:
+Chuẩn hóa (Normalize):
+    • Loại bỏ ký tự xuống dòng thừa (\n+ → \n) bằng regex.
+    • Chuẩn hóa khoảng trắng và tab ([ \t]+ → ' ').
+    • Trim whitespace đầu cuối.
+Phân đoạn (Chunking):
+    • Sử dụng NLTKTextSplitter từ thư viện langchain-text-splitters.
+    • Tham số: chunk_size = 1000 ký tự, chunk_overlap = 200 ký tự.
+    • NLTK tokenize theo câu (sentence boundary) thay vì cắt cứng theo ký tự, đảm bảo mỗi chunk có ý nghĩa ngữ pháp hoàn chỉnh.
+    • Fallback: Nếu NLTK không tạo được chunk (trường hợp hiếm), sử dụng phương pháp cắt thủ công theo kích thước cố định với overlap.
+Đoạn mã 4.2. Phân đoạn văn bản với NLTK
+# Ví dụ code: Chunker.create_chunks()
+class Chunker(IChunking):
+    def create_chunks(self, normalized_document: str) -> list[str]:
+        text_splitter = NLTKTextSplitter(
+            chunk_size=self.chunk_size,        # 1000
+            chunk_overlap=self.overlap          # 200
+        )
+        chunks = text_splitter.split_text(normalized_document)
+        if len(chunks) == 0:
+            # Fallback: manual chunking
+            chunks = self.__chunk_by_size(normalized_document, self.chunk_size, self.overlap)
+        return chunks
+4.3.3. Module Embedding & Vector Store (FAISS)
+Module này chuyển đổi chunk text thành vector embedding và lưu vào FAISS index:
+    • Mỗi chunk được gửi tới LLM embedding API (Gemini/Mistral/Ollama) để tạo vector float32.
+    • Tất cả vector được stack thành ma trận NumPy 2D (n_chunks × dimension).
+    • Chunk keys được tạo bằng cách hash SHA-256 nội dung "document_id:chunk_index" thành int64 — đảm bảo unique và cho phép mapping ngược.
+    • FAISS IndexIDMap được tạo với IndexFlatL2 base, add_with_ids() gán chunk keys làm vector ID.
+    • Index được serialize ra file metadata/faiss/<conversation_id>.faiss.
+Đoạn mã 4.3. Lưu trữ FAISS index
+# Ví dụ code: FaissService.create_index() + upsert()
+class FaissService(IVectorStoreService):
+    def create_index(self, np_vectors, ids, ...) -> faiss.IndexIDMap:
+        dimension = np_vectors.shape[1]
+        index = faiss.IndexIDMap(faiss.IndexFlatL2(dimension))
+        index.add_with_ids(np_vectors, ids)
+        return index
+
+    def upsert(self, index, conversation_id, ...) -> IVectorDBUpsertResponse:
+        destination_path = create_path_file(self.metadata_dir, conversation_id, "faiss")
+        faiss.write_index(index, str(destination_path))
+        return IVectorDBUpsertResponse(id=conversation_id, is_success=True)
+4.3.4. Module BM25 (Sparse Search)
+BM25 index được tạo song song với FAISS index để phục vụ tìm kiếm từ khóa:
+    • Corpus (danh sách chunk texts) được tokenize bằng lowercase splitting.
+    • Tạo mô hình BM25Okapi từ thư viện rank-bm25.
+    • Đóng gói {keys, model} và serialize bằng pickle ra file metadata/bm25/<conversation_id>.bm25.
+    • Khi truy vấn, BM25 trả về các chunk có ít nhất 1 từ khóa trùng khớp, xếp hạng theo BM25 score.
+4.3.5. Module Hybrid Search + RRF (HybridSearchService)
+Module này kết hợp kết quả từ FAISS (Dense) và BM25 (Sparse) bằng thuật toán RRF:
+Đoạn mã 4.4. Hybrid Search với RRF fusion (code thực tế)
+# Code thực tế: HybridSearchService.fuse_results()
+class HybridSearchService(IHybridSearchService):
+    def __init__(self, locate_service, logger, rrf_k: int = 60):
+        self.rrf_k = rrf_k  # k=60 theo khuyến nghị Elasticsearch
+
+    def fuse_results(self, dense_hits, sparse_hits, top_k=5):
+        fused_scores = {}
+        hit_map = {}
+
+        # Tính điểm RRF cho FAISS (Dense)
+        for rank, hit in enumerate(dense_hits):
+            key = hit.text
+            fused_scores[key] = fused_scores.get(key, 0.0) + 1.0 / (self.rrf_k + rank + 1)
+            hit_map[key] = hit
+
+        # Tính điểm RRF cho BM25 (Sparse)
+        for rank, hit in enumerate(sparse_hits):
+            key = hit.text
+            fused_scores[key] = fused_scores.get(key, 0.0) + 1.0 / (self.rrf_k + rank + 1)
+            if key not in hit_map:
+                hit_map[key] = hit
+
+        # Sắp xếp theo fused score giảm dần, lấy top_k
+        sorted_fused = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
+        return [hit_map[key] for key, score in sorted_fused[:top_k]]
+4.3.6. Module GraphRAG (Neo4j Knowledge Graph)
+Module GraphRAG xây dựng đồ thị tri thức từ tài liệu sử dụng Neo4j:
+
+Bước	Thành phần	Mô tả
+1	Neo4jSession.connect()	Kết nối tới Neo4j server qua Bolt protocol
+2	Neo4jService.create_vector_index()	Tạo vector index trên node label 'Chunk'
+3	Neo4jService.execute_file_to_kg_pipeline()	Pipeline: file → LLM extract entities → tạo node/edge → build graph
+4	VectorCypherRetriever	Retriever kết hợp vector search + Cypher graph traversal
+5	2-hop expansion	Mở rộng từ chunk gần nhất qua 2 bước quan hệ, thu thập entities
+
+Bảng 4.3. Pipeline xây dựng Knowledge Graph
+
+4.3.7. Module Cache (Redis + FaissMemoryPool)
+Hệ thống sử dụng hai lớp cache để tối ưu hiệu suất:
+Redis Cache (RedisCacheService):
+    • Lưu trữ mapping giữa chunk key (int64 hash) và chunk text gốc.
+    • Key: conversation_id, Value: danh sách ICacheParamValue (index, text_value, document_id).
+    • Cho phép tra cứu ngược từ kết quả FAISS search (chỉ trả về chunk ID) về nội dung text gốc để xây dựng prompt.
+FaissMemoryPool:
+    • In-memory cache (dictionary) giữ FAISS index đã load trong RAM.
+    • Key: conversation_id, Value: faiss index object.
+    • Tránh đọc file faiss index từ disk mỗi lần query, cải thiện đáng kể thời gian phản hồi cho các cuộc hội thoại liên tiếp.
+
+4.4. KẾT QUẢ THỰC NGHIỆM
+4.4.1. Kịch bản thử nghiệm 1 — Tải lên và xử lý tệp PDF
+Mô tả: Người dùng tải lên tệp PDF văn bản thông thường (không scan), hệ thống thực hiện trích xuất, phân đoạn và lập chỉ mục FAISS/BM25.
+Tiêu chí	Kết quả quan sát
+Thời gian trích xuất văn bản	< 2 giây cho tệp PDF dưới 50 trang
+Số lượng chunk được tạo	Trung bình 15–30 chunk/tài liệu 50 trang
+Thời gian tạo embedding (Gemini API)	3–8 giây tùy kích thước tài liệu
+Trạng thái sau indexing	Chuyển từ 'uploaded' → 'indexed' thành công
+
+4.4.2. Kịch bản thử nghiệm 2 — Hỏi đáp theo tài liệu
+Mô tả: Người dùng đặt câu hỏi liên quan trực tiếp đến nội dung tài liệu đã lập chỉ mục.
+Tiêu chí	Kết quả quan sát
+Thời gian tạo embedding câu hỏi	< 0.5 giây
+Thời gian tìm kiếm FAISS + BM25	< 0.1 giây
+Tổng thời gian phản hồi (Gemini)	3–6 giây (phụ thuộc mạng)
+Độ chính xác câu trả lời	Cao — câu trả lời bám sát ngữ cảnh tài liệu
+Số nguồn trích dẫn hiển thị	Top 5 retrieval hits với điểm số RRF
+
+
+4.4.3. Thống kê hiệu năng pipeline xử lý
+Thống kê hiệu năng của các mô hình, thời gian xử lý của pipeline được đo bằng cách gọi trực tiếp API backend (không thông qua giao diện), ghi nhận thời gian của từng giai đoạn trong pipeline. Mỗi cấu hình model được chạy 3 lần trên cùng một tài liệu và cùng một câu hỏi để lấy giá trị trung bình. 
+Môi trường thử nghiệm: CPU Intel Core i7-12700H, RAM 16GB; tài liệu kiểm thử là tệp PDF 10 trang (2.5MB); câu hỏi kiểm thử: “Tóm tắt nội dung chính của tài liệu”.
+
+
+Model	Provider	Loại	Ưu điểm	Nhược điểm
+Gemini 2.5 Flash	Google	Cloud API	Nhanh nhất, chi phí thấp	Độ chính xác trung bình
+Gemini Pro	Google	Cloud API	Độ chính xác cao nhất	Chậm hơn, chi phí cao
+Qwen2.5:3b	Ollama	Local	Miễn phí, bảo mật dữ liệu	Chậm nhất, cần GPU
+
+
+
+Bảng 4.1 — Tổng quan ba mô hình LLM được thử nghiệm
+
+
+
+
+Giai đoạn xử lý	Gemini Flash	Gemini Pro	Qwen2 Local
+Processing file	1965	1963	1960
+Embedding	389.5	389.5	935
+Query (FAISS search)	89.4	89.5	89.3
+Generation	719.5	3195.5	5409
+Total	3163.4	5637.5	8393.3
+
+Bảng 4.2 — Thời gian xử lý trung bình của ba mô hình (đơn vị: ms)
+
+
+Nhận xét:
+    • Gemini Flash cho thời gian phản hồi nhanh nhất (~3.2s) nhờ tối ưu cho tốc độ.
+    • Gemini Pro cho chất lượng câu trả lời tốt nhất nhưng chậm hơn đáng kể (~8.5s).
+    • Ollama (local) có thời gian embedding cao hơn do chạy trên CPU, nhưng đảm bảo dữ liệu không rời máy chủ.
+
+Hình 4.4: Biểu đồ so sánh tốc độ sinh văn bản của ba mô hình thực nghiệm
+
+4.4.4. Đánh giá chất lượng Hybrid Search
+So sánh chất lượng truy xuất ngữ cảnh giữa ba phương pháp:
+
+Phương pháp	Precision@5	Recall@5	Đặc điểm
+Dense-only (FAISS)	Tốt	Trung bình	Tìm đoạn ngữ nghĩa tương đồng, bỏ sót từ khóa chuyên ngành
+Sparse-only (BM25)	Trung bình	Tốt	Chính xác với từ khóa, không hiểu paraphrase
+Hybrid (FAISS + BM25 + RRF)	Tốt nhất	Tốt nhất	Kết hợp ưu điểm cả hai, bao phủ toàn diện
+
+Bảng 4.5. So sánh chất lượng truy xuất
+
+Kết quả cho thấy Hybrid Search + RRF cho chất lượng truy xuất ngữ cảnh tốt nhất, đặc biệt với các câu hỏi kết hợp giữa ngôn ngữ tự nhiên và thuật ngữ chuyên môn.
+4.4.5. So sánh hiệu năng Graph RAG và Vector RAG
+Để đánh giá hiệu quả của phương pháp Graph RAG so với phương pháp Vector RAG truyền thống (FAISS), nhóm đã tiến hành đo thời gian xử lý chi tiết đối với model Gemini 2.5 Flash trên cùng một tệp tài liệu và câu hỏi kiểm thử:
+
+Giai đoạn xử lý	Graph RAG (ms)	Vector / FAISS (ms)
+Processing file	19,036	16,610
+Embedding	989.5	935.0
+Query / Retrieval	827.0	13.5
+Generation	5,195.5	5,469.0
+Total Time	26,077.0	23,030.5
+
+Bảng 4.6. So sánh thời gian xử lý giữa Graph RAG và Vector RAG
+
+
+Hình 4.5: Biểu đồ so sánh thời gian xử lý pipeline Graph RAG và Vector (Gemini 2.5 Flash)
+
+Nhận xét: VectorDB (FAISS) có thời gian truy vấn nhanh hơn nhiều lần so với Graph RAG (graph traversal phức tạp hơn), tổng thời gian tổng thể cũng thấp hơn — phù hợp cho production cần tốc độ cao và truy vấn đơn giản. Graph RAG cho chất lượng ngữ cảnh tốt hơn ở các truy vấn phức tạp, đa bước (multi-hop), được xem là hướng mở rộng trong tương lai.
+4.4.6. Chi tiết thời gian xử lý pipeline
+
+Giai đoạn xử lý	Thời gian trung bình	Ghi chú
+Upload & Extract (OCR)	2-5 giây	Phụ thuộc kích thước file và Mistral API
+Normalize	< 50 ms	Regex processing, rất nhanh
+Chunking (NLTK)	100-300 ms	Phụ thuộc độ dài văn bản
+Embedding (tất cả chunks)	1-3 giây	Phụ thuộc số lượng chunk và API latency
+FAISS index creation + save	< 100 ms	IndexFlatL2 rất nhanh với dữ liệu vừa
+BM25 index creation + save	< 50 ms	Tokenize + pickle serialize
+Redis cache set	< 50 ms	In-memory operation
+Summarize document	2-4 giây	LLM generate summary
+Total Upload Pipeline	5-15 giây	Phụ thuộc LLM provider và kích thước file
+
+Bảng 4.7. Chi tiết thời gian xử lý pipeline Upload
+
+
+Giai đoạn xử lý	Thời gian trung bình	Ghi chú
+Embed query	200-500 ms	1 lần gọi API embedding
+FAISS search	< 10 ms	IndexFlatL2 exact search
+BM25 search	< 20 ms	In-memory scoring
+RRF fusion	< 5 ms	Dictionary merge + sort
+Cache lookup	< 10 ms	Redis get
+Build prompt	< 5 ms	String concatenation
+LLM generate	2-8 giây	Phụ thuộc model và độ dài câu trả lời
+Total Query Pipeline	3-9 giây	Phụ thuộc LLM provider
+
+Bảng 4.8. Chi tiết thời gian xử lý pipeline Query
+
+Pseudo code — Hàm đo hiệu năng pipeline (gọi backend trực tiếp):
+FUNCTION run_performance_test(models, test_document, test_query, num_runs):
+    # Upload và index tài liệu MỘT LẦN để so sánh công bằng
+    document_id     = upload_and_index_document(test_document)
+    conversation_id = create_conversation([document_id])
+    results = {}
+ 
+    FOR EACH cfg IN models:                       # gemini-flash, gemini-pro, qwen2.5:3b
+        timings = []
+        FOR i FROM 1 TO num_runs:                  # chạy 3 lần lấy trung bình
+            start = current_time_ms()
+            response = call_api_send_message(conversation_id, test_query,
+                                             cfg.provider, cfg.model)
+            elapsed = current_time_ms() - start
+            timings.append({
+                total_ms   : elapsed,
+                embed_ms   : response.metrics.embed_ms,
+                query_ms   : response.metrics.query_ms,
+                response_ms: response.metrics.response_ms
+            })
+            sleep(1000)                            # tránh rate limit
+ 
+        results[cfg.model] = {
+            avg_total_ms   : mean(timings.total_ms),
+            avg_embed_ms   : mean(timings.embed_ms),
+            avg_query_ms   : mean(timings.query_ms),
+            avg_response_ms: mean(timings.response_ms)
+        }
+ 
+    save_results_to_json("performance_results.json", results)
+    RETURN results
+4.5. KIỂM THỬ
+4.5.1. Tổng quan kiểm thử
+Hệ thống được kiểm thử ở nhiều cấp độ với tổng cộng hơn 30 file test:
+
+
+Loại kiểm thử	Số file test	Mô tả	Công cụ
+Unit Test	15+	Kiểm thử từng module riêng lẻ (chunking, embedding, FAISS, BM25, normalize, ...)	pytest
+Integration Test	5+	Kiểm thử tích hợp giữa các module (upload pipeline, message pipeline)	pytest
+Mock Test	5+	Kiểm thử với mock objects, không gọi API thật	pytest-mock
+System Check	1	Kiểm tra toàn bộ hệ thống (DB, Redis, FAISS, LLM providers)	Custom script
+Performance Test	2+	Đo thời gian phản hồi, so sánh providers	Custom script
+
+Bảng 4.9. Tổng quan kiểm thử
+
+4.5.2. Các test case tiêu biểu
+
+Test Case	Module	Mô tả	Kết quả
+test_chunking	Chunker	Kiểm tra phân đoạn text với NLTK, overlap chính xác	Pass
+test_embedding	GeminiClient	Kiểm tra tạo embedding vector với Gemini API	Pass
+test_faiss_create_search	FaissService	Tạo index, upsert, search, delete	Pass
+test_bm25_upsert_search	BM25Service	Tạo BM25 index, search với từ khóa	Pass
+test_normalize	Normalize	Chuẩn hóa text với regex	Pass
+test_redis_cache	RedisCacheService	Set/get/delete cache data	Pass
+test_upload_pipeline	UploadTask	End-to-end upload: file → extract → chunk → embed → save	Pass
+test_message_pipeline	MessageJob	End-to-end query: question → search → prompt → LLM → answer	Pass
+test_delete_cascade	DeleteJob	Xóa conversation + tất cả dữ liệu liên quan	Pass
+test_hybrid_search	HybridSearchService	FAISS + BM25 + RRF fusion	Pass
+test_log_pool	LogPool	Batch logging, flush, file rotation	Pass
+test_load_conversation	ConversationJob	Load lại conversation từ DB + cache + FAISS	Pass
+
+Bảng 4.10. Các test case tiêu biểu
+
+4.6. ĐÁNH GIÁ HỆ THỐNG
+4.6.1. Bảo mật và giới hạn
+Vấn đề	Giải pháp hiện tại	Trạng thái	Ghi chú
+API Key bảo mật	Lưu trong .env, không commit vào Git	Đã triển khai	.env.example làm mẫu
+Kiểm tra file upload	Validate định dạng, kích thước (< 500MB)	Đã triển khai	API Layer validation
+Xử lý lỗi LLM API	Try-catch + error logging + status tracking	Đã triển khai	Mỗi tầng xử lý riêng
+Rollback khi upload fail	Xóa conversation nếu pipeline fail	Đã triển khai	RunApplication.upload()
+CORS	django-cors-headers configured	Đã triển khai	Cho phép Frontend call API
+Rate Limiting	Chưa triển khai	Cần bổ sung	Dùng DRF throttling
+
+4.6.2. Điểm mạnh của hệ thống
+    • Kiến trúc Clean Architecture đảm bảo tính mô-đun hóa cao, dễ bảo trì và mở rộng. Mỗi tầng có trách nhiệm rõ ràng, có thể thay thế implementation mà không ảnh hưởng tầng khác.
+    • Hybrid Search + RRF cho kết quả truy xuất ngữ cảnh chính xác hơn so với chỉ dùng FAISS hoặc BM25 đơn lẻ, đã được kiểm chứng qua thực nghiệm.
+    • Hỗ trợ nhiều nhà cung cấp LLM linh hoạt (Gemini, Mistral, Ollama) thông qua Factory Pattern, phù hợp nhiều kịch bản: cloud, on-premise, hybrid.
+    • Dependency Injection Container (BackendContainer) quản lý tập trung vòng đời service, cho phép unit test dễ dàng bằng cách inject mock objects.
+    • Giao diện hiện đại, trực quan với Glassmorphism effect, hiển thị câu trả lời Markdown và số liệu thống kê thời gian thực.
+    • GraphRAG tích hợp Neo4j cho khả năng truy vấn tri thức nâng cao (multi-hop reasoning) vượt xa RAG truyền thống.
+    • Hệ thống logging chi tiết (LogPool) với batch writing, hỗ trợ truy vết lỗi và giám sát performance.
+4.6.3. Hạn chế hiện tại
+    • Chưa có tính năng streaming response (trả từng token từng chữ), khiến người dùng phải chờ toàn bộ câu trả lời hoàn thành trước khi hiển thị.
+    • Chưa có cơ chế quản lý quota (giới hạn số câu hỏi / lượng tài liệu) cho từng phiên làm việc.
+    • Lưu trữ vector index dạng file local (FAISS file, BM25 pickle) — khó scale ngang (horizontal scaling) trong môi trường nhiều server.
+    • Chưa có hệ thống xác thực người dùng hoàn chỉnh — hiện tại mọi người dùng truy cập cùng một môi trường.
+    • BM25 tokenize đơn giản bằng lowercase splitting, chưa hỗ trợ stemming/lemmatization cho tiếng Việt.
+    • 
+CHƯƠNG 5: KẾT LUẬN VÀ KIẾN NGHỊ
+5.1. KẾT LUẬN
+Sau quá trình nghiên cứu, thiết kế và triển khai, đồ án "SmartDocs AI" đã hoàn thành các mục tiêu đề ra:
+    • Xây dựng thành công ứng dụng web hoàn chỉnh hỗ trợ đọc và phân tích tài liệu đa định dạng (PDF, DOCX, TXT, MD) bằng trí tuệ nhân tạo, với kiến trúc Clean Architecture phân tầng rõ ràng.
+    • Triển khai đầy đủ pipeline RAG (Retrieval-Augmented Generation) từ trích xuất văn bản (hỗ trợ OCR qua Mistral), chuẩn hóa, phân đoạn (NLTK Chunker), tạo embedding đến truy vấn và sinh câu trả lời có căn cứ từ tài liệu nguồn.
+    • Tích hợp thành công cơ chế Tìm kiếm lai (Hybrid Search) kết hợp FAISS (Dense Vector Search) và BM25 (Sparse Keyword Search) với thuật toán gộp RRF (k=60), giúp nâng cao đáng kể chất lượng truy xuất ngữ cảnh so với các phương pháp đơn lẻ.
+    • Hỗ trợ đa nhà cung cấp LLM (Gemini, Mistral, Ollama) thông qua Factory Pattern và Dependency Injection, cho phép người dùng linh hoạt chuyển đổi giữa cloud và local deployment.
+    • Tích hợp GraphRAG sử dụng Neo4j để xây dựng đồ thị tri thức từ tài liệu, mở rộng khả năng truy vấn ngữ nghĩa đa bước.
+    • Cung cấp giao diện người dùng thân thiện, hiện đại với hiệu ứng Glassmorphism, hiển thị câu trả lời có định dạng Markdown và số liệu thống kê hiệu suất thời gian thực.
+    • Triển khai hạ tầng Docker Compose hoàn chỉnh với Nginx, Gunicorn, Celery, Redis, sẵn sàng cho production deployment.
+Kết quả thực nghiệm cho thấy hệ thống đáp ứng tốt các tiêu chí về độ chính xác thông tin, tốc độ phản hồi (3-9 giây tùy provider) và khả năng chịu lỗi, đóng vai trò là công cụ hỗ trợ đọc hiểu tài liệu hiệu quả trong thực tiễn.
+5.2. HẠN CHẾ
+Trong quá trình thực hiện, đồ án vẫn còn tồn tại một số hạn chế cần được ghi nhận:
+    • Chưa triển khai tính năng streaming response (nhận câu trả lời từng token), làm giảm trải nghiệm người dùng đối với câu trả lời dài. Hiện tại người dùng phải chờ toàn bộ câu trả lời trước khi hiển thị.
+    • Vector index lưu trữ dạng file local (FAISS .faiss, BM25 .pickle) hạn chế khả năng triển khai phân tán. Khi scale ngang với nhiều server, cần giải pháp vector database tập trung.
+    • Chưa có hệ thống xác thực và phân quyền người dùng hoàn chỉnh. Mọi người truy cập cùng một môi trường, chưa có cách phân tách dữ liệu giữa các người dùng.
+    • Chưa có giao diện quản trị (admin panel) để kiểm soát tài liệu và hội thoại ở cấp độ hệ thống.
+    • BM25 tokenize bằng lowercase splitting đơn giản, chưa hỗ trợ xử lý hình thái từ (stemming/lemmatization) cho tiếng Việt, có thể ảnh hưởng chất lượng tìm kiếm từ khóa với văn bản tiếng Việt phức tạp.
+5.3. HƯỚNG PHÁT TRIỂN
+Dựa trên các hạn chế được nhận diện và xu hướng công nghệ hiện tại, nhóm đề xuất các hướng phát triển trong tương lai:
+5.3.1. Cải thiện trải nghiệm người dùng
+    • Tích hợp streaming response sử dụng Server-Sent Events (SSE) hoặc WebSocket để hiển thị câu trả lời từng token, cải thiện đáng kể trải nghiệm người dùng.
+    • Bổ sung tính năng xuất kết quả (Export) câu trả lời ra PDF/DOCX, hỗ trợ annotation và đánh dấu nguồn trong tài liệu gốc.
+    • Thêm tính năng đa ngôn ngữ (multilingual support) cho giao diện người dùng.
+5.3.2. Nâng cấp hạ tầng
+    • Thay thế FAISS file-local bằng cơ sở dữ liệu vector chuyên dụng như ChromaDB, Qdrant hoặc Milvus để hỗ trợ scale ngang và persistent storage.
+    • Triển khai hệ thống lên môi trường đám mây (Docker + Kubernetes) và thực hiện kiểm thử tải (load testing) để đánh giá khả năng phục vụ đồng thời nhiều người dùng.
+    • Hoàn thiện hệ thống xác thực và phân quyền người dùng (Authentication & Authorization) với JWT token.
+5.3.3. Nâng cao chất lượng RAG
+    • Nghiên cứu và tích hợp kỹ thuật Advanced RAG như HyDE (Hypothetical Document Embeddings) — tạo tài liệu giả định từ câu hỏi để cải thiện embedding query.
+    • Tích hợp Reranking (ví dụ: Cohere Rerank, Cross-Encoder) sau bước Hybrid Search để tinh chỉnh thứ hạng kết quả trước khi đưa vào prompt.
+    • Nghiên cứu Self-RAG (Self-Reflective RAG) — cho phép LLM tự đánh giá và lọc ngữ cảnh không liên quan trước khi sinh câu trả lời.
+    • Cải thiện BM25 tokenizer cho tiếng Việt bằng thư viện pyvi hoặc underthesea, hỗ trợ word segmentation và stemming.
+
+
+
+TP. Hồ Chí Minh, tháng ….. năm 2025
+Nhóm thực hiện
+TÀI LIỆU THAM KHẢO
+
+    1. Lewis, P., Perez, E., Piktus, A., et al. (2020). Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks. NeurIPS 2020. https://arxiv.org/abs/2005.11401
+    2. Robertson, S., Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and Beyond. Foundations and Trends in Information Retrieval, 3(4), 333-389.
+    3. Johnson, J., Douze, M., Jegou, H. (2019). Billion-scale similarity search with GPUs. IEEE Transactions on Big Data. https://arxiv.org/abs/1702.08734
+    4. Cormack, G. V., Clarke, C. L. A., Buettcher, S. (2009). Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods. SIGIR 2009, pp. 758-759.
+    5. Martin, R. C. (2018). Clean Architecture: A Craftsman's Guide to Software Structure and Design. Prentice Hall.
+    6. Nygard, M. T. (2007). Release It!: Design and Deploy Production-Ready Software. Pragmatic Bookshelf. (Circuit Breaker Pattern).
+    7. Google DeepMind. (2024). Gemini: A Family of Highly Capable Multimodal Models. https://arxiv.org/abs/2312.11805
+    8. Django Software Foundation. (2024). Django Documentation. https://docs.djangoproject.com/en/stable/
+    9. Django REST Framework. (2024). DRF Documentation. https://www.django-rest-framework.org/
+    10. Posit Software. (2024). Shiny for Python Documentation. https://shiny.posit.co/py/
+    11. LangChain. (2024). LangChain Text Splitters Documentation. https://python.langchain.com/docs/modules/data_connection/document_transformers/
+    12. Mistral AI. (2024). Mistral OCR Documentation. https://docs.mistral.ai/capabilities/document/
+    13. Iyengar, S., et al. (2024). Advanced RAG Techniques: An Illustrated Overview. Towards Data Science. https://towardsdatascience.com/advanced-rag-techniques-an-illustrated-overview-04d193d8fec6
+    14. NLTK Project. (2024). Natural Language Toolkit Documentation. https://www.nltk.org/
