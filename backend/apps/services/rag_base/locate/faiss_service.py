@@ -141,10 +141,10 @@ class FaissService(IVectorStoreService):
 
     # helper method to write FAISS index metadata file, it will check if metadata for the conversation_id already exists before writing, and log the process
     def __write_metadata_file(self, conversation_id: uuid.UUID, faiss_index: faiss.IndexFlatL2, file_caller: str = ""):
-        path = self.is_existed_in_metadata(conversation_id)
+        path = is_existed_in_metadata(self.metadata_dir, conversation_id, "faiss", self.logger)
         if (path is not None and type(path) == Path):
             self.logger.warning(f"Metadata for conversation_id '{conversation_id}' already exists, skipping write",
-                Path(__file__).name, file_caller, method_call=self.is_existed_in_metadata.__name__)
+                Path(__file__).name, file_caller, method_call=is_existed_in_metadata.__name__)
             return
 
         destination_path = create_path_file(self.metadata_dir, conversation_id, "faiss")

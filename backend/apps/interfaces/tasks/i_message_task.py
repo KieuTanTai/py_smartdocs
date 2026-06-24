@@ -10,11 +10,6 @@ from backend.apps.core.interfaces.dataclass.job.i_message_job import IMessageJob
 
 class IMessageTask(ABC, Task):
     """Contract for Celery Chat Message RAG Inference Task."""
-    
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        pass
 
     @abstractmethod
     def run(self, conversation_id: str, content: str, provider_name: EProviderName, pipeline_type: EPipelineType, model_name: str) -> IMessageJobResponse:

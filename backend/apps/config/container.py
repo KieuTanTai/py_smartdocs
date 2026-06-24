@@ -228,6 +228,7 @@ class BackendContainer(containers.DeclarativeContainer):
     document_application = providers.Factory(
         DocumentApplication,
         upload_task=upload_task,
+        llm_uploader=llm_uploader,
         logger=log_pool
     )
     

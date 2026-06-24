@@ -103,17 +103,17 @@ class IVectorStoreService(IVectorDBService, ABC):
         """
         pass
 
-    @abstractmethod
-    def is_existed_in_metadata(self, conversation_id: uuid.UUID) -> Path | None:
-        """
-        Check if conversation_id exists in metadata.
+    # @abstractmethod
+    # def is_existed_in_metadata(self, conversation_id: uuid.UUID) -> Path | None:
+    #     """
+    #     Check if conversation_id exists in metadata.
 
-        Args:
-            conversation_id: Vector identifier to check.
-        Returns:
-            Path to metadata file if exists, otherwise None.
-        """
-        pass
+    #     Args:
+    #         conversation_id: Vector identifier to check.
+    #     Returns:
+    #         Path to metadata file if exists, otherwise None.
+    #     """
+    #     pass
 
     @abstractmethod
     def load(self, conversation_id: uuid.UUID, file_caller: str = "") -> IVectorDBLoadResponse:

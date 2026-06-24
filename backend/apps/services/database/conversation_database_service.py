@@ -24,13 +24,11 @@ class ConversationDatabaseService(IConversationDatabase):
         self,
         conversations_name: str = "",
         conversations_title: str = "",
-        document: DocumentModel | None = None,
         **extra_fields: Any,
     ) -> ConversationModel:
         return self.create(
             conversations_name=conversations_name,
             conversations_title=conversations_title,
-            conversations_faiss_index=document,
             **extra_fields,
         )
 

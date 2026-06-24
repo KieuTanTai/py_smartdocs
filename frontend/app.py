@@ -74,6 +74,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     provider = reactive.Value("auto")
     current_model = reactive.Value("auto")
     current_mode = reactive.Value("normal")
+    current_model_name = reactive.Value("gemini-3.1-flash-lite")
     system_prompt = reactive.Value("")
     mock_on_fail = reactive.Value(True)
     upload_source = reactive.Value("local")
@@ -330,6 +331,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     @reactive.event(input.model_select)
     def _model_changed() -> None:
         current_model.set(input.model_select())
+        current_model_name.set(input.model_select())
         set_status("Model updated", f"Model set to {input.model_select()}", "success")
 
     @reactive.effect
@@ -369,7 +371,8 @@ def server(input: Any, output: Any, session: Any) -> None:
             try:
                 print("Upload modal info:", info)
                 print("Upload modal source:", source)
-                response = client().upload_document(info, source)
+                print("Provider:", provider)
+                response = client().upload_document(info, source, "")
                 print("Upload modal response:", response)
                 doc = normalize_doc(response, info, source)
                 print("Upload modal normalized document:", doc)
@@ -381,7 +384,7 @@ def server(input: Any, output: Any, session: Any) -> None:
                 except ApiError:
                     pass
             except ApiError as exc:
-                print("Upload modal error:", exc)
+                print("Upload modal error:")
                 current_docs = current_docs + [
                     {
                         "id": f"local-{int(time.time())}",
@@ -390,7 +393,7 @@ def server(input: Any, output: Any, session: Any) -> None:
                         "source": source,
                     }
                 ]
-                set_status("Upload failed", str(exc), "error")
+                set_status("Upload failed", str(""), "error")
         docs.set(current_docs)
         ui.modal_remove()
 
@@ -402,18 +405,17 @@ def server(input: Any, output: Any, session: Any) -> None:
             return
         source = upload_source.get()
         current_docs = docs.get()
+        current_provider = current_model.get()
         for info in files:
             try:
-                response = client().upload_document(info, source)
+                print("provider", current_provider)
+                response = client().upload_document(info, source, current_provider)
                 doc = normalize_doc(response, info, source)
                 current_docs = current_docs + [doc]
                 print("Response from upload:", response)
                 print("Document after normalization:", doc)
                 print("Current documents before indexing:", current_docs)
                 try:
-                    index_response = client().index_document(doc["id"])
-                    doc["status"] = index_response.get("status", "processing")
-                    print("Indexing response:", index_response)
                     print("Document after indexing attempt:", doc)
                 except ApiError:
                     pass
@@ -451,7 +453,7 @@ def server(input: Any, output: Any, session: Any) -> None:
             except ApiError:
                 pass
         except Exception as exc:
-            print("Drive upload error:", exc)
+            print("Drive upload error:")
             set_status("Upload failed", str(exc), "error")
         docs.set(current_docs)
 

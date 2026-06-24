@@ -3,6 +3,10 @@ from __future__ import annotations
 import os
 import httpx
 from typing import Any, Dict, Optional
+
+from pathlib import Path
+from backend.apps.core.enums.e_pipeline_type import EPipelineType
+from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest, ISendMessageRequest
 from sys_services.system_dirs import DEFAULT_BASE_URL
 
@@ -45,13 +49,27 @@ class ApiClient:
         # avoid overriding it with application/json.
         print(f"headers: {headers}")
         is_multipart = "files" in kwargs
+        print(kwargs.keys())
+        print("is_multipart =", "files" in kwargs)
         if is_multipart and "Content-Type" in headers:
             headers = {k: v for k, v in headers.items() if k != "Content-Type"}
+        # return {}
+        
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                response = client.request(method, url, headers=headers, **kwargs)
+                request = client.build_request(
+                    method,
+                    url,
+                    headers=headers,
+                    **kwargs
+                )
+
+                print("REQUEST HEADERS")
+                print(request.headers)
+
+                response = client.send(request)
                 print(f"response: {response}")
-            response.raise_for_status()
+                response.raise_for_status()
         except httpx.RequestError as exc:
             raise ApiError(f"Request failed: {exc}") from exc
         except httpx.HTTPStatusError as exc:
@@ -74,18 +92,6 @@ class ApiClient:
         if "application/json" in content_type:
             return response.json()
         return {"raw": response.text}
-
-    #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    def _request_with_fallback(
-        self, method: str, primary_path: str, fallback_path: str, **kwargs: Any
-    ) -> dict[str, Any]:
-        try:
-            return self._request(method, primary_path, **kwargs)
-        except ApiError as exc:
-            print(f"Primary path {primary_path} failed: {exc}")
-            if "HTTP 404" not in str(exc):
-                raise
-        return self._request(method, fallback_path, **kwargs)
 
     def health(self) -> dict[str, Any]:
         return self._request("GET", "/api/health/")
@@ -143,40 +149,26 @@ class ApiClient:
         )
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    def upload_document(self, file_info: dict, source: str) -> dict[str, Any]:
+    def upload_document(self, file_info: dict, source: str, provider: str) -> dict[str, Any]:
         file_type = file_info.get("type") or "application/octet-stream"
+        provider_name = EProviderName(provider)
         print(f"Uploading document with file type: {file_type}")
         print(f"File info: {file_info}")
         print(f"Source: {source}")
+        print(f"Provider: ", {provider_name})
         with open(file_info["datapath"], "rb") as handle:
             files = {"file": (file_info["name"], handle, file_type)}
             print(f"files: {files}")
             data = {"source": source}
             print(f"data:{data}")
+            paths:list[Path] = []
+            for path in file_info["datapath"]:
+                paths.append(path)
+            payload = {"document_urls": paths, "type": EPipelineType.BASE.value}
             # Multipart requests don't use JSON headers
-            resp = self._request_with_fallback(
-                "POST",
-                "/api/documents/upload/",
-                "/api/documents/",
-                files=files,
-                data=data,
-            )
-            print(f"Upload response: {resp}")
+            resp = self._request("POST", "/api/documents/upload/",json = payload)
+            print(f"Upload response:")
             return resp
-
-    def index_document(self, document_id: str) -> dict[str, Any]:
-        return self._request_with_fallback(
-            "POST",
-            f"/api/documents/{document_id}/index/",
-            f"/api/documents/{document_id}/process/",
-        )
-
-    def document_status(self, document_id: str) -> dict[str, Any]:
-        return self._request_with_fallback(
-            "GET",
-            f"/api/documents/{document_id}/status/",
-            f"/api/documents/{document_id}/",
-        )
 
     def delete_document(self, document_id: str) -> dict[str, Any]:
         return self._request("DELETE", f"/api/documents/{document_id}/")
