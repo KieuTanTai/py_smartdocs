@@ -27,7 +27,6 @@ class IConversationDatabase(IModelDatabase[ConversationModel]):
         self,
         conversations_name: str = "",
         conversations_title: str = "",
-        document: DocumentModel | None = None,
         **extra_fields: Any,
     ) -> ConversationModel:
         """Create a conversation, optionally linked to one document."""

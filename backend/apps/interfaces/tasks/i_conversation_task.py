@@ -11,11 +11,6 @@ from backend.apps.services.chat.models import ConversationModel
 class IConversationTask(ABC, Task):
     """Contract for Celery Conversation Preparation Task."""
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
     @abstractmethod
     def run(self, provider_name: EProviderName, model_name: str, conversation: ConversationModel | None, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
         """

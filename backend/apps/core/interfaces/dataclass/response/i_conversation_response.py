@@ -6,6 +6,7 @@ import uuid
 
 import faiss
 
+from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam
 from backend.apps.core.interfaces.dataclass.response.i_vector_db_response import IVectorDBLoadResponse
@@ -19,7 +20,8 @@ class IConversationInfoResponse:
     model_name: str
     document_urls: list[str]
     document_paths: list[Path]
-    type: str = "normal" or "graph"
+    type: EPipelineType = field(default=EPipelineType.BASE)
+    summarize:str = ""
     create_at: Any = None 
 
 @dataclass
@@ -30,6 +32,12 @@ class ITimeCounterResponse:
     save_time: float
     total_time: float
     query_time: float = 0.0 # OPTIONAL, this will be used when the conversation is used to chat, and the time_counter will be updated with the query_time, this is for future implementation of time_counter in chat application
+
+@dataclass
+class IFileGetResponse:
+    cloud_ids: list[str]
+    names: list[str]
+
 
 @dataclass
 class IConversationPostResponse:

@@ -13,15 +13,6 @@ from backend.apps.services.chat.models import ConversationFilesModel, Conversati
 class IUploadTask(ABC, Task):
     """Contract for Celery Upload Processing Task."""
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Celery Task routing name
-        Returns:
-            A string representing the Celery Task name for routing
-        """
-        pass
-
     @abstractmethod
     def run_with_paths(self, conversation_id: uuid.UUID, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller:str = "") -> IUploadResponse:
         """
