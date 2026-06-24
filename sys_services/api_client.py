@@ -6,15 +6,19 @@ from typing import Any, Dict, Optional
 
 from pathlib import Path
 
-from regex import D
 from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest, ISendMessageRequest
 from sys_services.system_dirs import DEFAULT_BASE_URL
 
 
 class ApiError(RuntimeError):
     pass
+
+
+def _pipeline_type_value(pipeline_type: str) -> str:
+    if pipeline_type == "normal":
+        return EPipelineType.BASE.value
+    return pipeline_type or EPipelineType.BASE.value
 
 
 class ApiClient:
@@ -71,7 +75,7 @@ class ApiClient:
 
                 response = client.send(request)
                 print(f"response: {response}")
-                # response.raise_for_status()
+                response.raise_for_status()
         except httpx.RequestError as exc:
             print("fallback here")
             raise ApiError(f"Request failed: {exc}") from exc
@@ -101,25 +105,22 @@ class ApiClient:
     def list_conversations(self) -> dict[str, Any]:
         return self._request("GET", "/api/conversations/")
 
-    #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    # def create_conversation(
-    #     self,
-    #     title: str,
-    #     provider: str,
-    #     model: str,
-    #     system_prompt: str,
-    #     document_ids: list[str],
-    #     mode: str,
-    # ) -> dict[str, Any]:
-    #     payload = ICreateConversationRequest(
-    #         title=title,
-    #         provider=provider,
-    #         model=model,
-    #         system_prompt=system_prompt,
-    #         document_ids=document_ids,
-    #         mode=mode,
-    #     )
-    #     return self._request("POST", "/api/conversations/", json=payload)
+    def create_conversation(
+        self,
+        title: str,
+        provider: str,
+        system_prompt: str = "",
+        document_ids: Optional[list[str]] = None,
+        mode: str = EPipelineType.BASE.value,
+    ) -> dict[str, Any]:
+        payload = {
+            "title": title or "New Conversation",
+            "provider": provider,
+            "system_prompt": system_prompt,
+            "document_ids": document_ids or [],
+            "mode": mode,
+        }
+        return self._request("POST", "/api/conversations/", json=payload)
 
     def send_message(
         self,
@@ -127,16 +128,17 @@ class ApiClient:
         content: str,
         provider: Optional[str] = None,
         model: Optional[str] = None,
+        pipeline_type: str = EPipelineType.BASE.value,
     ) -> dict[str, Any]:
-        request = ISendMessageRequest(
-            user_input="",
-            message=content,
-            provider=provider,
-            model=model,
-            
-        )
+        payload = {
+            "conversation_id": conversation_id,
+            "content": content,
+            "provider": provider,
+            "model": model,
+            "pipeline_type": _pipeline_type_value(pipeline_type),
+        }
         return self._request(
-            "POST", f"/api/conversations/{conversation_id}/messages/", json=request
+            "POST", f"/api/messages/", json=payload
         )
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.

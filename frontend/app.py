@@ -76,6 +76,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     current_mode = reactive.Value("normal")
     current_model_name = reactive.Value("gemini-3.1-flash-lite")
     system_prompt = reactive.Value("")
+    current_conversation_id = reactive.Value("")
     mock_on_fail = reactive.Value(True)
     upload_source = reactive.Value("local")
     current_user = reactive.Value(_auth_user.get("email") if _auth_user else None)
@@ -93,6 +94,7 @@ def server(input: Any, output: Any, session: Any) -> None:
         doc_id = (
             data.get("id")  # type: ignore
             or data.get("document_id")  # type: ignore
+            or data.get("conversation_id")  # type: ignore
             or data.get("uuid")  # type: ignore
             or f"local-{int(time.time())}"
         )
@@ -375,6 +377,9 @@ def server(input: Any, output: Any, session: Any) -> None:
                 response = client().upload_document(info, source, "")
                 print("Upload modal response:", response)
                 doc = normalize_doc(response, info, source)
+                upload_conversation_id = response.get("conversation_id")
+                if upload_conversation_id:
+                    current_conversation_id.set(str(upload_conversation_id))
                 print("Upload modal normalized document:", doc)
                 current_docs = current_docs + [doc]
                 try:
@@ -411,14 +416,14 @@ def server(input: Any, output: Any, session: Any) -> None:
                 print("provider", current_provider)
                 response = client().upload_document(info, source, current_provider)
                 doc = normalize_doc(response, info, source)
+                upload_conversation_id = response.get("conversation_id")
+                if upload_conversation_id:
+                    current_conversation_id.set(str(upload_conversation_id))
                 current_docs = current_docs + [doc]
                 print("Response from upload:", response)
                 print("Document after normalization:", doc)
                 print("Current documents before indexing:", current_docs)
-                try:
-                    print("Document after indexing attempt:", doc)
-                except ApiError:
-                    pass
+                print("Current conversation ID after upload:", current_conversation_id.get())
             except ApiError as exc:
                 current_docs = current_docs + [
                     {
@@ -484,6 +489,7 @@ def server(input: Any, output: Any, session: Any) -> None:
         text = (input.chat_input() or "").strip()
         if not text:
             return
+        ui.update_text_area("chat_input", value="")
         selected = input.selected_docs() or []
         if not selected:
             set_status("Select a document", "Pick at least one", "warning")
@@ -492,26 +498,28 @@ def server(input: Any, output: Any, session: Any) -> None:
         current = current + [build_message("user", text)]
         messages.set(current)
 
-        was_new = conversation_name.get() is None
-        #? NOTE: explain flow if conversation_name is None, create new conversation, else send message to existing conversation.
+        active_conversation_id = current_conversation_id.get()
+        was_new = not active_conversation_id
+        #? NOTE: explain flow if current_conversation_id is empty, create new conversation, else send message to existing conversation.
         #! NOTE: RECOMMEND CHANGE RESPONSE FROM send_message to dataclass type instead of dict[str, Any] to make it more clear and type safe.
         response = send_message(
             client(),
-            conversation_name.get(),
+            active_conversation_id,
             text,
             selected,
-            provider.get(),
             current_model.get(),
             system_prompt.get(),
             current_mode.get(),
             allow_mock=mock_on_fail.get(),
         )
-        conversation_name.set(response.get("conversation_name"))
-        if was_new and response.get("conversation_name"):
+        response_conversation_id = response.get("conversation_id")
+        if response_conversation_id:
+            current_conversation_id.set(str(response_conversation_id))
+        if was_new and response_conversation_id:
             history.set(
                 [
                     {
-                        "id": response.get("conversation_name"),
+                        "id": response_conversation_id,
                         "title": text[:42],
                         "when": time.strftime("%H:%M"),
                     }
@@ -543,13 +551,14 @@ def server(input: Any, output: Any, session: Any) -> None:
     def _clear_chat() -> None:
         messages.set([])
         metrics.set({})
+        current_conversation_id.set("")
         conversation_name.set(None)
         set_status("Chat cleared", "Ready for a new session", "info")
 
     @reactive.effect
     @reactive.event(input.remove_conversation)
     def _remove_conversation() -> None:
-        active_id = conversation_name.get()
+        active_id = current_conversation_id.get()
         if not active_id:
             set_status("No active session", "Nothing to remove.", "warning")
             return
@@ -559,6 +568,7 @@ def server(input: Any, output: Any, session: Any) -> None:
         history.set(current_history)
         messages.set([])
         metrics.set({})
+        current_conversation_id.set("")
         conversation_name.set(None)
         set_status("Session removed", "Conversation removed from list.", "success")
 

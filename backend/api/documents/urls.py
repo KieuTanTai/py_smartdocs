@@ -16,6 +16,6 @@ urlpatterns = [
     # path("index/bulk/", DocumentBulkIndexView.as_view(), name="documents-index-bulk"),
     # Catch-all (list/create) must be last
     path("", DocumentListView.as_view(), name="documents-list"),
-    path("conversation/", ConversationListView.as_view(), name="conversation-list"),
-    path("message/", MessageListViewByConversation.as_view(), name=""),
+    path("conversations/", ConversationListView.as_view(), name="conversation-list"),
+    path("messages/", MessageListViewByConversation.as_view(), name="messages-list"),
 ]

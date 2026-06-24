@@ -9,6 +9,7 @@ import os
 import time
 from pathlib import Path
 import traceback
+import uuid
 
 from ollama import embed
 
@@ -97,6 +98,7 @@ class DocumentUploadView(APIView):
             
             sys_logger.info(f"File uploaded successfully: {conversation.list_conversations}", source="DocumentUploadView", call_by="post")
             response_json={
+                "conversation_id": str(cons.conversations_id),
                 "title": response.info.conversation_title,
                 "provider": response.info.provider.value,
                 "model_name": response.info.model_name,
@@ -129,31 +131,44 @@ class ConversationListView(APIView):
             sys_logger.error(f"Validation Error: {e}", source="ConversationListView", call_by="get", method_call="list_conversation")
 
 class MessageListViewByConversation(APIView):
+    sys_logger = _container.log_pool()
     def get(self, request):
-        sys_logger = _container.log_pool()
         try:
             message_app = _container.message_application()
-            
-            return message_app.get_conversation_messages(str(request.data.get("convesation_id")),50,0,Path(__file__).name)
+
+            return message_app.get_conversation_messages(str(request.query_params.get("conversation_id")),50,0,Path(__file__).name)
         except ValueError as e:
-            sys_logger.error(f"Validation Error: {e}", source="MessageListViewByConversation", call_by="get", method_call="get_conversation_messages")
-            
+            self.sys_logger.error(f"Validation Error: {e}", source="MessageListViewByConversation", call_by="get", method_call="get_conversation_messages")
+
     def post(self, request):
         sys_logger = _container.log_pool()
+        self.sys_logger.info(f"Received message request: {request.data}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
         try:
             message_app = _container.message_application()
-            
+            provider_name = EProviderName(request.data.get("provider"))
+            config_provider = _container.config_provider()
+            model_name = get_model_name(config_provider, provider_name)
+            req_pipeline_type = request.data.get("pipeline_type")
+            pipeline_type = (
+                EPipelineType.BASE
+                if req_pipeline_type is None or req_pipeline_type == "normal"
+                else EPipelineType(request.data.get("pipeline_type"))
+            )
+            conversation_id = uuid.UUID(request.data.get("conversation_id")) if request.data.get("conversation_id") else None
+            if not conversation_id:
+                raise ValueError("Conversation ID is required.")
             send_msg_req = ISendMessageRequest(
                 request.data.get("user_input"),
-                request.data.get("provider_name"),
-                request.data.get("model_name"),
-                request.data.get("pipeline_type"),
-                request.data.get("conversation_id")
+                provider_name,
+                model_name,
+                pipeline_type,
+                conversation_id
             )
-            return message_app.send_message(str(request.conversation_id), request.user_input, request.provider_name, request.model_name, request.pipeline_type, Path(__file__).name)
-            
+            self.sys_logger.info(f"Sending message to conversation {conversation_id} with provider {provider_name} and model {model_name}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
+            return message_app.send_message(str(conversation_id), request.data.get("user_input"), provider_name, model_name, pipeline_type, Path(__file__).name)
+
         except ValueError as e:
-            sys_logger.error(f"Validation Error: {e}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
-            
-            
+            self.sys_logger.error(f"Validation Error: {e}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
+
+
 # class SendMesssage(Api)

@@ -25,7 +25,7 @@ class IGetConversationRequest:
     
 @dataclass
 class IGetMessageByConversationRequest:
-    convesation_id: uuid.UUID | None = field(default=None)
+    conversation_id: uuid.UUID | None = field(default=None)
     
 @dataclass 
 class ISendMessageRequest:

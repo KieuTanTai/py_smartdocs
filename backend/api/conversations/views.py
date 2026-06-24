@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import json
 import time
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import cast
 from uuid import UUID
@@ -33,6 +34,18 @@ from sys_services.system_dirs import METADATA_DIR
 
 # Singleton application instance
 __container = container.BackendContainer()
+
+
+def _jsonable(value):
+    if is_dataclass(value):
+        return _jsonable(asdict(value))
+    if isinstance(value, dict):
+        return {key: _jsonable(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    if hasattr(value, "value"):
+        return value.value
+    return value
 
 
 def _build_rag_context(documents: list[DocumentModel], user_query: str, top_k: int = 5) -> tuple[str, list[dict]]:
@@ -262,122 +275,61 @@ class ConversationDocumentsView(APIView):
 
 class MessageListView(APIView):
     def get(self, request, conversation_id: str):
-        msgs = MessageModel.objects.filter(
-            message_conversation_id=conversation_id
-        ).order_by("message_created_at")
-        data = []
-        for m in msgs:
-            data.append({
-                "role": "user" if m.message_is_user_send else "assistant",
-                "content": m.message_content
-            })
-        return Response(data, status=status.HTTP_200_OK)
+        try:
+            message_app = __container.message_application()
+            result = message_app.get_conversation_messages(
+                conversation_id,
+                limit=int(request.query_params.get("limit", 50)),
+                offset=int(request.query_params.get("offset", 0)),
+                file_caller=Path(__file__).name,
+            )
+            return Response(_jsonable(result), status=status.HTTP_200_OK)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request, conversation_id: str):
-        try:
-            conv = ConversationModel.objects.get(pk=conversation_id)
-        except ConversationModel.DoesNotExist:
-            return Response({"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        content = request.data.get("content")
-        if not content:
-            return Response({"error": "Message content is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 1. Save user message
-        MessageModel.objects.create(
-            message_conversation=conv,
-            message_is_user_send=True,
-            message_content=content
-        )
-
-        # 2. Get attached indexed documents
-        file_mappings = ConversationFilesModel.objects.filter(conversation=conv)
-        attached_docs = [m.faiss_index for m in file_mappings]
-
-        # 3. Retrieve context via FAISS vector search (with keyword fallback)
-        start_retrieval = time.time()
-        context_text, context_hits = _build_rag_context(attached_docs, content, top_k=5)
-        retrieval_ms = int((time.time() - start_retrieval) * 1000)
-
-        # 4. Build prompt
-        system_prompt = "You are a helpful assistant. Answer based ONLY on the provided context. Do NOT make up answers."
-        llm_prompt = f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nUser: {content}\n\nAssistant:"
-
-        # 5. Resolve provider/model
-        provider_name = request.data.get("provider", "auto")
-        model_name = request.data.get("model", "auto")
-
+        content = request.data.get("user_input") or request.data.get("content")
+        provider_name = request.data.get("provider_name") or request.data.get("provider")
+        model_name = request.data.get("model_name") or request.data.get("model")
+        pipeline_type = request.data.get("pipeline_type") or request.data.get("mode") or "base"
+        if pipeline_type == "normal":
+            pipeline_type = "base"
         if provider_name == "auto" or not provider_name:
             from sys_services.read_config.read_list_provider import LIST_PROVIDERS
+
+            provider_name = ""
             for provider_config in LIST_PROVIDERS:
                 if provider_config.model_name == model_name:
                     provider_name = provider_config.provider_name.value
                     break
-            if provider_name == "auto" or not provider_name:
-                if "gemini" in model_name.lower():
+            if not provider_name:
+                if model_name and "gemini" in model_name.lower():
                     provider_name = "gemini"
-                elif "mistral" in model_name.lower():
+                elif model_name and "mistral" in model_name.lower():
                     provider_name = "mistral"
-                elif "qwen" in model_name.lower() or "ollama" in model_name.lower():
+                elif model_name and ("qwen" in model_name.lower() or "ollama" in model_name.lower()):
                     provider_name = "ollama"
+                elif LIST_PROVIDERS:
+                    provider_name = LIST_PROVIDERS[0].provider_name.value
                 else:
-                    if LIST_PROVIDERS:
-                        provider_name = LIST_PROVIDERS[0].provider_name.value
-                    else:
-                        provider_name = "ollama"
-
-        # 6. Call LLM with retry + circuit breaker
-        start_llm = time.time()
-        answer = ""
-        used_mock = False
-        used_provider = provider_name
+                    provider_name = "ollama"
 
         try:
-            answer, used_provider = call_llm_with_resilience(
+            message_app = __container.message_application()
+            result = message_app.send_message(
+                conversation_id=conversation_id,
+                user_input=content,
                 provider_name=provider_name,
                 model_name=model_name,
-                prompt=llm_prompt,
-                max_retries=2,
+                pipeline_type=pipeline_type,
+                file_caller=Path(__file__).name,
             )
+            data = _jsonable(result)
+            data["assistant"] = data.get("assistant_message", "")
+            return Response(data, status=status.HTTP_200_OK)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:
-            DEFAULT_LOGGER.error(
-                f"All LLM providers failed after retries: {exc}. Using mock response.",
-                source="MessageListView",
-            )
-            if context_text:
-                answer = (
-                    f"⚠️ **Khong the ket noi den model {provider_name} ({model_name}).**\n\n"
-                    f"Duoi day la noi dung tai lieu trich xuat tu ngon ngu (Simulated Response):\n\n"
-                    f"{context_text}"
-                )
-            else:
-                answer = (
-                    f"⚠️ **Khong the ket noi den model {provider_name} ({model_name}).**\n\n"
-                    f"Khong tim thay ngon ngu phu hop trong tai lieu de tra loi."
-                )
-            used_mock = True
-
-        llm_ms = int((time.time() - start_llm) * 1000)
-        total_ms = int((time.time() - start_retrieval) * 1000)
-
-        # 7. Save assistant message
-        MessageModel.objects.create(
-            message_conversation=conv,
-            message_is_user_send=False,
-            message_content=answer
-        )
-
-        return Response({
-            "conversation_id": str(conv.conversation_id),
-            "assistant": answer,
-            "used_mock": used_mock,
-            "metrics": {
-                "provider": used_provider,
-                "model": model_name,
-                "total_ms": total_ms,
-                "embed_ms": retrieval_ms,
-                "query_ms": retrieval_ms,
-                "response_ms": llm_ms,
-                "retrieval_hits": context_hits
-            }
-        }, status=status.HTTP_200_OK)
+            return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

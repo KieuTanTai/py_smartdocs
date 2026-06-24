@@ -17,8 +17,11 @@ urlpatterns = [
     # Document management
     path("api/documents/", include("backend.api.documents.urls")),
 
-    # Conversations & messages
+    # Conversations
     path("api/conversations/", include("backend.api.conversations.urls")),
+
+    # Messages
+    path("api/messages/", include("backend.api.documents.urls")),
 
     # Backward compatibility: /api/application/conversations/ → same views
     path("api/application/conversations/", include("backend.api.conversations.urls")),
