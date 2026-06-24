@@ -24,6 +24,11 @@ class ConversationTask(IConversationTask):
         self.logger = logger
         self.time_counter = time_counter
 
+    @property
+    def name(self) -> str:
+        """Return the task name for routing."""
+        return Path(__file__).stem  # Dynamic name based on filename
+
     # --- MAIN ENTRY POINT ---
     def get_all_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
         self.logger.info(

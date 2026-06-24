@@ -587,10 +587,33 @@ class UploadJob(IUploadJob):
         llm_client = self.llm_provider_factory.get_provider(provider)
         model_name = self.__get_embedding_model(provider)
         list_embeddings = []
-        for chunk in chunk_texts:
+        total_chunks = len(chunk_texts)
+        print(f"📊 Starting embedding of {total_chunks} chunks using {provider.value} ({model_name})")
+        self.logger.info(
+            f"Starting embedding of {total_chunks} chunks using {provider.value} ({model_name})",
+            Path(__file__).name,
+            self.__embed_chunk_texts.__name__,
+            self.__embed_chunk_texts.__name__,
+        )
+        for idx, chunk in enumerate(chunk_texts, 1):
+            print(f"⏳ Embedding chunk {idx}/{total_chunks} (length: {len(chunk)} chars)...")
+            self.logger.info(
+                f"Embedding chunk {idx}/{total_chunks} (length: {len(chunk)} chars)",
+                Path(__file__).name,
+                self.__embed_chunk_texts.__name__,
+                self.__embed_chunk_texts.__name__,
+            )
             embedding = llm_client.embedding(
                 ICompletionRequest(provider, model_name, chunk),
                 file_caller=self.__embed_chunk_texts.__name__,
             )
             list_embeddings.append(embedding.embedding)
+            print(f"✅ Chunk {idx}/{total_chunks} embedded successfully")
+        print(f"✅ Completed embedding all {total_chunks} chunks")
+        self.logger.info(
+            f"Completed embedding all {total_chunks} chunks",
+            Path(__file__).name,
+            self.__embed_chunk_texts.__name__,
+            self.__embed_chunk_texts.__name__,
+        )
         return np.array(list_embeddings, dtype=np.float32)

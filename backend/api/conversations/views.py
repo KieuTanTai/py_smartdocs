@@ -33,7 +33,8 @@ from sys_services.system_dirs import METADATA_DIR
 from sys_services.logging import DEFAULT_LOGGER
 
 # Singleton application instance
-__container = container.BackendContainer()
+_container = container.BackendContainer()
+_conversation_app = _container.conversation_application()
 
 
 def _build_rag_context(documents: list[DocumentModel], user_query: str, top_k: int = 5) -> tuple[str, list[dict]]:
@@ -56,7 +57,7 @@ def _build_rag_context(documents: list[DocumentModel], user_query: str, top_k: i
         # Build the embed query
         embed_provider = EProviderName.GEMINI
         embed_model = "gemini-embedding-2"
-        factory = LLMProviderFactory(__container.config_provider(), __container.log_pool())
+        factory = LLMProviderFactory(_container.config_provider(), _container.log_pool())
         embed_client = factory.get_provider(embed_provider)
 
         embed_req = ICompletionRequest(
@@ -67,7 +68,7 @@ def _build_rag_context(documents: list[DocumentModel], user_query: str, top_k: i
         query_vector_resp = embed_client.embedding(embed_req)
         query_vector = query_vector_resp.embedding.reshape(1, -1).astype(np.float32)
 
-        locate_service = LocateService(metadata_dir=METADATA_DIR, logger=__container.log_pool())
+        locate_service = LocateService(metadata_dir=METADATA_DIR, logger=_container.log_pool())
         faiss_service = cast(
             IVectorStoreService,
             locate_service.get_vector_store(EBackendStorageName.FAISS),
@@ -78,6 +79,7 @@ def _build_rag_context(documents: list[DocumentModel], user_query: str, top_k: i
         for doc in indexed_docs:
             # Load FAISS index for this document
             try:
+                vector_id = str(doc.documents_conversation.conversations_id)
                 load_resp = faiss_service.load(doc.documents_conversation.conversations_id)
                 index = load_resp.index
             except ValueError:

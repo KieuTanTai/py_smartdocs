@@ -20,21 +20,21 @@ class LLMProviderFactory(ILLMProviderFactory):
             call_by=file_caller,
         )
 
-        if provider == EProviderName.GEMINI.value:
+        if provider == EProviderName.GEMINI:
             EMBEDDING_CONFIG = self.config_provider.get_gemini_config()
             return GeminiClient(
                 api_key=EMBEDDING_CONFIG["api_key"],
                 timeout=EMBEDDING_CONFIG["timeout_seconds"],
                 logger=self.logger,
             )
-        elif provider == EProviderName.MISTRAL.value:
+        elif provider == EProviderName.MISTRAL:
             MISTRAL_CONFIG = self.config_provider.get_mistral_config()
             return MistralClient(
                 api_key=MISTRAL_CONFIG["api_key"],
                 timeout=MISTRAL_CONFIG["timeout_seconds"],
                 logger=self.logger,
             )
-        elif provider == EProviderName.OLLAMA.value:
+        elif provider == EProviderName.OLLAMA:
             OLLAMA_CONFIG = self.config_provider.get_ollama_config()
             return OllamaClient(
                 base_url=OLLAMA_CONFIG["base_url"],

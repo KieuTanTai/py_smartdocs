@@ -30,12 +30,12 @@ from backend.apps.application.conversations.application import ConversationAppli
 from sys_services.system_dirs import METADATA_DIR
 
 # Singleton application instances
-__container = container.BackendContainer()
+_container = container.BackendContainer()
 
 
 class DocumentListView(APIView):
     def get(self, request):
-        doc_app = __container.document_application()
+        doc_app = _container.document_application()
         
         result = doc_app.list_files(request.GET.get("conversation_id", ""), file_caller="DocumentListView")
         data = []
@@ -50,7 +50,7 @@ class DocumentListView(APIView):
 
 class DocumentUploadView(APIView):
     def post(self, request):
-        sys_logger = __container.log_pool() # Lấy ILogger từ Container
+        sys_logger = _container.log_pool() # Lấy ILogger từ Container
 
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
@@ -58,16 +58,71 @@ class DocumentUploadView(APIView):
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            doc_app = __container.document_application()
+            from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest
+            from backend.apps.core.enums.e_provider_name import EProviderName
+            from backend.apps.services.chat.models import ConversationModel
+            import tempfile
+            import uuid
+            
+            doc_app = _container.document_application()
             file_content = uploaded_file.read()
             
-            doc_request = doc_app.upload_document(
-                request=request,
-                file_caller = Path(__file__).stem,
+            # Save uploaded file to temporary location
+            with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as temp_file:
+                temp_file.write(file_content)
+                temp_path = Path(temp_file.name)
+            
+            # Get provider and model from request or use defaults
+            provider_str = request.data.get("provider", "gemini")
+            model_name = request.data.get("model", "gemini-3.1-flash-lite")
+            conversation_id_str = request.data.get("conversation_id")
+            
+            # Parse provider
+            try:
+                provider = EProviderName(provider_str.lower())
+            except ValueError:
+                provider = EProviderName.GEMINI
+            
+            # Get or create conversation
+            if conversation_id_str:
+                conversation_id = uuid.UUID(conversation_id_str)
+                # Check if conversation exists
+                try:
+                    conversation = ConversationModel.objects.get(pk=conversation_id)
+                except ConversationModel.DoesNotExist:
+                    # Create conversation if it doesn't exist
+                    conversation = ConversationModel.objects.create(
+                        conversation_id=conversation_id,
+                        conversation_title=f"Document: {uploaded_file.name}",
+                        conversation_name=uploaded_file.name
+                    )
+            else:
+                # Create new conversation
+                conversation_id = uuid.uuid4()
+                conversation = ConversationModel.objects.create(
+                    conversation_id=conversation_id,
+                    conversation_title=f"Document: {uploaded_file.name}",
+                    conversation_name=uploaded_file.name
+                )
+            
+            # Create request object
+            doc_request = ICreateConversationRequest(
+                provider=provider,
+                model_name=model_name,
+                conversation_id=conversation_id,
+                document_paths=[temp_path],
+                type=request.data.get("type", "normal")
+            )
+            
+            # Call document application
+            response = doc_app.upload_document(
+                request=doc_request,
+                file_caller=Path(__file__).stem,
             )
             
             sys_logger.info(f"File uploaded successfully: {uploaded_file.name}", source="DocumentUploadView", call_by="post")
             return Response({
+                "conversation_id": str(conversation_id),
                 "title": uploaded_file.name,
                 "status": "uploaded"
             }, status=status.HTTP_201_CREATED)
@@ -75,15 +130,22 @@ class DocumentUploadView(APIView):
         except ValueError as e:
             sys_logger.error(f"Validation Error: {e}", source="DocumentUploadView", call_by="post", method_call="upload_document")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except TimeoutError as e:
+            sys_logger.error(f"Upload timeout: {e}\n{traceback.format_exc()}", source="DocumentUploadView", call_by="post")
+            return Response({"error": "Upload process timed out. The document may be too large or the service is slow."}, status=status.HTTP_504_GATEWAY_TIMEOUT)
         except Exception as e:
-            sys_logger.error(f"Upload failed: {e}\n{traceback.format_exc()}", source="DocumentUploadView", call_by="post")
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            error_msg = str(e)
+            sys_logger.error(f"Upload failed: {error_msg}\n{traceback.format_exc()}", source="DocumentUploadView", call_by="post")
+            # Log to console as well for immediate visibility
+            print(f"UPLOAD ERROR: {error_msg}")
+            print(traceback.format_exc())
+            return Response({"error": error_msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DocumentDetailView(APIView):
     def get(self, request, document_id: str):
         try:
-            doc_app = __container.document_application()
+            doc_app = _container.document_application()
             doc = doc_app.get_document(document_id)
             return Response({
                 "id": str(doc["id"]),
@@ -94,10 +156,10 @@ class DocumentDetailView(APIView):
             return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, document_id: str):
-        sys_logger = __container.log_pool()
+        sys_logger = _container.log_pool()
 
         try:
-            doc_app = __container.document_application()
+            doc_app = _container.document_application()
             doc_app.delete_document(document_id=document_id, delete_file=True)
             
             try:
@@ -119,7 +181,7 @@ class DocumentDetailView(APIView):
 class DocumentStatusView(APIView):
     def get(self, request, document_id: str):
         try:
-            doc_app = __container.document_application()
+            doc_app = _container.document_application()
             doc = doc_app.get_document(document_id)
             return Response({
                 "id": str(doc["id"]),

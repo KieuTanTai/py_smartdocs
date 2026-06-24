@@ -20,6 +20,17 @@ class ConversationApplication(IConversationApplication):
                          Path(__file__).name, file_caller, self.create_init_conversation.__name__)
         return self.conversation_task.create_init_conversation(conversation_title=conversation_title)
 
+    def load_conversation(self, conversation_id: str, file_caller: str = "") -> ConversationModel:
+        """Load an existing conversation by its ID."""
+        self.logger.info(f"Loading conversation with id: {conversation_id}",
+                         Path(__file__).name, file_caller, self.load_conversation.__name__)
+        # Get the conversation from the task layer
+        conversations = self.conversation_task.get_all_conversations(user_id="", file_caller=file_caller)
+        for conv in conversations:
+            if str(conv.conversations_id) == conversation_id:
+                return conv
+        raise ValueError(f"Conversation with id {conversation_id} not found")
+
     def run_application_pipeline(self, provider_name: EProviderName, 
                                                  model_name: str, conversation: ConversationModel | None = None, summarize: str = "", file_caller: str = "") -> IConversationJobResponse | IConversationLoadResponse:
         self.logger.info(f"Running application pipeline for provider: {provider_name}, model: {model_name}, conversation: {conversation.conversations_id if conversation else None}",

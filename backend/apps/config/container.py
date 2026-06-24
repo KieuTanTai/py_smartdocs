@@ -243,10 +243,7 @@ class BackendContainer(containers.DeclarativeContainer):
     document_application = providers.Factory(
         DocumentApplication,
         upload_task=upload_task,
-        cache_session=cache_session,
-        database_provider=database_provider,
-        logger=log_pool,
-        time_counter=time_counter
+        logger=log_pool
     )
 
     message_application = providers.Factory(

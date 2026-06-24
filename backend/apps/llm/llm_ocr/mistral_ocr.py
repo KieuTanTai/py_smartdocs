@@ -28,7 +28,16 @@ class MistralLLMOCR(ILLMOCR):
         self.provider_name = provider_name
         self.timeout_seconds = timeout_seconds
         self.logger = logger
-        self.client = Mistral(api_key=self.api_key)
+        try:
+            self.client = Mistral(api_key=self.api_key, timeout=timeout_seconds)
+        except Exception as e:
+            self.logger.error(
+                f"Failed to initialize Mistral client: {e}",
+                source=str(self.__class__),
+                call_by="__init__",
+                method_call="__init__"
+            )
+            raise ValueError(f"Failed to initialize Mistral client. Please check your internet connection: {e}")
 
     # region - Public Methods
     def process_ocr(
@@ -54,6 +63,20 @@ class MistralLLMOCR(ILLMOCR):
                 source=str(self.__class__),call_by=call_by, method_call=self.process_ocr.__name__
             )
             raise ve
+        except OSError as oe:
+            # Handle network-related errors (including [Errno 11001] getaddrinfo failed)
+            error_msg = (
+                f"Network error during OCR processing for file ID: {uploaded_pdf.id}. "
+                f"Please check your internet connection and ensure you can reach api.mistral.ai. "
+                f"Error details: {oe}"
+            )
+            self.logger.error(
+                error_msg,
+                source=str(self.__class__), 
+                call_by=call_by, 
+                method_call=self.process_ocr.__name__
+            )
+            raise ConnectionError(error_msg) from oe
         except Exception as e:
             self.logger.error(
                 f"Error during OCR processing for file ID: {uploaded_pdf.id} - {e}",
