@@ -76,7 +76,7 @@ class DocumentModel(models.Model):
     Documents are using locate faiss index file to store embeddings and content for retrieval.
     """
     document_id = models.UUIDField(
-        primary_key=True, default=uuid.uuid5, editable=False
+        primary_key=True, default=uuid.uuid4, editable=False
     )
     conversation = models.ForeignKey(
         ConversationModel, on_delete=models.CASCADE, db_column="documents_conversation_id", null=True, blank=True

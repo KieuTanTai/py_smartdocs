@@ -78,6 +78,17 @@ class FaissService(IVectorStoreService):
             Path(__file__).name, file_caller, method_call=self.load.__name__)
         return IVectorDBLoadResponse(id=conversation_id, is_success=True, index=index)
 
+    def is_existed_in_metadata(self, conversation_id: uuid.UUID) -> Path | None:
+        """
+        Check if conversation_id exists in metadata.
+
+        Args:
+            conversation_id: Vector identifier to check.
+        Returns:
+            Path to metadata file if exists, otherwise None.
+        """
+        return is_existed_in_metadata(self.metadata_dir, conversation_id, "faiss", self.logger)
+
     # region Private methods
     # helper method to filter FAISS search results based on allow_ids and chunk_file_map, it will log the filtering process and return the filtered distances and indices
     def __filter_output_search_results(self, distances: np.ndarray, indices: np.ndarray, allow_ids: set | None, chunk_file_map: dict | None, file_caller: str = "") -> tuple[np.ndarray, np.ndarray]:

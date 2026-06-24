@@ -169,7 +169,7 @@ class DocumentIndexView(APIView):
             faiss_service = locate_service.get_vector_store(EBackendStorageName.FAISS)
 
             index = faiss_service.create_index(vectors)
-            faiss_service.upsert(index=index, vector_id=vector_id)
+            faiss_service.upsert(index=index, conversation_id=doc.faiss_index_id)
 
             # 6. Save chunk metadata for retrieval (map index → text)
             chunk_metadata = {
@@ -249,7 +249,40 @@ class DocumentIndexView(APIView):
                 DEFAULT_LOGGER.error(f"Failed to read PDF: {e}", source="DocumentIndexView")
                 return ""
 
-        elif file_path.endswith(".docx"):
+        elif file_path.endswith(".docx") or file_path.endswith(".doc"):
+            # Try using python-docx if available
+            try:
+                from docx import Document
+                doc_obj = Document(file_path)
+                paragraphs = []
+                for paragraph in doc_obj.paragraphs:
+                    if paragraph.text.strip():
+                        paragraphs.append(paragraph.text)
+                # Also extract text from tables
+                for table in doc_obj.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            if cell.text.strip():
+                                paragraphs.append(cell.text)
+                extracted = "\n".join(paragraphs)
+                if extracted.strip():
+                    DEFAULT_LOGGER.info(
+                        f"Successfully extracted {len(extracted)} chars from DOCX using python-docx",
+                        source="DocumentIndexView"
+                    )
+                    return extracted
+            except ImportError:
+                DEFAULT_LOGGER.warning(
+                    "python-docx not installed, falling back to XML parsing",
+                    source="DocumentIndexView"
+                )
+            except Exception as e:
+                DEFAULT_LOGGER.warning(
+                    f"python-docx extraction failed: {e}, falling back to XML parsing",
+                    source="DocumentIndexView"
+                )
+            
+            # Fallback to XML parsing
             try:
                 import zipfile
                 import xml.etree.ElementTree as ET
@@ -262,7 +295,19 @@ class DocumentIndexView(APIView):
                         text_runs = [t.text for t in p.findall(".//w:t", ns) if t.text]
                         if text_runs:
                             paragraphs.append("".join(text_runs))
-                    return "\n".join(paragraphs)
+                    extracted = "\n".join(paragraphs)
+                    if extracted.strip():
+                        DEFAULT_LOGGER.info(
+                            f"Successfully extracted {len(extracted)} chars from DOCX using XML parsing",
+                            source="DocumentIndexView"
+                        )
+                        return extracted
+                    else:
+                        DEFAULT_LOGGER.warning(
+                            f"XML parsing returned empty content for DOCX file: {file_path}",
+                            source="DocumentIndexView"
+                        )
+                        return ""
             except Exception as e:
                 DEFAULT_LOGGER.error(f"Failed to read DOCX: {e}", source="DocumentIndexView")
                 return ""

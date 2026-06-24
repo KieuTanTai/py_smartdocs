@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import dataclasses
 from typing import Any, Dict, List, Optional
 
 from backend.apps.core.interfaces.dataclass.request.i_chat_message import IChatMessage
-from backend.apps.core.interfaces.dataclass.request.i_chat_metrics import IChatMetrics
 from backend.apps.core.interfaces.dataclass.response.i_chat_response import IChatResponse
 from sys_services.api_client import ApiClient, ApiError
 
@@ -40,7 +38,7 @@ def build_message(
 #     return ""
 
 
-def _extract_metrics(payload: dict[str, Any]) -> IChatMetrics:
+def _extract_metrics(payload: dict[str, Any]) -> dict[str, Any]:
     metrics = payload.get("metrics")
 
     if metrics is None:
@@ -50,12 +48,19 @@ def _extract_metrics(payload: dict[str, Any]) -> IChatMetrics:
 
     metrics = metrics or {}
 
-    return IChatMetrics(
-        provider=metrics.get("provider", ""),
-        model=metrics.get("model", ""),
-        mode=metrics.get("mode", ""),
-        total_ms=metrics.get("total_ms", 0),
-    )
+    # Return full metrics dict instead of only IChatMetrics fields
+    # This includes retrieval_hits, embed_ms, query_ms, response_ms
+    return {
+        "provider": metrics.get("provider", ""),
+        "model": metrics.get("model", ""),
+        "mode": metrics.get("mode", ""),
+        "total_ms": metrics.get("total_ms", 0),
+        "embed_ms": metrics.get("embed_ms"),
+        "query_ms": metrics.get("query_ms"),
+        "response_ms": metrics.get("response_ms"),
+        "hits": metrics.get("retrieval_hits", []),  # Add hits for frontend
+        "retrieval_hits": metrics.get("retrieval_hits", []),  # Keep both names for compatibility
+    }
 
 #! The send_message function is the core of this module, responsible for sending a message to the backend API and handling the response. It includes logic for creating a new conversation if one doesn't exist, updating conversation documents, and extracting relevant information from the API response to construct an IChatResponse object. It also has error handling to provide fallback responses when the backend is unreachable.
 #! Check related method using for get response, dont use dict[str, Any] if possible, use IChatResponse or other dataclass to make it more clear and type safe.
@@ -96,11 +101,11 @@ def send_message(
             model=model,
         )
         assistant = response.get("assistant") or "No response text returned."
-        metrics = _extract_metrics(response)
+        metrics_dict = _extract_metrics(response)
         res_dict = IChatResponse(
             assistant=assistant,
             conversation_id=conversation_id,
-            metrics=dataclasses.asdict(metrics),
+            metrics=metrics_dict,  # Now it's a full dict, not IChatMetrics dataclass
             new_conversation=new_conversation,
             error=None,
             used_mock=False,
@@ -108,11 +113,19 @@ def send_message(
         res_dict["conversation_name"] = conversation_id
         return res_dict
     except ApiError as exc:
+        fallback_metrics = {
+            "provider": provider,
+            "model": model,
+            "mode": mode,
+            "total_ms": 0,
+            "hits": [],
+            "retrieval_hits": [],
+        }
         if not allow_mock:
             res_dict = IChatResponse(
                 assistant="",
                 conversation_id=conversation_id or "",
-                metrics=dataclasses.asdict(IChatMetrics(provider=provider, model=model, mode=mode, total_ms=0)),
+                metrics=fallback_metrics,
                 new_conversation=False,
                 error=str(exc),
                 used_mock=False,
@@ -126,7 +139,7 @@ def send_message(
         res_dict = IChatResponse(
             assistant=fallback,
             conversation_id=conversation_id or "",
-            metrics=dataclasses.asdict(IChatMetrics(provider=provider, model=model, mode=mode, total_ms=0)),
+            metrics=fallback_metrics,
             new_conversation=False,
             error=str(exc),
             used_mock=True,
