@@ -18,16 +18,6 @@ class IConversationApplication(ABC):
         pass
 
     @abstractmethod
-    def load_conversation(self, conversation_id: str, file_caller: str = "") -> ConversationModel:
-        """
-        Load an existing conversation by its ID.
-        :param conversation_id: The ID of the conversation to load.
-        :param file_caller: Optional parameter to specify the file caller for logging purposes.
-        :return: A ConversationModel instance representing the loaded conversation.
-        """
-        pass
-
-    @abstractmethod
     def rename_conversation(self, conversation_id: str, new_title: str, file_caller: str = "") -> ConversationModel:
         """
         Rename an existing conversation.

@@ -79,7 +79,7 @@ class ConversationJob(IConversationJob):
 
     def create_init_conversation(self, conversation_title: str = "Initial Conversation", file_caller: str = "") -> ConversationModel:
         try:
-            conversation = self.conversation_database.create_conversation(conversation_title=conversation_title)
+            conversation = self.conversation_database.create_conversation(conversations_title=conversation_title)
             self.logger.info(
                 f"Created initial conversation with ID {conversation.conversations_id}",
                 source=Path(__file__).name,

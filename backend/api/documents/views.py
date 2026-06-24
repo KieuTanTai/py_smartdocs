@@ -3,10 +3,13 @@ from __future__ import annotations
 from email import message
 import hashlib
 import json
+from logging import config
 import os
 import time
 from pathlib import Path
 import traceback
+
+from ollama import embed
 
 from backend.apps.config import container
 from backend.apps.core.interfaces.dataclass.application.i_message_response import ISendMessageResponse
@@ -28,6 +31,8 @@ from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.services.rag_base.locate.locate_service import LocateService
 
 from backend.apps.application.conversations.application import ConversationApplication
+from backend.apps.utils.get_instance_model_database import get_embedding_model, get_model_name
+from sys_services.read_config import config_provider
 from sys_services.system_dirs import METADATA_DIR
 
 # Singleton application instances
@@ -49,16 +54,25 @@ class DocumentUploadView(APIView):
     def post(self, request):
         sys_logger = _container.log_pool() 
 
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            return Response(
+                {"error": "No file uploaded"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        provider_name = EProviderName(request.data.get("provider"))
+        config_provider = _container.config_provider()
+        embeding_model_name = get_embedding_model(config_provider,provider_name)
+        model_name = get_model_name(config_provider, provider_name)
         create_req = ICreateConversationRequest(
-            request.data.get("provider"),
-            request.data.get("modal_name"),
+            provider_name,
+            model_name,
             request.data.get("document_urls"),
-            request.data.get("document_paths"),
+            uploaded_file,
             request.data.get("type"),
             request.data.get("conversation_id"),
-            request.data.get("embedding_modal_name"),
+            embeding_model_name,
         )
-        uploaded_file = create_req.document_paths
         if not uploaded_file:
             sys_logger.warning("No file uploaded in request", source="DocumentUploadView", call_by="post")
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)

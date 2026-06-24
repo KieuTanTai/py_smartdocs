@@ -1,3 +1,4 @@
+from multiprocessing import Value
 from pathlib import Path
 from typing import Any
 
@@ -18,3 +19,9 @@ def get_embedding_model(config_provider: IConfigProvider, provider: EProviderNam
         if provider_record.provider_name == provider:
             return provider_record.embed_model_name
     raise ValueError(f"Embedding model not configured for provider {provider}")
+
+def get_model_name(config_provider: IConfigProvider, provider: EProviderName) -> str:
+    for provider_record in config_provider.get_list_providers():
+        if provider_record.provider_name == provider:
+            return provider_record.model_name
+    raise ValueError(f"Model name not configured for provider {provider}")
