@@ -1,9 +1,12 @@
+from multiprocessing import Value
 from pathlib import Path
 from typing import cast
+from urllib import response
 
 from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IConversationGetResponse, IConversationInfoResponse, IConversationPostResponse, IconversationDocumentGetResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IConversationGetResponse, IConversationInfoResponse, IConversationPostResponse, IFileGetResponse, IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IUploadResponse
+from backend.apps.core.interfaces.llm.llm_ocr.i_llm_uploader import ILLMUploader
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
 from backend.apps.core.interfaces.services.repository.i_connect_cache_session import IConnectCacheSession
@@ -20,9 +23,11 @@ class DocumentApplication(IDocumentApplication):
     def __init__(
         self,
         upload_task: IUploadTask,
-        logger: ILogger,
+        llm_uploader: ILLMUploader,
+        logger: ILogger
     ):
         self.upload_task = upload_task
+        self.llm_uploader = llm_uploader
         self.logger = logger
 
     def upload_document(self, request: ICreateConversationRequest, file_caller: str = "") -> IConversationPostResponse:
@@ -30,12 +35,21 @@ class DocumentApplication(IDocumentApplication):
                          Path(__file__).name, file_caller, self.upload_document.__name__)
         return self.__upload_document_task(request, file_caller)
 
-    def list_files(self, conversation_id: str, file_caller: str = "") -> list[ConversationFilesModel]:
+    def list_files(self, conversation_id: str, file_caller: str = "") -> IFileGetResponse:
         self.logger.info(f"Listing files for conversation_id: {conversation_id}",
                          Path(__file__).name, file_caller, self.list_files.__name__)
         try:
             response = self.upload_task.list_files(conversation_id, file_caller)
-            return response
+            cloud_ids: list[str] = [res.conversation_files_cloud_id for res in response]
+            
+            names: list[str] = []
+            for cloud_id in cloud_ids:
+                names.append(self.llm_uploader.load_file(cloud_id).filename)
+                        
+            return IFileGetResponse(
+                cloud_ids,
+                names
+            )
         except Exception as e:
             self.logger.error(f"Error listing files for conversation_id: {conversation_id}, error: {str(e)}",
                               Path(__file__).name, file_caller, self.list_files.__name__)
@@ -43,7 +57,8 @@ class DocumentApplication(IDocumentApplication):
 
     def __upload_document_task(self, request: ICreateConversationRequest, file_caller: str = "") -> IConversationPostResponse:
         response = self.__run_upload_task(request, file_caller)
-        title = response.summarize.content[:50] if response.summarize else None
+        summarize: str = response.summarize.content if response.summarize else ""
+        title = summarize[:50]
         self.logger.info(f"Upload document task completed for conversation_id: {request.conversation_id}, provider: {request.provider}, model_name: {request.model_name}",
                          Path(__file__).name, file_caller, self.__upload_document_task.__name__)
         metadata = IConversationInfoResponse(
@@ -54,7 +69,8 @@ class DocumentApplication(IDocumentApplication):
             document_urls=request.document_urls,
             document_paths=request.document_paths,
             type=request.type,
-            create_at=response.created_at
+            create_at=response.created_at,
+            summarize = summarize
         )
         self.logger.info(f"Document metadata created for conversation_id: {request.conversation_id}",
                          Path(__file__).name, file_caller, self.__upload_document_task.__name__ )
@@ -70,6 +86,8 @@ class DocumentApplication(IDocumentApplication):
         self.logger.info(f"Running upload task for conversation_id: {request.conversation_id}",
                          Path(__file__).name, file_caller, self.__run_upload_task.__name__)
         try:
+            if not request.conversation_id: 
+                raise ValueError(f"ValueError conversation_id is required!")
             paths = request.document_paths if request.document_paths else []
             provider = request.provider
             response = self.upload_task.run_with_paths(request.conversation_id, paths, provider, request.model_name)

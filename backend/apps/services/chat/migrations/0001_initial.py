@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ConversationModel',
             fields=[
-                ('conversation_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('conversation_id', models.UUIDField(default=uuid.uuid7, editable=False, primary_key=True, serialize=False)),
                 ('conversation_name', models.CharField(max_length=255)),
                 ('conversation_title', models.CharField(max_length=255)),
                 ('conversation_created_at', models.DateTimeField(auto_now_add=True)),
@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DocumentModel',
             fields=[
-                ('faiss_index_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('faiss_index_id', models.UUIDField(default=uuid.uuid7, editable=False, primary_key=True, serialize=False)),
                 ('faiss_index_file_name', models.CharField(max_length=255)),
                 ('faiss_index_is_active', models.BooleanField(default=True)),
                 ('faiss_index_created_at', models.DateTimeField(auto_now_add=True)),
@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ConversationFilesModel',
             fields=[
-                ('conversation_files_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('conversation_files_id', models.UUIDField(default=uuid.uuid7, editable=False, primary_key=True, serialize=False)),
                 ('conversation', models.ForeignKey(db_column='conversation_files_conversation_id', on_delete=django.db.models.deletion.CASCADE, to='chat.conversationmodel')),
                 ('faiss_index', models.ForeignKey(db_column='faiss_index_id', on_delete=django.db.models.deletion.CASCADE, to='chat.documentmodel')),
             ],
@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='MessageModel',
             fields=[
-                ('message_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('message_id', models.UUIDField(default=uuid.uuid7, editable=False, primary_key=True, serialize=False)),
                 ('message_is_user_send', models.BooleanField()),
                 ('message_content', models.TextField()),
                 ('message_created_at', models.DateTimeField(auto_now_add=True)),

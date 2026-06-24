@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IConversationGetResponse, IConversationPostResponse, IconversationDocumentGetResponse
+from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IConversationGetResponse, IConversationPostResponse, IFileGetResponse, IconversationDocumentGetResponse
 from backend.apps.services.chat.models import ConversationFilesModel
 
 class IDocumentApplication(ABC):
@@ -20,7 +20,7 @@ class IDocumentApplication(ABC):
         pass
 
     @abstractmethod
-    def list_files(self, conversation_id: str, file_caller: str = "") -> list[ConversationFilesModel]:
+    def list_files(self, conversation_id: str, file_caller: str = "") -> IFileGetResponse:
         """
         Lists all files associated with a specific conversation.
         Args:
