@@ -3,7 +3,7 @@ import re
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 import numpy as np
 import faiss
-from mistralai.client import Mistral
+from mistralai import Mistral
 
 CURRENT_DIR = Path(__file__).parent.resolve()
 OUTPUT_DIR = CURRENT_DIR / "output"

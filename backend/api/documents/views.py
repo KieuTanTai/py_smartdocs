@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-from backend.apps.services.chat.models import DocumentModel
+from backend.apps.services.chat.models import ConversationFilesModel, DocumentModel
 from backend.apps.core.normalize.normalize import Normalize
 from backend.apps.core.chunk.chunker import Chunker
 from backend.apps.llm.llm_provider_factory import LLMProviderFactory
@@ -39,6 +39,40 @@ from sys_services.system_dirs import METADATA_DIR
 
 # Singleton application instances
 _container = container.BackendContainer()
+
+
+def _resolve_upload_provider(provider_or_model: str | None) -> EProviderName:
+    value = (provider_or_model or "").strip()
+    config = _container.config_provider()
+
+    for provider in EProviderName:
+        if value == provider.value:
+            return provider
+
+    for configured in config.get_list_providers():
+        if value in {
+            configured.model_name,
+            configured.embed_model_name,
+            configured.provider_name.value,
+        }:
+            return configured.provider_name
+
+    ollama = next(
+        (
+            configured
+            for configured in config.get_list_providers()
+            if configured.provider_name == EProviderName.OLLAMA
+        ),
+        None,
+    )
+    if ollama:
+        return ollama.provider_name
+
+    configured = config.get_list_providers()
+    if configured:
+        return configured[0].provider_name
+
+    return EProviderName.OLLAMA
 
 class DocumentListView(APIView):
     def get(self, request):
@@ -61,9 +95,9 @@ class DocumentUploadView(APIView):
                 {"error": "No file uploaded"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        paths = [Path(file) for file in uploaded_file]
-        provider_name = EProviderName(request.data.get("provider"))
         config_provider = _container.config_provider()
+        paths = [Path(file) for file in uploaded_file]
+        provider_name = _resolve_upload_provider(request.data.get("provider"))
         embeding_model_name = get_embedding_model(config_provider,provider_name)
         model_name = get_model_name(config_provider, provider_name)
         type = EPipelineType(request.data.get("type"))
@@ -96,7 +130,44 @@ class DocumentUploadView(APIView):
             conversation.rename_conversation(str(cons.conversations_id), response.info.conversation_title, Path(__file__).name)
             
             sys_logger.info(f"File uploaded successfully: {conversation.list_conversations}", source="DocumentUploadView", call_by="post")
-            return Response(response, status=status.HTTP_201_CREATED)
+            
+            document_model = DocumentModel.objects.filter(documents_conversation=cons).first()
+            file_ids = []
+            if document_model:
+                file_ids = [
+                    str(item.conversation_files_cloud_id)
+                    for item in ConversationFilesModel.objects.filter(
+                        conversation_files_document=document_model
+                    )
+                ]
+
+            # Convert response to JSON-serializable dict
+            response_data = {
+                "id": str(cons.conversations_id),
+                "conversation_id": str(cons.conversations_id),
+                "document_id": str(document_model.document_id) if document_model else "",
+                "document_model_id": str(document_model.document_id) if document_model else "",
+                "file_ids": file_ids,
+                "title": response.info.conversation_title,
+                "status": "indexed",
+                "provider": response.info.provider.value,
+                "model_name": response.info.model_name,
+                "document_urls": response.info.document_urls,
+                "type": response.info.type.value,
+                "summarize": response.info.summarize,
+            }
+            
+            # Add time counter if available
+            if response.time_counter:
+                response_data["time_counter"] = {
+                    "extract_time": response.time_counter.extract_time,
+                    "chunk_time": response.time_counter.chunk_time,
+                    "embedding_time": response.time_counter.embedding_time,
+                    "save_time": response.time_counter.save_time,
+                    "total_time": response.time_counter.total_time,
+                }
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
             
         except ValueError as e:
             sys_logger.error(f"Validation Error: {e}", source="DocumentUploadView", call_by="post", method_call="upload_document")

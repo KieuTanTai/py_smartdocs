@@ -56,7 +56,7 @@ from backend.apps.utils.get_instance_model_database import get_embedding_model
 from backend.apps.utils.hash_content import hash_to_numpy_int64_by_str_content
 from neo4j_graphrag.llm.base import LLMInterface
 from neo4j_graphrag.embeddings import Embedder
-from neo4j_graphrag.embeddings.google_genai import GeminiEmbedder
+from backend.apps.llm.gemini import GeminiEmbedder
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import (
     ICompletionRequest,

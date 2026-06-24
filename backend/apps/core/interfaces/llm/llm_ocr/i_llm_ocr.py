@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
 )
-from mistralai.client.models import OCRResponse
+from backend.apps.core.interfaces.dataclass.ocr.i_ocr_response import IOCRResponse
 
 class ILLMOCR(ABC):
     """
@@ -14,6 +14,6 @@ class ILLMOCR(ABC):
     @abstractmethod
     def process_ocr(
         self, uploaded_pdf: ICreateFileResponse, call_by: str = ""
-    ) -> OCRResponse:
+    ) -> IOCRResponse:
         """Process OCR on the uploaded PDF file and return extracted text."""
         pass

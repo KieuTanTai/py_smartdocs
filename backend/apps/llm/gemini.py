@@ -7,8 +7,45 @@ from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from neo4j_graphrag.embeddings import Embedder
 from neo4j_graphrag.llm.base import LLMInterface
-from neo4j_graphrag.llm import GeminiLLM
-from neo4j_graphrag.embeddings.google_genai import GeminiEmbedder
+from neo4j_graphrag.llm import VertexAILLM
+from neo4j_graphrag.embeddings import VertexAIEmbeddings
+
+
+class GeminiLLM(LLMInterface):
+    """Custom wrapper for Gemini LLM to work with neo4j_graphrag."""
+    
+    def __init__(self, model_name: str, api_key: str):
+        super().__init__(model_name)
+        self.api_key = api_key
+        self.client = genai.Client(api_key=api_key)
+    
+    def invoke(self, input: str) -> str:
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=[{"parts": [{"text": input}]}],
+        )
+        return response.text if response.text else ""
+
+
+class GeminiEmbedder(Embedder):
+    """Custom wrapper for Gemini embedder to work with neo4j_graphrag."""
+    
+    def __init__(self, model: str, rate_limit_handler=None, api_key: str = ""):
+        super().__init__(model)
+        self.api_key = api_key
+        self.client = genai.Client(api_key=api_key)
+        self.embedding_dim = 768  # Default dimension for Gemini embeddings
+    
+    def embed_query(self, text: str) -> list[float]:
+        response = self.client.models.embed_content(
+            model=self.model,
+            contents=text,
+        )
+        if response.embeddings and response.embeddings[0].values:
+            values = list(response.embeddings[0].values)
+            self.embedding_dim = len(values)  # Update dimension based on actual response
+            return values
+        return []
 
 class GeminiClient(ILLMClient):
 

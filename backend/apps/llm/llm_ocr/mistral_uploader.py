@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import cast
 
-from mistralai.client import Mistral
+from mistralai import Mistral
 
 from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
@@ -31,7 +31,16 @@ class MistralUploader(ILLMUploader):
                 f"Uploaded file to Mistral: '{file_path}'",
                 source=str(self.__class__),
             )
-            return cast(ICreateFileResponse, upload_response)
+            # Convert to ICreateFileResponse
+            return ICreateFileResponse(
+                id=getattr(upload_response, 'id', ''),
+                object=getattr(upload_response, 'object', 'file'),
+                bytes=getattr(upload_response, 'bytes', 0),
+                created_at=getattr(upload_response, 'created_at', 0),
+                filename=getattr(upload_response, 'filename', file_path.name),
+                purpose=getattr(upload_response, 'purpose', 'ocr'),
+                mimetype=getattr(upload_response, 'mimetype', None)
+            )
         except Exception as e:
             self.logger.error(
                 f"Failed to upload file to Mistral: '{file_path}'. Error: {e}",

@@ -11,8 +11,13 @@ from sys_services.api_client import ApiClient, ApiError
 # ? These functions are designed to be called by the frontend to send messages and handle responses in a consistent way, including error handling and fallback behavior.
 def build_message(
     role: str, content: str, meta: Optional[dict] = None
-) -> IChatMessage:
-    return IChatMessage(role=role, content=content, meta=meta or {})
+) -> dict:
+    """Build a message dict for the frontend."""
+    return {
+        "role": role,
+        "content": content,
+        "meta": meta or {}
+    }
 
 
 def _extract_metrics(payload: dict[str, Any]) -> IChatMetrics:
@@ -72,33 +77,48 @@ def send_message(
         )
         assistant = response.get("assistant") or "No response text returned."
         metrics = _extract_metrics(response)
-        return IChatResponse(
-            assistant=assistant,
-            conversation_id=conversation_id,
-            metrics=metrics,
-            new_conversation=new_conversation,
-            error=None,
-            used_mock=False,
-        ).__dict__
+        return {
+            "assistant": assistant,
+            "conversation_id": conversation_id,
+            "metrics": {
+                "provider": metrics.provider.value if isinstance(metrics.provider, EProviderName) else metrics.provider,
+                "model": metrics.model,
+                "mode": metrics.mode,
+                "total_ms": metrics.total_ms,
+            },
+            "new_conversation": new_conversation,
+            "error": None,
+            "used_mock": False,
+        }
     except ApiError as exc:
         if not allow_mock:
-            return IChatResponse(
-                assistant="",
-                conversation_id=conversation_id or "",
-                metrics=IChatMetrics(provider=EProviderName(provider), model=model, mode=mode, total_ms=0),
-                new_conversation=False,
-                error=str(exc),
-                used_mock=False,
-            ).__dict__
+            return {
+                "assistant": "",
+                "conversation_id": conversation_id or "",
+                "metrics": {
+                    "provider": provider,
+                    "model": model,
+                    "mode": mode,
+                    "total_ms": 0,
+                },
+                "new_conversation": False,
+                "error": str(exc),
+                "used_mock": False,
+            }
         fallback = (
             "Backend unreachable. This is a local mock response so you can continue "
             "designing the UI."
         )
-        return IChatResponse(
-            assistant=fallback,
-            conversation_id=conversation_id or "",
-            metrics=IChatMetrics(provider=provider, model=model, mode=mode, total_ms=0),
-            new_conversation=False,
-            error=str(exc),
-            used_mock=True,
-        ).__dict__
+        return {
+            "assistant": fallback,
+            "conversation_id": conversation_id or "",
+            "metrics": {
+                "provider": provider,
+                "model": model,
+                "mode": mode,
+                "total_ms": 0,
+            },
+            "new_conversation": False,
+            "error": str(exc),
+            "used_mock": True,
+        }

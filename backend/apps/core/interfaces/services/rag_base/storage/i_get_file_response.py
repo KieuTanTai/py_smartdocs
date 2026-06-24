@@ -1,7 +1,7 @@
-from mistralai.client.models import GetFileResponse
+from mistralai.models import RetrieveFileOut
 
 
-class IGetFileResponse(GetFileResponse):
+class IGetFileResponse(RetrieveFileOut):
     """
     Interface for get file response.
     Extends GetFileResponse with additional fields if needed.

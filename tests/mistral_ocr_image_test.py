@@ -1,7 +1,7 @@
 import base64
 from pathlib import Path
 
-from mistralai.client import Mistral
+from mistralai import Mistral
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.logging import DEFAULT_LOGGER
 

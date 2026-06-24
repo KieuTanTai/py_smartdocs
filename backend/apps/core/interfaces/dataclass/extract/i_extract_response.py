@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from mistralai.client.types import (
-    OptionalNullable,
-)
+from typing import Optional
 
 @dataclass
 class IExtractResponse:
@@ -10,4 +8,4 @@ class IExtractResponse:
     extracted_text: str
     model: str 
     page_processed: int
-    doc_size_bytes: OptionalNullable[int]
+    doc_size_bytes: Optional[int] = None

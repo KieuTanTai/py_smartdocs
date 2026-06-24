@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 import json
+import sys
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from shiny import App, reactive, render, ui
+
+# Add the parent directory to the Python path to enable absolute imports
+# BUT make sure we add it AFTER current directory to avoid conflicts
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    # Use append instead of insert(0) to avoid shadowing current module
+    sys.path.append(str(BASE_DIR))
+
 from frontend.apps.message import build_message, send_message
 from frontend.components.account.signup import signup_modal
 from frontend.components.account.login import login_modal
@@ -62,6 +72,7 @@ app_ui = ui.page_fluid(
 
 
 def server(input: Any, output: Any, session: Any) -> None:
+    initial_model = LIST_PROVIDERS[0].model_name if LIST_PROVIDERS else "auto"
     messages = reactive.Value([])
     docs = reactive.Value([])
     history = reactive.Value([])
@@ -72,9 +83,9 @@ def server(input: Any, output: Any, session: Any) -> None:
     conversation_name = reactive.Value(None)
     api_base_url = reactive.Value(INITIAL_API_BASE_URL)
     provider = reactive.Value("auto")
-    current_model = reactive.Value("auto")
+    current_model = reactive.Value(initial_model)
     current_mode = reactive.Value("normal")
-    current_model_name = reactive.Value("gemini-3.1-flash-lite")
+    current_model_name = reactive.Value(initial_model)
     system_prompt = reactive.Value("")
     mock_on_fail = reactive.Value(True)
     upload_source = reactive.Value("local")
@@ -86,19 +97,58 @@ def server(input: Any, output: Any, session: Any) -> None:
     def client() -> ApiClient:
         return ApiClient(api_base_url.get())
 
+    def resolve_provider_and_model(value: Optional[str] = None) -> tuple[str, str]:
+        selected = (value or current_model.get() or "").strip()
+        configured_provider = (provider.get() or "").strip()
+
+        for item in LIST_PROVIDERS:
+            if selected in {item.model_name, item.provider_name.value}:
+                return item.provider_name.value, item.model_name
+
+        if configured_provider and configured_provider != "auto":
+            for item in LIST_PROVIDERS:
+                if configured_provider == item.provider_name.value:
+                    model_name = selected if selected and selected != "auto" else item.model_name
+                    return configured_provider, model_name
+
+        ollama = next(
+            (
+                item
+                for item in LIST_PROVIDERS
+                if item.provider_name.value == "ollama"
+            ),
+            None,
+        )
+        fallback = ollama or (LIST_PROVIDERS[0] if LIST_PROVIDERS else None)
+        if fallback:
+            return fallback.provider_name.value, fallback.model_name
+
+        return "ollama", selected if selected and selected != "auto" else "qwen2.5:1.5b-instruct"
+
     def normalize_doc(
         payload: dict[str, Any], file_info: dict, source: str
     ) -> dict[str, Any]:
         data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
-        doc_id = (
-            data.get("id")  # type: ignore
-            or data.get("document_id")  # type: ignore
+        conversation_id = (
+            data.get("conversation_id")  # type: ignore
+            or data.get("conversation_name")  # type: ignore
+            or data.get("id")  # type: ignore
+        )
+        document_id = (
+            data.get("document_id")  # type: ignore
+            or data.get("document_model_id")  # type: ignore
             or data.get("uuid")  # type: ignore
+        )
+        doc_id = (
+            conversation_id
+            or document_id
             or f"local-{int(time.time())}"
         )
         title = data.get("title") or file_info.get("name") or "Untitled"  # type: ignore
         return {
             "id": str(doc_id),
+            "conversation_id": str(conversation_id) if conversation_id else "",
+            "document_id": str(document_id) if document_id else "",
             "title": title,
             "status": data.get("status") or data.get("processing_status") or "uploaded",  # type: ignore
             "source": source,
@@ -330,9 +380,11 @@ def server(input: Any, output: Any, session: Any) -> None:
     @reactive.effect
     @reactive.event(input.model_select)
     def _model_changed() -> None:
-        current_model.set(input.model_select())
-        current_model_name.set(input.model_select())
-        set_status("Model updated", f"Model set to {input.model_select()}", "success")
+        active_provider, active_model = resolve_provider_and_model(input.model_select())
+        provider.set(active_provider)
+        current_model.set(active_model)
+        current_model_name.set(active_model)
+        set_status("Model updated", f"Model set to {active_model}", "success")
 
     @reactive.effect
     @reactive.event(input.open_upload)
@@ -369,20 +421,22 @@ def server(input: Any, output: Any, session: Any) -> None:
         current_docs = docs.get()
         for info in files:
             try:
+                active_provider, _ = resolve_provider_and_model()
                 print("Upload modal info:", info)
                 print("Upload modal source:", source)
-                print("Provider:", provider)
-                response = client().upload_document(info, source, "")
+                print("Provider:", active_provider)
+                response = client().upload_document(info, source, active_provider)
                 print("Upload modal response:", response)
                 doc = normalize_doc(response, info, source)
                 print("Upload modal normalized document:", doc)
                 current_docs = current_docs + [doc]
-                try:
-                    index_response = client().index_document(doc["id"])
-                    doc["status"] = index_response.get("status", "processing")
-                    print("Upload modal indexing response:", index_response)
-                except ApiError:
-                    pass
+                
+                # Automatically set the conversation to the uploaded document's conversation
+                if response.get("conversation_id"):
+                    conversation_name.set(response.get("conversation_id"))
+                    print(f"Set conversation_name to: {response.get('conversation_id')}")
+                
+                doc["status"] = response.get("status", doc["status"])
             except ApiError as exc:
                 print("Upload modal error:")
                 current_docs = current_docs + [
@@ -405,7 +459,7 @@ def server(input: Any, output: Any, session: Any) -> None:
             return
         source = upload_source.get()
         current_docs = docs.get()
-        current_provider = current_model.get()
+        current_provider, _ = resolve_provider_and_model()
         for info in files:
             try:
                 print("provider", current_provider)
@@ -415,10 +469,13 @@ def server(input: Any, output: Any, session: Any) -> None:
                 print("Response from upload:", response)
                 print("Document after normalization:", doc)
                 print("Current documents before indexing:", current_docs)
-                try:
-                    print("Document after indexing attempt:", doc)
-                except ApiError:
-                    pass
+                
+                # Automatically set the conversation to the uploaded document's conversation
+                if response.get("conversation_id"):
+                    conversation_name.set(response.get("conversation_id"))
+                    print(f"Set conversation_name to: {response.get('conversation_id')}")
+                
+                doc["status"] = response.get("status", doc["status"])
             except ApiError as exc:
                 current_docs = current_docs + [
                     {
@@ -446,12 +503,8 @@ def server(input: Any, output: Any, session: Any) -> None:
             doc = normalize_doc(response, {"name": file_name}, "drive")
             print("Drive upload normalized document:", doc)
             current_docs = current_docs + [doc]
-            try:
-                index_response = client().index_document(doc["id"])
-                doc["status"] = index_response.get("status", "processing")
-                print("Drive upload indexing response:", index_response)
-            except ApiError:
-                pass
+            if response.get("conversation_id"):
+                conversation_name.set(response.get("conversation_id"))
         except Exception as exc:
             print("Drive upload error:")
             set_status("Upload failed", str(exc), "error")
@@ -492,26 +545,40 @@ def server(input: Any, output: Any, session: Any) -> None:
         current = current + [build_message("user", text)]
         messages.set(current)
 
-        was_new = conversation_name.get() is None
+        # IMPORTANT: Use the conversation_id from the selected document
+        # Each uploaded document has its own conversation_id
+        # We should use that conversation instead of creating a new one
+        selected_doc = next(
+            (doc for doc in docs.get() if str(doc.get("id")) == str(selected[0])),
+            {},
+        )
+        current_conv = selected_doc.get("conversation_id") or selected[0]
+        previous_conv = conversation_name.get()
+        was_new = not previous_conv or str(previous_conv) != str(current_conv)
+        conversation_name.set(current_conv)
+        print(f"Using conversation from selected document: {current_conv}")
+
+        active_provider, active_model = resolve_provider_and_model()
         #? NOTE: explain flow if conversation_name is None, create new conversation, else send message to existing conversation.
         #! NOTE: RECOMMEND CHANGE RESPONSE FROM send_message to dataclass type instead of dict[str, Any] to make it more clear and type safe.
         response = send_message(
             client(),
-            conversation_name.get(),
+            current_conv,
             text,
             selected,
-            provider.get(),
-            current_model.get(),
+            active_provider,
+            active_model,
             system_prompt.get(),
             current_mode.get(),
             allow_mock=mock_on_fail.get(),
         )
-        conversation_name.set(response.get("conversation_name"))
-        if was_new and response.get("conversation_name"):
+        response_conv = response.get("conversation_id") or current_conv
+        conversation_name.set(response_conv)
+        if was_new and response_conv:
             history.set(
                 [
                     {
-                        "id": response.get("conversation_name"),
+                        "id": response_conv,
                         "title": text[:42],
                         "when": time.strftime("%H:%M"),
                     }
@@ -528,8 +595,8 @@ def server(input: Any, output: Any, session: Any) -> None:
         metrics.set(
             {
                 **meta,
-                "provider": provider.get(),
-                "model": current_model.get(),
+                "provider": active_provider,
+                "model": active_model,
                 "mode": current_mode.get(),
             }
         )

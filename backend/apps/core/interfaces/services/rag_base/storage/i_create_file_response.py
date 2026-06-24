@@ -1,10 +1,16 @@
-from mistralai.client.models import CreateFileResponse
+from dataclasses import dataclass
+from typing import Optional
 
-
-class ICreateFileResponse(CreateFileResponse):
+@dataclass
+class ICreateFileResponse:
     """
     Interface for create file response.
-    Extends CreateFileResponse with additional fields if needed.
+    Contains uploaded file metadata.
     """
-
-    pass
+    id: str
+    object: str
+    bytes: int
+    created_at: int
+    filename: str
+    purpose: str
+    mimetype: Optional[str] = None

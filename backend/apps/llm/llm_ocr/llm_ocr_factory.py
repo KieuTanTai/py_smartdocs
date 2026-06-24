@@ -1,11 +1,13 @@
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
 from backend.apps.llm.llm_ocr.mistral_ocr import MistralLLMOCR
+from backend.apps.llm.llm_ocr.generic_ocr import GenericOCR
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr_factory import ILLMOCRFactory
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from sys_services.read_config.config_provider import (
     IConfigProvider,
 )
+from sys_services.system_dirs import METADATA_DIR
 
 
 class LLMOCRFactory(ILLMOCRFactory):
@@ -28,6 +30,17 @@ class LLMOCRFactory(ILLMOCRFactory):
                 provider_name=provider_name.value,
                 timeout_seconds=MISTRAL_CONFIG.get("timeout_seconds", 60.0),
                 logger=self.logger,
+            )
+        elif provider_name in [EProviderName.GEMINI, EProviderName.OLLAMA]:
+            # Use generic OCR for providers without dedicated OCR support
+            self.logger.info(
+                f"Using generic OCR extractor for provider: {provider_name.value}",
+                source=str(self.__class__),
+            )
+            return GenericOCR(
+                provider_name=provider_name.value,
+                logger=self.logger,
+                storage_dir=METADATA_DIR,
             )
         else:
             raise ValueError(f"Unsupported provider: {provider_name.value}")

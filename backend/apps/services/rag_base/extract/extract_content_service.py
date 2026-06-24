@@ -9,7 +9,7 @@ from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.services.rag_base.extract.i_extract_content import (
     IExtractContent,
 )
-from mistralai.client.models import OCRResponse
+from backend.apps.core.interfaces.dataclass.ocr.i_ocr_response import IOCRResponse
 
 from backend.apps.utils.is_content_empty import check_empty_content
 
@@ -40,7 +40,7 @@ class ExtractContentService(IExtractContent):
         extracted_text = self.__process_ocr_response(ocr_response, source_log, call_by=call_by)
         return IExtractResponse(uploaded_file.id, extracted_text, ocr_response.model, ocr_response.usage_info.pages_processed, ocr_response.usage_info.doc_size_bytes)
 
-    def __process_ocr_response(self, ocr_response: OCRResponse, source_log: str, call_by: str = "") -> str:
+    def __process_ocr_response(self, ocr_response: IOCRResponse, source_log: str, call_by: str = "") -> str:
         extracted_text = "\n".join([page.markdown for page in ocr_response.pages])
         if self.__validate_response_text(extracted_text, source_log, call_by) is False:
             self.logger.warning(

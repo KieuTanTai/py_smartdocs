@@ -2,8 +2,7 @@ import io
 from pathlib import Path
 from sys_services.read_config.read_mistral_config import MISTRAL_CONFIG
 from sys_services.logging import DEFAULT_LOGGER
-from mistralai.client import Mistral
-from mistralai.client.models import CreateFileResponse
+from mistralai import Mistral, UploadFileOut
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 PDF_PATH = ROOT_DIR / "docs" / "pdfs_test" / "Báo cáo tài chính Kiểm toán năm 2025.pdf"

@@ -6,7 +6,7 @@ Abstract interface for file content extraction orchestration.
 from abc import ABC, abstractmethod
 from pathlib import Path
 from backend.apps.core.enums.e_provider_name import EProviderName
-from mistralai.client.models import OCRResponse
+from backend.apps.core.interfaces.dataclass.ocr.i_ocr_response import IOCRResponse
 
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
 
