@@ -1,8 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 import uuid
 
+from google.auth import default
 import numpy as np
 
 
@@ -11,6 +13,7 @@ class IVectorDBUpsertResponse:
     id: uuid.UUID
     create_at: datetime
     is_success: bool
+    path: Path | None = field(default = None)
     sumarize_content: str = ""  # Optional field to store a summary of the content associated with the vector, if applicable
     message: str = ""  # Optional message field for additional info or error messages
 

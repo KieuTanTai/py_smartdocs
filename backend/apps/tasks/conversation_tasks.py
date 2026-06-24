@@ -130,9 +130,9 @@ class ConversationTask(IConversationTask):
         file_caller: str = "",
     ) -> IConversationJobResponse | IConversationLoadResponse:
         if conversation is not None:
-            return self.__load_conversation(conversation, file_caller=file_caller)
-            
+            return self.__load_conversation(conversation,file_caller=file_caller)
         init_conversation = self.conversation_job.create_init_conversation(file_caller=file_caller)
+        print("init", init_conversation.conversations_id)
         self.logger.info(
             f"Starting ConversationTask for conversation_id: {init_conversation.conversations_id} with provider: {provider_name} and model: {model_name}",
             source=Path(__file__).name,

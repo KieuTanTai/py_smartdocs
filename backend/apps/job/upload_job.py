@@ -25,6 +25,7 @@ from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbe
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.llm.i_llm_provider_factory import ILLMProviderFactory
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_cache_database import IConversationCacheDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
@@ -50,7 +51,7 @@ from backend.apps.core.interfaces.services.repository.i_connect_graph_db_session
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
-from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel
+from backend.apps.services.chat.models import ConversationCacheModel, ConversationFilesModel, ConversationModel, DocumentModel
 from backend.apps.utils.get_instance_model_database import get_embedding_model
 from backend.apps.utils.hash_content import hash_to_numpy_int64_by_str_content
 from neo4j_graphrag.llm.base import LLMInterface
@@ -91,7 +92,8 @@ class UploadJob(IUploadJob):
         self.conversation_files_database = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
         self.conversation_database = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
         self.faiss_store = cast(IVectorStoreService, self.locate_service.get_vector_store(EBackendStorageName.FAISS))
-
+        self.cache_database = cast(IConversationCacheDatabase, self.database_provider.get_model_service(ConversationCacheModel))
+        
     def step_extract_and_normalize(
         self, file_path: Path, provider: EProviderName, file_caller: str = ""
     ) -> IExtractResponse:
@@ -193,15 +195,13 @@ class UploadJob(IUploadJob):
             file_caller,
             self.step_save.__name__,
         )
-
+        print("Faiss: ", conversation_id)
         faiss_upsert_response, faiss_index = self.__save_to_faiss(
             provider, embed_stack, conversation_id, ids, file_caller=file_caller
         )
 
         # bm25_response = self.__save_to_bm25(
         #     provider, chunk_texts, conversation_id, file_caller=file_caller
-        # )
-
         return IUploadResponse(
             conversation_id=conversation_id,
             conversation_name=self.build_name(document_ids, file_caller=file_caller),
@@ -223,9 +223,10 @@ class UploadJob(IUploadJob):
         llm_client = self.llm_provider_factory.get_provider(provider)
         embedding_model_name = get_embedding_model(self.config_provider, provider)
         embedding_request = ICompletionRequest(provider, embedding_model_name, "summarize document")
-        embedding_result = llm_client.embedding(embedding_request, file_caller=self.summarize_document.__name__).embedding
-        original_texts = self.__get_orriginal_texts(self.faiss_store, faiss_index, conversation_id, embedding_result, cache_param_values, file_caller)
         print("HELLO")        
+        embedding_result = llm_client.embedding(embedding_request, file_caller=self.summarize_document.__name__).embedding
+        embedding_result = embedding_result.astype(np.float32)
+        original_texts = self.__get_orriginal_texts(self.faiss_store, faiss_index, conversation_id, embedding_result, cache_param_values, file_caller)
         template = self.llm_prompt_structure.build_summary_prompt(original_texts)
         request = ICompletionRequest(provider, model_name, template)
         print("hello")
@@ -270,6 +271,8 @@ class UploadJob(IUploadJob):
                 file_caller,
                 self.step_cache.__name__,
             )
+            conversation = self.conversation_database.get_by_id(conversation_id)
+            self.cache_database.create_conversation_cache(conversation, path)
         finally:
             self.logger.info(
                 f"Disconnecting cache session for conversation {conversation_id}",
@@ -471,10 +474,8 @@ class UploadJob(IUploadJob):
             file_caller,
             self.__save_to_faiss.__name__,
         )
-        upsert_response = self.faiss_store.upsert(
-            index, file_name, file_caller=self.__save_to_faiss.__name__
-        )
-        return upsert_response, index
+        self.logger.info(f"Upserted: {faiss_file_name.path}",Path(__file__).name,file_caller,self.__save_to_faiss.__name__)
+        return faiss_file_name, index
 
     # def __save_to_bm25(
     #     self,

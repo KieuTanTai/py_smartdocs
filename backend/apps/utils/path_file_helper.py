@@ -22,11 +22,12 @@ def create_path_file(metadata_dir: Path, name: Any, file_type: str, logger: ILog
 def is_existed_in_metadata(metadata_dir: Path, name: Any, file_type: str, logger: ILogger | None = None) -> Path | None:
     """Check if a metadata file with the given name and type exists in the metadata directory. It will log the existence check and return the path if the file exists, or None if it does not."""
 
-    metadata_path = metadata_dir / f"{datetime.now().strftime('%Y-%m-%d')}" / f"{name}.{file_type}"
-    is_existed = metadata_path if metadata_path.exists() else None
+    metadata_file = next(metadata_dir.rglob(f"{name}.{file_type}"), None)
+    
+    is_existed = metadata_file if metadata_file and metadata_file.exists() else None
     if logger is not None:
         if is_existed:
-            logger.info(f"Metadata for '{name}' already exists at '{metadata_path}'", Path(__file__).name, method_call=is_existed_in_metadata.__name__)
+            logger.info(f"Metadata for '{name}' already exists at '{metadata_file}'", Path(__file__).name, method_call=is_existed_in_metadata.__name__)
         else:
             logger.info(f"Metadata for '{name}' does not exist in '{metadata_dir}'", Path(__file__).name, method_call=is_existed_in_metadata.__name__)
     return is_existed

@@ -32,16 +32,18 @@ class FaissService(IVectorStoreService):
         logger: ILogger,
     ):
         self.metadata_dir = metadata_dir / "faiss" 
+
         self.logger = logger
 
     def create_index(self, np_vectors: np.ndarray, ids: np.ndarray = np.array([], dtype=np.int64), file_caller: str = "") -> faiss.IndexFlatL2 | faiss.IndexIDMap:
         return self.__generate_faiss_index(np_vectors, ids, file_caller)
 
     def upsert(self, index: Any, conversation_id: uuid.UUID, file_caller: str = "") -> IVectorDBUpsertResponse:
-        self.__write_metadata_file(conversation_id, index)
+        path = self.__write_metadata_file(conversation_id, index)
         self.logger.info(f"Upserted FAISS index for conversation_id '{conversation_id}' to metadata",
             Path(__file__).name, file_caller, method_call=self.upsert.__name__)
         return IVectorDBUpsertResponse(id=conversation_id, create_at=datetime.datetime.now(), 
+                                       path = path,
                                        sumarize_content="", is_success=True)
 
     def search(self, index: Any, conversation_id: uuid.UUID, query_vector: np.ndarray, limit=5, allow_ids: set | None = None, 
@@ -140,14 +142,15 @@ class FaissService(IVectorStoreService):
             return index
 
     # helper method to write FAISS index metadata file, it will check if metadata for the conversation_id already exists before writing, and log the process
-    def __write_metadata_file(self, conversation_id: uuid.UUID, faiss_index: faiss.IndexFlatL2, file_caller: str = ""):
+    def __write_metadata_file(self, conversation_id: uuid.UUID, faiss_index: faiss.IndexFlatL2, file_caller: str = "") -> Path | None:
         path = is_existed_in_metadata(self.metadata_dir, conversation_id, "faiss", self.logger)
         if (path is not None and type(path) == Path):
             self.logger.warning(f"Metadata for conversation_id '{conversation_id}' already exists, skipping write",
                 Path(__file__).name, file_caller, method_call=is_existed_in_metadata.__name__)
-            return
+            return path
 
         destination_path = create_path_file(self.metadata_dir, conversation_id, "faiss")
         faiss.write_index(faiss_index, str(destination_path))
         self.logger.info(f"FAISS index metadata for conversation_id '{conversation_id}' written to '{destination_path}'",
             Path(__file__).name, file_caller, method_call=self.__write_metadata_file.__name__)
+        return destination_path

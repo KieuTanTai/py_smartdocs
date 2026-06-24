@@ -35,7 +35,6 @@ class ConversationCacheDatabaseService(IConversationCacheDatabase):
             conversation_cache_conversation=conversation,
             conversation_cache_file_path=str(file_path) if file_path is not None else None,
             conversation_cache_status=status,
-            conversation_cache_content=content,
             conversation_cache_is_active=is_active,
             **extra_fields,
         )

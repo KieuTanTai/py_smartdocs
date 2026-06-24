@@ -65,7 +65,7 @@ class ConversationFileDatabaseService(IConversationFileDatabase):
         return ConversationFilesModel.objects.filter(conversation_files_cloud_id=cloud_id)
 
     def get_by_conversation(self, conversation: ConversationModel) -> QuerySet[ConversationFilesModel]:
-        document = DocumentModel.objects.get(document_conversation=conversation)
+        document = DocumentModel.objects.get(documents_conversation=conversation)
         return ConversationFilesModel.objects.filter(conversation_files_document=document)
 
     def list(self, **filters: Any) -> QuerySet[ConversationFilesModel]:

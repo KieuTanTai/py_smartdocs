@@ -50,7 +50,9 @@ class ConversationCacheModel(models.Model):
     conversation_cache_is_active = models.BooleanField(default=True)
     conversation_cache_file_path = models.CharField(max_length=512, null=True, blank=True)
     conversation_cache_created_at = models.DateTimeField(auto_now=True)
-    conversation_cache_status = models.UUIDField(null=True, blank=True)
+    conversation_cache_status = models.CharField(
+        max_length=32, choices=EDocumentStatus.choices, default=EDocumentStatus.UPLOADED, db_column="conversation_status"
+    ) 
     class Meta:
         db_table = "conversation_cache"
 

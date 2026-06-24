@@ -53,12 +53,12 @@ class ConversationJob(IConversationJob):
         self.conversation_files_database: IConversationFileDatabase = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
         self.message_database: IMessageDatabase = cast(IMessageDatabase, self.database_provider.get_model_service(MessageModel))
         self.conversation_database: IConversationDatabase = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
-        self.conversation_cache_database: IConversationCacheDatabase = cast(IConversationCacheDatabase, self.database_provider.get_model_service(ConversationModel))
+        self.conversation_cache_database: IConversationCacheDatabase = cast(IConversationCacheDatabase, self.database_provider.get_model_service(ConversationCacheModel))
 
     def check_documents_ready(self, conversation: ConversationModel, file_caller: str = "") -> bool:
         try:
             existed = self.document_database.get_by_id(conversation.conversations_id)
-            cache_metadat_existed = self.conversation_cache_database.get_by_conversation(conversation)
+            cache_metadata_existed = self.conversation_cache_database.get_by_conversation(conversation)
             self.logger.info(
                 f"Checked document readiness for conversation {conversation.conversations_id}: {'Ready' if existed and existed.documents_status.lower().strip() == 'indexed' else 'Not Ready'}",
                 source=Path(__file__).name,
@@ -129,7 +129,7 @@ class ConversationJob(IConversationJob):
         assistant_response = None
         if summarize.strip() == "":
             summarize = self.llm_prompt_structure.build_init_processed_prompt("say hi to user")
-            assistant_response = self.__generate_assistant_response(summarize, provider, model_name)
+        assistant_response = self.__generate_assistant_response(summarize, provider, model_name)
         self.logger.info(
             f"Generated bootstrap message for conversation {conversation.conversations_id} with provider {provider} and model {model_name}.\n now save the message to database.",
             source=Path(__file__).name,
@@ -212,11 +212,13 @@ class ConversationJob(IConversationJob):
                 )
                 raise ValueError(f"Conversation {conversation_id} not found.")
             conversation_id = conversation.conversations_id
-
+            print("HELLLLOO")
             cache = self.conversation_cache_database.get_by_conversation(conversation)
+            print(cache)
             document = self.document_database.get_by_conversation(conversation)
+            print(document)
             files = self.__get_conversation_files(conversation) if conversation else []
-
+            print("teype")
             is_valid = cache is not None and document is not None and len(files) > 0
             self.logger.info(
                 f"Checked validity of conversation {conversation_id}: {'Valid' if is_valid else 'Invalid'}",

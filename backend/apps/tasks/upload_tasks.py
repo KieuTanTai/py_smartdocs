@@ -59,6 +59,7 @@ class UploadTask(IUploadTask):
         try:
             # Chạy luồng lõi
             conversation_model = self.conversation_database.get_by_id(conversation_id)
+            print("path: ", conversation_model.conversations_id)
             result_dataclass = self.__execute_base_pipeline_with_paths(conversation_model, file_paths, provider_name, model_name)
             # Lưu index vào memory pool
             self.logger.info(f"Adding FAISS index to memory pool with file ID {result_dataclass.conversation_id} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
@@ -214,14 +215,20 @@ class UploadTask(IUploadTask):
 
         # start save time counter
         # * Step 4: Cache the chunks and embeddings, and get the cache paths
+        print("cache step", conversation_model.conversations_id)
         cache_response = self.__cache(conversation_model.conversations_id, chunk_responses)
         cache_param_values  = cache_response.cache_param.values
 
         # * Step 5: Save the embeddings to vector store and update document model with file path and status
         try:
-            upload_response = self.__upload_to_vector_store(provider, document_ids, document.pk, embeddings, chunk_texts, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+            upload_response = self.__upload_to_vector_store(provider, document_ids, conversation_model.conversations_id, document.document_id, embeddings, chunk_texts, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+            print("HELLOSOD1123")
+            
             upload_response.conversation_files = self.__create_conversation_file_model(self.__build_documents(document_ids, document))
+            print("HELLOSOD53525")
+            
             upload_response.conversation_cache_path = cache_response.path
+            print("HELLOSOD")
         except Exception as exc:
             self.time_counter.stop()
             self.time_counter.reset()
@@ -242,6 +249,10 @@ class UploadTask(IUploadTask):
                          call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
 
         # * Step 7: mapping time counter to response
+        list_cloud_id_pairs: list[tuple[DocumentModel, str]] = []
+        for id in document_ids:
+            list_cloud_id_pairs.append((document, id))
+        self.conversation_files_database.create_conversation_files_bulk(list_cloud_id_pairs)
         upload_response.time_counter = self.time_counter.mapping_to_time_counter_response(extract_time, chunk_time, embedding_time, save_time, summarize_time)
         upload_response.conversation_id = conversation_model.pk
         upload_response.conversation_name = conversation_model.conversations_name
@@ -256,17 +267,19 @@ class UploadTask(IUploadTask):
         return result
 
     def __upload_to_vector_store(self, provider: EProviderName, document_ids: list[str], conversation_id: uuid.UUID,
+                                document_id: uuid.UUID,
                                  embedding_batches: list[np.ndarray], chunk_texts: list[str] = [], ids: np.ndarray = np.ndarray([], dtype=np.int64), file_caller: str = "") -> IUploadResponse:
         try:            
             upload_response = self.upload_job.step_save(provider, conversation_id, document_ids, embedding_batches, chunk_texts, ids, file_caller=self.__upload_to_vector_store.__name__)
+            print(upload_response)
             if upload_response is None:
-                self.__update_document_status_and_path(conversation_id, EDocumentStatus.FAILED)
+                self.__update_document_status_and_path(document_id, EDocumentStatus.FAILED)
                 raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
         except Exception as exc:
-            self.__update_document_status_and_path(conversation_id, EDocumentStatus.FAILED)
+            self.__update_document_status_and_path(document_id, EDocumentStatus.FAILED)
             self.logger.error(f"Error saving embeddings to vector store for document ids {document_ids} and provider {provider}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.__upload_to_vector_store.__name__)
             raise exc
-        self.__update_document_status_and_path(conversation_id, EDocumentStatus.INDEXED)
+        self.__update_document_status_and_path(document_id, EDocumentStatus.INDEXED)
         return upload_response
 
     def __embed_chunks(self, chunk_responses: list[IChunkResponse], provider: EProviderName) -> tuple[list[IEmbedResponse], list[np.ndarray]]:

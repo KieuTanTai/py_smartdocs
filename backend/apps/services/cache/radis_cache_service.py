@@ -45,7 +45,10 @@ class RedisCacheService(ICacheService):
 
     def load_from_file(self, key: str, file_caller: str = "") -> ICacheParam | None:
         self.logger.info(f"Loading cache key: {key} from file", Path(__file__).name, file_caller, self.load_from_file.__name__)
-        metadata_file_path = self.metadata_dir / f"{key}.json"
+        metadata_file_path = next(self.metadata_dir.rglob(f"{key}.json"),None)
+        if not metadata_file_path:
+            self.logger.warning(f"Metadata file for cache key: {key} does not exist at path: {metadata_file_path}", Path(__file__).name, file_caller, self.load_from_file.__name__)
+            return None
         if not metadata_file_path.exists():
             self.logger.warning(f"Metadata file for cache key: {key} does not exist at path: {metadata_file_path}", Path(__file__).name, file_caller, self.load_from_file.__name__)
             return None
@@ -66,7 +69,7 @@ class RedisCacheService(ICacheService):
         self.pipeline.flushall()
         self.pipeline.execute()
         self.logger.info("All cache keys cleared", Path(__file__).name, file_caller, self.clear.__name__)
-        return clear_all_files_on_path(self.metadata_dir, self.logger)
+        return 0
 
     def exists(self, key: str, file_caller: str = ""):
         self.logger.info(f"Checking if cache key exists: {key}", Path(__file__).name, file_caller, self.exists.__name__)
@@ -76,11 +79,13 @@ class RedisCacheService(ICacheService):
     
     def __write_metadata(self, key: str, input_value: str) -> Path | None:
         destination_path = create_path_file(self.metadata_dir, key, "json")
+        print("Cache:", destination_path)
         try: 
             input_value_json = json.loads(input_value)
         except json.JSONDecodeError as e:
             self.logger.error(f"Error decoding cache value for metadata: {e}", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
             return None
+        print("Cache:", destination_path)
         with open(destination_path, "w") as f:
             json.dump(input_value_json, f, ensure_ascii=False, indent=4)
         self.logger.info(f"Metadata for cache key: {key} written to '{destination_path}'", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)

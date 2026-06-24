@@ -86,8 +86,8 @@ class DocumentUploadView(APIView):
 
         try:
             conversation = _container.conversation_application()
-        
             cons = conversation.create_init_conversation()
+            print(cons.conversations_id)
             create_req.conversation_id = cons.conversations_id
             doc_app = _container.document_application()
             
