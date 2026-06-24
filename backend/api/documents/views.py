@@ -96,7 +96,15 @@ class DocumentUploadView(APIView):
             conversation.rename_conversation(str(cons.conversations_id), response.info.conversation_title, Path(__file__).name)
             
             sys_logger.info(f"File uploaded successfully: {conversation.list_conversations}", source="DocumentUploadView", call_by="post")
-            return Response(response, status=status.HTTP_201_CREATED)
+            response_json={
+                "title": response.info.conversation_title,
+                "provider": response.info.provider.value,
+                "model_name": response.info.model_name,
+                "type": response.info.type.value,
+                "create_at": response.info.create_at
+            }
+            
+            return Response(response_json, status=status.HTTP_201_CREATED)
             
         except ValueError as e:
             sys_logger.error(f"Validation Error: {e}", source="DocumentUploadView", call_by="post", method_call="upload_document")
@@ -147,3 +155,5 @@ class MessageListViewByConversation(APIView):
         except ValueError as e:
             sys_logger.error(f"Validation Error: {e}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
             
+            
+# class SendMesssage(Api)

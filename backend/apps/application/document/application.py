@@ -69,8 +69,7 @@ class DocumentApplication(IDocumentApplication):
             document_urls=request.document_urls,
             document_paths=request.document_paths,
             type=request.type,
-            create_at=response.created_at,
-            summarize = summarize
+            create_at=response.created_at
         )
         self.logger.info(f"Document metadata created for conversation_id: {request.conversation_id}",
                          Path(__file__).name, file_caller, self.__upload_document_task.__name__ )
