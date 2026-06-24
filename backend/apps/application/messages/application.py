@@ -30,12 +30,13 @@ class MessageApplication(IMessageApllication):
         user_input: str,
         provider_name: str,
         model_name: str,
+        embedding_model_name: str,
         pipeline_type: EPipelineType, # Thêm loại pipeline để gọi xuống Task
         file_caller: str = ""
     ) -> ISendMessageResponse:
         try:
             self._validate_message_input(conversation_id, user_input, provider_name, model_name)
-
+            print(f"validate: success!")
             self.logger.info(f"Delegating message to Task for conversation {conversation_id}", 
             Path(__file__).name, file_caller, self.send_message.__name__)
 
@@ -44,8 +45,11 @@ class MessageApplication(IMessageApllication):
                 content=user_input,
                 provider_name=EProviderName(provider_name),
                 pipeline_type=EPipelineType(pipeline_type),
-                model_name=model_name
+                model_name=model_name,
+                embedding_model_name=embedding_model_name
             )
+            print(f"response: {ai_response.retrieval_hits[0].text}")
+            print(f"run: success!")
             # TRẢ VỀ OBJECT DATACLASS THAY VÌ DICT
             return ISendMessageResponse(
                 conversation_id=conversation_id,

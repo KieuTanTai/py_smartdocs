@@ -4,7 +4,7 @@ import json
 import time
 from typing import Any, Dict, List, Optional
 from shiny import App, reactive, render, ui
-from frontend.apps.message import build_message, send_message
+from frontend.apps.message import build_message
 from frontend.components.account.signup import signup_modal
 from frontend.components.account.login import login_modal
 from frontend.components.chat.box_chat import box_chat_ui
@@ -69,6 +69,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     status = reactive.Value(
         {"label": "Idle", "detail": "No requests yet", "kind": "idle"}
     )
+    conversation_id=reactive.Value("")
     conversation_name = reactive.Value(None)
     api_base_url = reactive.Value(INITIAL_API_BASE_URL)
     provider = reactive.Value("auto")
@@ -114,9 +115,12 @@ def server(input: Any, output: Any, session: Any) -> None:
 
         rows = []
         for msg in items:
-            role = msg.get("role", "assistant")
+            # FIX: Chuyển Dataclass object thành Dictionary an toàn
+            msg_data = msg if isinstance(msg, dict) else getattr(msg, "__dict__", {})
+            
+            role = msg_data.get("role", "assistant")
             classes = "message assistant" if role != "user" else "message user"
-            meta = msg.get("meta") or {}
+            meta = msg_data.get("meta") or {}
             meta_line = None
             if role != "user" and meta:
                 parts = []
@@ -124,15 +128,19 @@ def server(input: Any, output: Any, session: Any) -> None:
                     parts.append(f"Provider: {meta['provider']}")
                 if meta.get("model"):
                     parts.append(f"Model: {meta['model']}")
-                if meta.get("total_ms") is not None:
-                    parts.append(f"Total: {meta['total_ms']} ms")
+                
+                # Cập nhật lấy thời gian phản hồi (latency_ms) từ backend
+                latency = meta.get("latency_ms") or meta.get("total_ms")
+                if latency is not None:
+                    parts.append(f"Total: {latency} ms")
+                    
                 if meta.get("error"):
                     parts.append("Error: API failed")
                 if parts:
                     meta_line = " | ".join(parts)
             rows.append(
                 ui.tags.div(
-                    ui.markdown(msg.get("content", "")),
+                    ui.markdown(msg_data.get("content", "")),
                     (
                         ui.tags.div(meta_line, class_="message-meta")
                         if meta_line
@@ -415,6 +423,7 @@ def server(input: Any, output: Any, session: Any) -> None:
                 print("Response from upload:", response)
                 print("Document after normalization:", doc)
                 print("Current documents before indexing:", current_docs)
+                conversation_id.set(response.get("conversation_id") or "")
                 try:
                     print("Document after indexing attempt:", doc)
                 except ApiError:
@@ -484,60 +493,56 @@ def server(input: Any, output: Any, session: Any) -> None:
         text = (input.chat_input() or "").strip()
         if not text:
             return
-        selected = input.selected_docs() or []
-        if not selected:
-            set_status("Select a document", "Pick at least one", "warning")
-            return
+        
         current = messages.get()
         current = current + [build_message("user", text)]
         messages.set(current)
 
         was_new = conversation_name.get() is None
-        #? NOTE: explain flow if conversation_name is None, create new conversation, else send message to existing conversation.
-        #! NOTE: RECOMMEND CHANGE RESPONSE FROM send_message to dataclass type instead of dict[str, Any] to make it more clear and type safe.
-        response = send_message(
-            client(),
-            conversation_name.get(),
-            text,
-            selected,
-            provider.get(),
-            current_model.get(),
-            system_prompt.get(),
-            current_mode.get(),
-            allow_mock=mock_on_fail.get(),
-        )
-        conversation_name.set(response.get("conversation_name"))
-        if was_new and response.get("conversation_name"):
-            history.set(
-                [
+        current_conv_id = conversation_id.get()
+        current_provider = current_model.get()
+        
+        try:
+            response = client().send_message(
+                conversation_id=current_conv_id,
+                content=text,
+                provider=current_provider
+            )
+            
+            assistant_reply = response.get("assistant_message", "Không có phản hồi từ AI.")
+            
+            if was_new:
+                title = text[:42] 
+                history.set([
                     {
-                        "id": response.get("conversation_name"),
-                        "title": text[:42],
+                        "id": current_conv_id,
+                        "title": title,
                         "when": time.strftime("%H:%M"),
                     }
-                ]
-                + history.get()
-            )
-        meta = response.get("metrics") or {}
-        if response.get("error"):
-            meta = {**meta, "error": response.get("error")}
-        messages.set(
-            messages.get()
-            + [build_message("assistant", response["assistant"], meta=meta)]
-        )
-        metrics.set(
-            {
-                **meta,
-                "provider": provider.get(),
-                "model": current_model.get(),
+                ] + history.get())
+
+            # Bóc tách metrics trả về để hiển thị lên UI
+            new_metrics = {
+                "provider": response.get("provider", current_provider),
+                "model": response.get("model", current_model.get()),
+                "latency_ms": response.get("latency_ms", 0),
                 "mode": current_mode.get(),
             }
-        )
-        if response.get("error") and not response.get("used_mock"):
-            set_status("Request failed", response.get("error", ""), "error")
-        else:
+            
+            messages.set(
+                messages.get()
+                + [build_message("assistant", assistant_reply, meta=new_metrics)]
+            )
+            
+            metrics.set(new_metrics)
             set_status("Response ready", "Message received", "success")
-
+            
+        except ApiError as exc:
+            set_status("Request failed", str(exc), "error")
+            messages.set(
+                messages.get()
+                + [build_message("assistant", "Đã xảy ra lỗi khi gọi API.", meta={"error": str(exc)})]
+            )
     @reactive.effect
     @reactive.event(input.clear_chat)
     def _clear_chat() -> None:

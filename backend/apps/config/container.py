@@ -171,13 +171,14 @@ class BackendContainer(containers.DeclarativeContainer):
         MessageJob,
         llm_provider_factory=llm_provider_factory,
         config_provider=config_provider,
+        database_provider=database_provider,
+        prompt_structure=llm_prompt_structure,
         locate_service=locate_service,
         cache_session=cache_session,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,
-        database_provider=database_provider,
-        session_provider=neo4j_session
+        neo4j_service=neo4j_service
     )
 
     conversation_job = providers.Factory(

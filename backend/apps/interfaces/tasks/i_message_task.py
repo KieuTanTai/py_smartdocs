@@ -12,7 +12,7 @@ class IMessageTask(ABC, Task):
     """Contract for Celery Chat Message RAG Inference Task."""
 
     @abstractmethod
-    def run(self, conversation_id: str, content: str, provider_name: EProviderName, pipeline_type: EPipelineType, model_name: str) -> IMessageJobResponse:
+    def run(self, conversation_id: str, content: str, provider_name: EProviderName, pipeline_type: EPipelineType, model_name: str, embedding_model_name:str) -> IMessageJobResponse:
         """
         Executes async RAG inference.
         Must return a JSON-serializable dictionary (Serialized MessageResponse).

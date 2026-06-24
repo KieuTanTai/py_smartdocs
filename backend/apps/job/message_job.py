@@ -79,7 +79,7 @@ class MessageJob(IMessageJob):
             prompt = self.prompt_structure.build_prompt_for_graph_context(content, context_hits_dicts, graph_context)
             
         else:
-            context_hits = self.__retrieve_context_hits(content, conversation, provider, model_name)
+            context_hits = self.__retrieve_context_hits(content, conversation, provider, model_name, embedding_model_name)
             retrieval = [hit.text for hit in context_hits]
             prompt = self.prompt_structure.build_prompt(retrieval, content)
             
@@ -101,7 +101,7 @@ class MessageJob(IMessageJob):
         # Khởi tạo 2 luồng công nhân (worker) chạy song song
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             # Giao việc cho công nhân 1 (Tìm Hybrid)
-            future_hybrid = executor.submit(self.__retrieve_context_hits, content, conversation, provider, model_name)
+            future_hybrid = executor.submit(self.__retrieve_context_hits, content, conversation, provider, model_name, embedding_model_name)
             # Giao việc cho công nhân 2 (Tìm Graph)
             future_graph = executor.submit(self.__retrieve_graph_context, content, conversation, provider, embedding_model_name)
 
@@ -112,44 +112,48 @@ class MessageJob(IMessageJob):
         self.logger.info(f"Parallel Retrieval completed", source=str(self.__class__))
         return (graph_context, context_hits)
 
-    def __thread_pool_executor_vector_search(self, conversation: ConversationModel,content: str, query_embedding: np.ndarray, faiss_store: IVectorStoreService, 
-                                             bm25_store: ISpareVectorStoreService, documents: list[ConversationFilesModel]) -> tuple[list[IMessageJobContextHit], list[IMessageJobContextHit]]:
+    def __thread_pool_executor_vector_search(
+        self, 
+        conversation: ConversationModel, 
+        content: str, 
+        query_embedding: np.ndarray, 
+        faiss_store: IVectorStoreService, 
+        bm25_store: ISpareVectorStoreService, 
+        documents: list[ConversationFilesModel]
+    ) -> tuple[list[IMessageJobContextHit], list[IMessageJobContextHit]]:
+        
         all_dense_hits: list[IMessageJobContextHit] = []
         all_sparse_hits: list[IMessageJobContextHit] = []
         document = self.document_database.get_by_conversation(conversation)
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=2
-        ) as executor:
-            # Ném việc cho công nhân
-            futures = [
-                # BM25 search sẽ được thực hiện song song với FAISS search
-                executor.submit(
-                    self.__faiss_search,
-                    document.document_id,
-                    query_embedding,
-                    faiss_store,
-                ),
-                "faiss_search",
-                
-                executor.submit(
-                    self.__bm25_search,
-                    document.document_id,
-                    content,
-                    bm25_store,
-                ),
-                "bm25_search"
-            ]
+        
+        # ID dùng để search index (thường là ID của conversation hoặc document)
+        search_id = document.document_id if hasattr(document, "document_id") else conversation.conversations_id
 
-            # Thu hoạch kết quả ngay khi công nhân làm xong
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                if result[1] == "faiss_search":
-                    all_dense_hits.extend(result[0])
-                elif result[1] == "bm25_search":
-                    all_sparse_hits.extend(result[0])
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            # Dùng Dictionary để lưu trữ tác vụ: key là object Future, value là tên tác vụ (string)
+            future_to_task = {
+                executor.submit(self.__faiss_search, search_id, query_embedding, faiss_store): "faiss_search",
+                executor.submit(self.__bm25_search, search_id, content, bm25_store): "bm25_search"
+            }
 
+            # Thu hoạch kết quả khi bất kỳ công nhân nào làm xong
+            for future in concurrent.futures.as_completed(future_to_task):
+                task_name = future_to_task[future] # Lấy tên tác vụ tương ứng với Future hiện tại
+                try:
+                    result = future.result() # result là 1 list các IMessageJobContextHit
+                    
+                    if task_name == "faiss_search":
+                        all_dense_hits.extend(result)
+                    elif task_name == "bm25_search":
+                        all_sparse_hits.extend(result)
+                        
+                except Exception as exc:
+                    self.logger.error(f"Vector search task '{task_name}' generated an exception: {exc}", source=str(self.__class__))
+
+        # Sắp xếp lại danh sách kết quả theo điểm số giảm dần
         all_dense_hits.sort(key=lambda item: item.score, reverse=True)
         all_sparse_hits.sort(key=lambda item: item.score, reverse=True)
+        
         return all_dense_hits, all_sparse_hits
 
     def __thread_pool_executor_graph_search(self, content: str, conversation: ConversationModel, provider: EProviderName, embedding_model_name: str) -> str:
@@ -158,14 +162,14 @@ class MessageJob(IMessageJob):
             graph_context = future_graph.result()
         return graph_context
 
-    def __retrieve_context_hits(self, content: str, conversation: ConversationModel, provider: EProviderName, model_name: str) -> list[IMessageJobContextHit]:
+    def __retrieve_context_hits(self, content: str, conversation: ConversationModel, provider: EProviderName, model_name: str, embedding_model_name: str) -> list[IMessageJobContextHit]:
         """Đã Tuning: Gọi song song (Concurrency) hàng loạt file để tránh nghẽn I/O"""
         files = self.conversation_files_database.get_by_conversation(conversation)
         documents = [f for f in files if f.conversation_files_id and f.conversation_files_document.documents_status == "indexed"]
         if not documents:
             return []
 
-        query_embedding = self.__embed_text(content, provider, model_name)
+        query_embedding = self.__embed_text(content, provider, embedding_model_name)
         faiss_store = cast(IVectorStoreService, self.locate_service.get_vector_store(EBackendStorageName.FAISS))
         bm25_store = cast(ISpareVectorStoreService, self.locate_service.get_vector_store(EBackendStorageName.BM25))
         all_dense_hits, all_sparse_hits = self.__thread_pool_executor_vector_search(conversation, content,query_embedding, faiss_store, bm25_store, documents)
@@ -212,9 +216,9 @@ class MessageJob(IMessageJob):
             )
             return ""
 
-    def __embed_text(self, text: str, provider: EProviderName, model_name: str) -> np.ndarray:
+    def __embed_text(self, text: str, provider: EProviderName, embedding_model_name: str) -> np.ndarray:
         llm_client = self.llm_provider_factory.get_provider(provider)
-        response = llm_client.embedding(ICompletionRequest(provider=provider, model=model_name, prompt=text))
+        response = llm_client.embedding(ICompletionRequest(provider=provider, model=embedding_model_name, prompt=text))
         return response.embedding.astype(np.float32)
 
     def __load_document_chunk_metadata(self, conversation_id: uuid.UUID) -> list[ICacheParamValue]:

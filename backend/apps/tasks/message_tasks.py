@@ -28,7 +28,7 @@ class MessageTask(IMessageTask):
         """Return the task name for routing."""
         return Path(__file__).stem  # Dynamic name based on filename
 
-    def run(self, conversation_id: str, content: str, provider_name: EProviderName, pipeline_type: EPipelineType, model_name: str) -> IMessageJobResponse:
+    def run(self, conversation_id: str, content: str, provider_name: EProviderName, pipeline_type: EPipelineType, model_name: str, embedding_model_name: str) -> IMessageJobResponse:
         self.time_counter.reset()
         self.time_counter.start()
         
@@ -46,7 +46,8 @@ class MessageTask(IMessageTask):
             conversation=conversation,
             provider=provider_name,
             pipeline_type=pipeline_type,
-            model_name=model_name
+            model_name=model_name,
+            embedding_model_name=embedding_model_name
         )
 
         # STEP 4: GỌI HÀM LLM TRÊN TASK
