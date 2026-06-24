@@ -4,7 +4,8 @@ from backend.api.documents.views import (
     DocumentListView,
     DocumentUploadView,
     ConversationListView,
-    MessageListViewByConversation
+    MessageListViewByConversation,
+    SendMesssage
 )
 # from backend.api.documents.bulk_index import DocumentBulkIndexView
 
@@ -16,6 +17,8 @@ urlpatterns = [
     # path("index/bulk/", DocumentBulkIndexView.as_view(), name="documents-index-bulk"),
     # Catch-all (list/create) must be last
     path("", DocumentListView.as_view(), name="documents-list"),
-    path("conversations/", ConversationListView.as_view(), name="conversation-list"),
-    path("messages/", MessageListViewByConversation.as_view(), name="messages-list"),
+    path("conversation/", ConversationListView.as_view(), name="conversation-list"),
+    path("message/", MessageListViewByConversation.as_view(), name=""),
+    path("send_message/", SendMesssage.as_view(), name="send-message"),
+
 ]

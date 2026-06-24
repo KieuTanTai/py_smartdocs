@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from backend.apps.config import container
+from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_store_service import IVectorStoreService
 from backend.apps.services.chat.models import (
     ConversationModel,
@@ -293,9 +294,9 @@ class MessageListView(APIView):
         content = request.data.get("user_input") or request.data.get("content")
         provider_name = request.data.get("provider_name") or request.data.get("provider")
         model_name = request.data.get("model_name") or request.data.get("model")
-        pipeline_type = request.data.get("pipeline_type") or request.data.get("mode") or "base"
+        pipeline_type = request.data.get("pipeline_type") or request.data.get("mode") or EPipelineType.BASE
         if pipeline_type == "normal":
-            pipeline_type = "base"
+            pipeline_type = EPipelineType.BASE
         if provider_name == "auto" or not provider_name:
             from sys_services.read_config.read_list_provider import LIST_PROVIDERS
 
@@ -315,7 +316,6 @@ class MessageListView(APIView):
                     provider_name = LIST_PROVIDERS[0].provider_name.value
                 else:
                     provider_name = "ollama"
-
         try:
             message_app = __container.message_application()
             result = message_app.send_message(
@@ -323,6 +323,7 @@ class MessageListView(APIView):
                 user_input=content,
                 provider_name=provider_name,
                 model_name=model_name,
+                embedding_model_name=request.data.get("embedding_model_name") or request.data.get("embedding_model"),
                 pipeline_type=pipeline_type,
                 file_caller=Path(__file__).name,
             )

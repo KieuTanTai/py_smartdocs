@@ -126,20 +126,55 @@ class ApiClient:
         self,
         conversation_id: str,
         content: str,
-        provider: Optional[str] = None,
-        model: Optional[str] = None,
-        pipeline_type: str = EPipelineType.BASE.value,
+        provider: str,
     ) -> dict[str, Any]:
-        payload = {
-            "conversation_id": conversation_id,
-            "content": content,
-            "provider": provider,
-            "model": model,
-            "pipeline_type": _pipeline_type_value(pipeline_type),
-        }
-        return self._request(
-            "POST", f"/api/messages/", json=payload
-        )
+
+        return self._send_message_request(
+            "POST", f"/api/documents/send_message/", provider, conversation_id, content)
+    
+    def _send_message_request(self,method: str ,api_endpoint: str, provider_name:str , conversation_id, content:str) -> dict[str, Any]:
+        url = f"{self.base_url}{api_endpoint}"
+        print(f"url: {url}")
+        headers = self._headers()
+        
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                request = client.build_request(
+                    method,
+                    url,
+                    headers=headers,
+                    json={"provider": provider_name,"content": content ,"type": EPipelineType.BASE.value,"conversation_id": conversation_id },
+                )
+
+                print("REQUEST HEADERS")
+                print(request.content)
+
+                response = client.send(request)
+                print(f"response: {response}")
+                # response.raise_for_status()
+        except httpx.RequestError as exc:
+            print("fallback here")
+            raise ApiError(f"Request failed: {exc}") from exc
+        except httpx.HTTPStatusError as exc:
+            # Safely read response body, handling non-UTF-8 content (e.g. HTML error pages)
+            raw_body = exc.response.content
+            try:
+                body_text = raw_body.decode("utf-8")
+            except UnicodeDecodeError:
+                try:
+                    body_text = raw_body.decode("latin-1")
+                except Exception:
+                    body_text = raw_body.decode("utf-8", errors="replace")
+            raise ApiError(
+                f"HTTP {exc.response.status_code}: {body_text}"
+            ) from exc
+        
+        content_type = response.headers.get("content-type", "")
+        print(f"content_type:{content_type}")
+        if "application/json" in content_type:
+            return response.json()
+        return {"raw": response.text}
+        
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
     def update_conversation_documents(

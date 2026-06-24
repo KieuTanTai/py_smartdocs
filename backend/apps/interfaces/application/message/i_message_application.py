@@ -12,6 +12,7 @@ class IMessageApllication:
         user_input: str,
         provider_name: str,
         model_name: str,
+        embedding_model_name: str,
         pipeline_type: EPipelineType, # Thêm loại pipeline để gọi xuống Task
         file_caller: str = ""
     ) -> ISendMessageResponse:

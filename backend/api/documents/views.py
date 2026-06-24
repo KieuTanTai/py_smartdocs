@@ -98,7 +98,7 @@ class DocumentUploadView(APIView):
             
             sys_logger.info(f"File uploaded successfully: {conversation.list_conversations}", source="DocumentUploadView", call_by="post")
             response_json={
-                "conversation_id": str(cons.conversations_id),
+                "conversation_id": create_req.conversation_id,
                 "title": response.info.conversation_title,
                 "provider": response.info.provider.value,
                 "model_name": response.info.model_name,
@@ -140,35 +140,57 @@ class MessageListViewByConversation(APIView):
         except ValueError as e:
             self.sys_logger.error(f"Validation Error: {e}", source="MessageListViewByConversation", call_by="get", method_call="get_conversation_messages")
 
+class SendMesssage(APIView):
+    sys_logger = _container.log_pool()
     def post(self, request):
-        sys_logger = _container.log_pool()
         self.sys_logger.info(f"Received message request: {request.data}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
         try:
+
             message_app = _container.message_application()
-            provider_name = EProviderName(request.data.get("provider"))
             config_provider = _container.config_provider()
-            model_name = get_model_name(config_provider, provider_name)
-            req_pipeline_type = request.data.get("pipeline_type")
-            pipeline_type = (
-                EPipelineType.BASE
-                if req_pipeline_type is None or req_pipeline_type == "normal"
-                else EPipelineType(request.data.get("pipeline_type"))
-            )
-            conversation_id = uuid.UUID(request.data.get("conversation_id")) if request.data.get("conversation_id") else None
-            if not conversation_id:
-                raise ValueError("Conversation ID is required.")
+            user_input=request.data.get("content")
+            print(f"User input: {user_input}")
+            provider_name = EProviderName(request.data.get("provider"))
+            print(f"Provider: {provider_name}")
+            model_name = get_model_name(config_provider,provider_name)
+            print(f"model_name: {model_name}")
+            pipeline_type = EPipelineType.BASE
+            conversation_id= request.data.get("conversation_id")
+            embedding_model_name= get_embedding_model(config_provider,provider_name)
+            print(f"embedding_model_name: {embedding_model_name}")
+            print(f"conversation_id: {conversation_id}")
             send_msg_req = ISendMessageRequest(
-                request.data.get("user_input"),
-                provider_name,
-                model_name,
-                pipeline_type,
-                conversation_id
+                user_input=user_input,
+                provider_name=provider_name,
+                model_name=model_name,
+                pipeline_type=pipeline_type,
+                conversation_id=conversation_id,
             )
-            self.sys_logger.info(f"Sending message to conversation {conversation_id} with provider {provider_name} and model {model_name}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
-            return message_app.send_message(str(conversation_id), request.data.get("user_input"), provider_name, model_name, pipeline_type, Path(__file__).name)
+            response_data=message_app.send_message(str(conversation_id), user_input, provider_name, model_name, embedding_model_name,pipeline_type, Path(__file__).name)
+            print(f"response_data.user_message_id: {response_data.user_message_id}")
+            print(f"response_data.assistant_message_id: {response_data.assistant_message_id}")
+            response_json ={
+                "user_message_id": response_data.user_message_id,
+                "assistant_message_id": response_data.assistant_message_id,
+                "assistant_message": response_data.assistant_message,
+                "latency_ms": response_data.latency_ms
+            }
+            return Response(response_json, status=status.HTTP_201_CREATED)
 
         except ValueError as e:
             self.sys_logger.error(f"Validation Error: {e}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
-
-
-# class SendMesssage(Api)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            print(traceback.format_exc())
+            self.sys_logger.error(
+                f"Unexpected Error: {e}\n{traceback.format_exc()}",
+                source="MessageListViewByConversation",
+                call_by="post",
+                method_call="send_message"
+            )
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            self.sys_logger.flush()
