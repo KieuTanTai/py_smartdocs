@@ -5,10 +5,8 @@ Handles async RAG chat queries.
 
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict
 from celery import Task
 
-from backend.apps.config.container import BackendContainer
 from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.application.i_message_response import IChatHistoryResponse, IMessageDTO

@@ -12,10 +12,10 @@ class IConversationJob(ABC):
     """Contract for Conversation Preparation Processing."""
 
     @abstractmethod
-    def check_documents_ready(self, conversation_key: uuid.UUID, file_caller: str = "") -> bool:
+    def check_documents_ready(self, conversation: ConversationModel, file_caller: str = "") -> bool:
         """Checks if all documents attached to the conversation are ready (e.g., indexed) for processing.
         Args:
-            conversation_key (uuid.UUID): The key of the conversation to check.
+            conversation (ConversationModel): The conversation to check.
             file_caller (str): The file caller for the conversation.
         Returns:
             bool: True if all documents are ready, False otherwise.
@@ -23,7 +23,7 @@ class IConversationJob(ABC):
         pass
 
     @abstractmethod
-    def change_title_document(self, conversation_id: str, new_title: str, file_caller: str = "") -> ConversationModel:
+    def change_title_conversation(self, conversation_id: str, new_title: str, file_caller: str = "") -> ConversationModel:
         """Changes the title of the conversation document.
         Args:
             conversation_id (str): The ID of the conversation to rename.
@@ -42,6 +42,17 @@ class IConversationJob(ABC):
             file_caller (str): The file caller for the conversation.
         Returns:
             int: The number of records removed (should be 1 if successful, 0 if no conversation with the given ID exists).
+        """
+        pass
+
+    @abstractmethod
+    def get_all_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
+        """Retrieves all conversations for a given user.
+        Args:
+            user_id (str): The ID of the user whose conversations to retrieve.
+            file_caller (str): The file caller for the conversation.
+        Returns:
+            list[ConversationModel]: A list of ConversationModel instances representing the user's conversations.
         """
         pass
 

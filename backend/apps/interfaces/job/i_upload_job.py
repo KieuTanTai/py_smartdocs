@@ -13,7 +13,6 @@ from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_similarity_fn import ESimilarityFn
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.core.interfaces.dataclass.extract.i_extract_response import IExtractResponse
-from backend.apps.core.interfaces.dataclass.response.i_chat_response import IChatResponse
 from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import ICacheResponse, IChunkResponse
@@ -21,7 +20,7 @@ from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbe
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
 from neo4j_graphrag.retrievers import VectorCypherRetriever
 
-from backend.apps.services.chat.models import ConversationFilesModel
+from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel
 
 class IUploadJob(ABC):
     """
@@ -224,5 +223,17 @@ class IUploadJob(ABC):
             file_caller: function name of caller for logging
         Returns:
             list of tuples containing chunk IDs and corresponding chunk texts
+        """
+        pass
+
+    @abstractmethod
+    def list_files(self, conversation: ConversationModel, file_caller: str = "") -> list[ConversationFilesModel]:
+        """
+        Lists all files associated with a specific conversation.
+        Args:
+            conversation: The ConversationModel object for which to list files.
+            file_caller (str): The caller of the file listing operation.
+        Returns:
+            list[ConversationFilesModel]: A list of ConversationFilesModel objects representing the files in the conversation.
         """
         pass

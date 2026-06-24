@@ -5,7 +5,11 @@ import json
 import os
 import time
 from pathlib import Path
+import traceback
 
+from backend.apps.config import container
+from backend.apps.core.interfaces.system.i_config import IConfigProvider
+from backend.apps.core.interfaces.system.i_logging import ILogger
 import numpy as np
 import pypdf
 from django.conf import settings
@@ -21,65 +25,66 @@ from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import IComp
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
 from backend.apps.services.rag_base.locate.locate_service import LocateService
-from backend.apps.application.documents.application import DocumentApplication
+
 from backend.apps.application.conversations.application import ConversationApplication
-from sys_services.logging import DEFAULT_LOGGER
-from sys_services.read_config.config_provider import DEFAULT_CONFIG_PROVIDER
 from sys_services.system_dirs import METADATA_DIR
 
 # Singleton application instances
-_document_app = DocumentApplication()
-_conversation_app = ConversationApplication()
+__container = container.BackendContainer()
 
 
 class DocumentListView(APIView):
     def get(self, request):
-        # Use application layer
-        result = _document_app.list_documents()
+        doc_app = __container.document_application()
+        
+        result = doc_app.list_files(request.GET.get("conversation_id", ""), file_caller="DocumentListView")
         data = []
-        for d in result.get("documents", []):
+        for file in result:
             data.append({
-                "id": str(d["id"]),
-                "title": d.get("title", ""),
-                "status": d.get("status", "unknown"),
-                "source": "local"
+                "id": str(file.conversation_files_id),
+                "cloud_id": str(file.conversation_files_cloud_id),
+                "vector_file": str(file.conversation_files_document.documents_file_path),
+                "uploaded_at": str(file.conversation_files_uploaded_at),
             })
         return Response(data, status=status.HTTP_200_OK)
 
-
 class DocumentUploadView(APIView):
     def post(self, request):
+        sys_logger = __container.log_pool() # Lấy ILogger từ Container
+
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
+            sys_logger.warning("No file uploaded in request", source="DocumentUploadView", call_by="post")
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Use application layer with file bytes
+            doc_app = __container.document_application()
             file_content = uploaded_file.read()
-            doc_request = _document_app.upload_document(
-                file_content=file_content,
-                file_name=uploaded_file.name,
-                conversation_id=None,
+            
+            doc_request = doc_app.upload_document(
+                request=request,
+                file_caller = Path(__file__).stem,
             )
+            
+            sys_logger.info(f"File uploaded successfully: {uploaded_file.name}", source="DocumentUploadView", call_by="post")
             return Response({
-                "id": doc_request["file_id"],
                 "title": uploaded_file.name,
                 "status": "uploaded"
             }, status=status.HTTP_201_CREATED)
+            
         except ValueError as e:
-            import traceback
-            traceback.print_exc()
+            sys_logger.error(f"Validation Error: {e}", source="DocumentUploadView", call_by="post", method_call="upload_document")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            sys_logger.error(f"Upload failed: {e}\n{traceback.format_exc()}", source="DocumentUploadView", call_by="post")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DocumentDetailView(APIView):
     def get(self, request, document_id: str):
         try:
-            doc = _document_app.get_document(document_id)
+            doc_app = __container.document_application()
+            doc = doc_app.get_document(document_id)
             return Response({
                 "id": str(doc["id"]),
                 "title": doc.get("title", ""),
@@ -89,26 +94,33 @@ class DocumentDetailView(APIView):
             return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, document_id: str):
+        sys_logger = __container.log_pool()
+
         try:
-            _document_app.delete_document(document_id=document_id, delete_file=True)
+            doc_app = __container.document_application()
+            doc_app.delete_document(document_id=document_id, delete_file=True)
+            
             try:
-                locate_service = LocateService(metadata_dir=METADATA_DIR, logger=DEFAULT_LOGGER)
+                # Xử lý dọn dẹp FAISS
+                locate_service = LocateService(metadata_dir=METADATA_DIR, logger=sys_logger)
                 faiss_service = locate_service.get_vector_store(EBackendStorageName.FAISS)
                 if faiss_service.is_existed_in_metadata(document_id):
                     faiss_service.delete(document_id)
-            except Exception:
-                pass  # FAISS cleanup is best-effort
+            except Exception as e:
+                sys_logger.warning(f"Could not clean up FAISS for {document_id}: {e}", source="DocumentDetailView", call_by="delete")
+                
             return Response({"status": "deleted"}, status=status.HTTP_200_OK)
         except ValueError:
             return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            sys_logger.error(f"Delete failed: {e}", source="DocumentDetailView", call_by="delete")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class DocumentStatusView(APIView):
     def get(self, request, document_id: str):
         try:
-            doc = _document_app.get_document(document_id)
+            doc_app = __container.document_application()
+            doc = doc_app.get_document(document_id)
             return Response({
                 "id": str(doc["id"]),
                 "status": doc.get("status", "unknown")
@@ -154,7 +166,7 @@ class DocumentIndexView(APIView):
             normalized_text = normalizer.normalize(extracted_text)
 
             # 3. Chunk
-            chunker = Chunker(logger=DEFAULT_LOGGER)
+            chunker = Chunker(logger=ILogger)
             chunks = chunker.create_chunks(normalized_text)
             if not chunks:
                 raise ValueError("No chunks generated from document.")
@@ -165,7 +177,7 @@ class DocumentIndexView(APIView):
 
             # 5. Build FAISS index and save
             vector_id = str(doc.faiss_index_id)
-            locate_service = LocateService(metadata_dir=METADATA_DIR, logger=DEFAULT_LOGGER)
+            locate_service = LocateService(metadata_dir=METADATA_DIR, logger=ILogger)
             faiss_service = locate_service.get_vector_store(EBackendStorageName.FAISS)
 
             index = faiss_service.create_index(vectors)
@@ -192,7 +204,7 @@ class DocumentIndexView(APIView):
             doc.status = "indexed"
             doc.save()
 
-            DEFAULT_LOGGER.info(
+            ILogger.info(
                 f"Document indexed: {doc.faiss_index_file_name} "
                 f"({len(chunks)} chunks, dim={vectors.shape[1]})",
                 source="DocumentIndexView",
@@ -206,7 +218,7 @@ class DocumentIndexView(APIView):
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
-            DEFAULT_LOGGER.error(f"Document indexing failed: {e}", source="DocumentIndexView")
+            ILogger.error(f"Document indexing failed: {e}", source="DocumentIndexView")
             doc.status = "failed"
             doc.save()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -228,7 +240,7 @@ class DocumentIndexView(APIView):
                         text_list.append(t)
                 return "\n".join(text_list)
             except Exception as e:
-                DEFAULT_LOGGER.error(f"Failed to read PDF: {e}", source="DocumentIndexView")
+                ILogger.error(f"Failed to read PDF: {e}", source="DocumentIndexView")
                 return ""
 
         elif file_path.endswith(".docx"):
@@ -246,7 +258,7 @@ class DocumentIndexView(APIView):
                             paragraphs.append("".join(text_runs))
                     return "\n".join(paragraphs)
             except Exception as e:
-                DEFAULT_LOGGER.error(f"Failed to read DOCX: {e}", source="DocumentIndexView")
+                ILogger.error(f"Failed to read DOCX: {e}", source="DocumentIndexView")
                 return ""
 
         else:
@@ -254,12 +266,12 @@ class DocumentIndexView(APIView):
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     return f.read()
             except Exception as e:
-                DEFAULT_LOGGER.error(f"Failed to read text file: {e}", source="DocumentIndexView")
+                ILogger.error(f"Failed to read text file: {e}", source="DocumentIndexView")
                 return ""
 
     def _embed_chunks(self, chunks: list[str]) -> list[list[float]]:
         """Embed all chunks using the configured embedding provider."""
-        factory = LLMProviderFactory(DEFAULT_CONFIG_PROVIDER, DEFAULT_LOGGER)
+        factory = LLMProviderFactory(IConfigProvider, ILogger)
         client = factory.get_provider(self.INDEX_EMBEDDING_PROVIDER)
         embeddings = []
 

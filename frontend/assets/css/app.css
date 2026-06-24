@@ -227,7 +227,9 @@ body {
 }
 
 .header-actions {
-  display: flex;
+  display: flex; 
+  visibility: hidden;
+  /* disable visibility */
   align-items: center;
   gap: 10px;
   position: relative;
