@@ -36,17 +36,20 @@ class ApiClient:
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
     def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
+        print(f"url: {url}")
         headers = self._headers()
         if "headers" in kwargs:
             headers = {**headers, **kwargs.pop("headers")}
         # Multipart uploads set their own Content-Type with boundary;
         # avoid overriding it with application/json.
+        print(f"headers: {headers}")
         is_multipart = "files" in kwargs
         if is_multipart and "Content-Type" in headers:
             headers = {k: v for k, v in headers.items() if k != "Content-Type"}
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 response = client.request(method, url, headers=headers, **kwargs)
+                print(f"response: {response}")
             response.raise_for_status()
         except httpx.RequestError as exc:
             raise ApiError(f"Request failed: {exc}") from exc
@@ -64,7 +67,9 @@ class ApiClient:
                 f"HTTP {exc.response.status_code}: {body_text}"
             ) from exc
 
+        
         content_type = response.headers.get("content-type", "")
+        print(f"content_type:{content_type}")
         if "application/json" in content_type:
             return response.json()
         return {"raw": response.text}
@@ -113,7 +118,7 @@ class ApiClient:
         content: str,
         provider: Optional[str] = None,
         model: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         payload = {
             "content": content,
             "provider": provider,
@@ -142,7 +147,9 @@ class ApiClient:
         print(f"Source: {source}")
         with open(file_info["datapath"], "rb") as handle:
             files = {"file": (file_info["name"], handle, file_type)}
+            print(f"files: {files}")
             data = {"source": source}
+            print(f"data:{data}")
             # Multipart requests don't use JSON headers
             resp = self._request_with_fallback(
                 "POST",

@@ -44,7 +44,7 @@ class ConversationApplication(IConversationApplication):
                              Path(__file__).name, file_caller, self.run_application_pipeline.__name__)
         return response
 
-    def list_conversations(self, user_id: str = "", file_caller: str = "") -> list:
+    def list_conversations(self, user_id: str = "", file_caller: str = "") -> list[ConversationModel]:
         self.logger.info(f"Listing conversations for user_id: {user_id}",
                          Path(__file__).name, file_caller, self.list_conversations.__name__)
         return self.conversation_task.get_all_conversations(user_id=user_id)
