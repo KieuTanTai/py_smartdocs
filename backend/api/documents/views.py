@@ -15,7 +15,7 @@ from ollama import embed
 
 from backend.apps.config import container
 from backend.apps.core.enums.e_pipeline_type import EPipelineType
-from backend.apps.core.interfaces.dataclass.application.i_message_response import ISendMessageResponse
+from backend.apps.core.interfaces.dataclass.application.i_message_response import IMessageDTO, ISendMessageResponse
 from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest, IGetConversationRequest, IGetMessageByConversationRequest, ISendMessageRequest
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.core.interfaces.system.i_logging import ILogger
@@ -54,8 +54,8 @@ class DocumentListView(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 class DocumentUploadView(APIView):
+    sys_logger = _container.log_pool() 
     def post(self, request):
-        sys_logger = _container.log_pool() 
         uploaded_file = request.data.get("document_urls")
         if not uploaded_file:
             return Response(
@@ -68,9 +68,9 @@ class DocumentUploadView(APIView):
         embeding_model_name = get_embedding_model(config_provider,provider_name)
         model_name = get_model_name(config_provider, provider_name)
         type = EPipelineType(request.data.get("type"))
-        sys_logger.info(f"{provider_name}",
+        self.sys_logger.info(f"{provider_name}",
                          Path(__file__).name)
-        sys_logger.flush()
+        self.sys_logger.flush()
         create_req = ICreateConversationRequest(
             provider=provider_name,
             model_name=model_name,
@@ -82,7 +82,7 @@ class DocumentUploadView(APIView):
         )
         print(asdict(create_req))
         if not uploaded_file:
-            sys_logger.warning("No file uploaded in request", source="DocumentUploadView", call_by="post")
+            self.sys_logger.warning("No file uploaded in request", source="DocumentUploadView", call_by="post")
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -91,31 +91,34 @@ class DocumentUploadView(APIView):
             print(cons.conversations_id)
             create_req.conversation_id = cons.conversations_id
             doc_app = _container.document_application()
-            
+
             response = doc_app.upload_document(create_req, Path(__file__).name)
             conversation.run_application_pipeline(create_req.provider, create_req.model_name, cons, response.info.summarize, Path(__file__).name)
             conversation.rename_conversation(str(cons.conversations_id), response.info.conversation_title, Path(__file__).name)
-            
-            sys_logger.info(f"File uploaded successfully: {conversation.list_conversations}", source="DocumentUploadView", call_by="post")
+            time_counter = asdict(response.time_counter) if response.time_counter else {}
+            self.sys_logger.info(f"Document upload and processing completed for conversation {create_req.conversation_id}", source="DocumentUploadView", call_by="post")
+            self.sys_logger.info(f"File uploaded successfully: {conversation.list_conversations}", source="DocumentUploadView", call_by="post")
+            self.sys_logger.info(f"Time counter: {time_counter}", source="DocumentUploadView", call_by="post")
+            print(f"response model: {response.info.model_name}")
             response_json={
                 "conversation_id": create_req.conversation_id,
                 "title": response.info.conversation_title,
                 "provider": response.info.provider.value,
                 "model_name": response.info.model_name,
                 "type": response.info.type.value,
-                "create_at": response.info.create_at
+                "create_at": response.info.create_at,
+                "time_counter": time_counter,
             }
-            
             return Response(response_json, status=status.HTTP_201_CREATED)
-            
+
         except ValueError as e:
-            sys_logger.error(f"Validation Error: {e}", source="DocumentUploadView", call_by="post", method_call="upload_document")
+            self.sys_logger.error(f"Validation Error: {e}", source="DocumentUploadView", call_by="post", method_call="upload_document")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            sys_logger.error(f"Upload failed: {e}\n{traceback.format_exc()}", source="DocumentUploadView", call_by="post")
+            self.sys_logger.error(f"Upload failed: {e}\n{traceback.format_exc()}", source="DocumentUploadView", call_by="post")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         finally:
-            sys_logger.flush()
+            self.sys_logger.flush()
 
 class ConversationListView(APIView):
     def get(self, request):
@@ -125,7 +128,7 @@ class ConversationListView(APIView):
             response = conversation.list_conversations()
             return Response({
                 "response": response,
-                "status": "u"
+                "status": "success"
             }, status=status.HTTP_201_CREATED)
         except ValueError as e:
             sys_logger.error(f"Validation Error: {e}", source="ConversationListView", call_by="get", method_call="list_conversation")
@@ -170,13 +173,23 @@ class SendMesssage(APIView):
             print(f"response_data.user_message_id: {response_data.user_message_id}")
             print(f"response_data.assistant_message_id: {response_data.assistant_message_id}")
             list_messages = message_app.get_conversation_messages(str(conversation_id),50,0,Path(__file__).name)
+            print(f"list_messages: {list_messages.messages.count}")
+            messages_str = [asdict(message) for message in list_messages.messages]
+            last_message : IMessageDTO | None = list_messages.messages[-1] if list_messages.messages else None
+            print(f"last_message: {last_message.content if last_message else 'No messages found'}")
+            self.sys_logger.info(f"Message processed successfully for conversation {conversation_id}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
+            self.sys_logger.info(f"messages_str: {messages_str}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
+
             response_json ={
                 "user_message_id": response_data.user_message_id,
                 "assistant_message_id": response_data.assistant_message_id,
                 "assistant_message": response_data.assistant_message,
-                "latency_ms": response_data.latency_ms,
-                "conversation_messages": list_messages
+                "hits": [asdict(hit) for hit in response_data.retrieval_hits],
+                "time_counter": asdict(response_data.time_counter),
+                "conversation_messages": last_message.content if last_message else "không có tin nhắn nào",
             }
+            self.sys_logger.info(f"Response JSON: {response_json}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
+            self.sys_logger.flush()
             return Response(response_json, status=status.HTTP_201_CREATED)
 
         except ValueError as e:

@@ -2,7 +2,6 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 
 from backend.apps.core.interfaces.llm.llm_ocr.i_llm_ocr import ILLMOCR
-from backend.apps.core.enums.e_provider_name import EProviderName
 
 
 class ILLMOCRFactory(ABC):
@@ -12,7 +11,7 @@ class ILLMOCRFactory(ABC):
     """
 
     @abstractmethod
-    def create_ocr_extractor(self, provider_name: EProviderName) -> ILLMOCR:
+    def create_ocr_extractor(self) -> ILLMOCR:
         """
         Create an OCR extractor instance based on the specified provider name.
 

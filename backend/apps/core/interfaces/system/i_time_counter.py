@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from backend.apps.core.interfaces.dataclass.application.i_message_response import IChatTimeCounter
 from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IGraphTimeCounterResponse, IRetrievalTimeCounterResponse, ITimeCounterResponse
 
 class ITimeCounter(ABC):
@@ -54,6 +55,16 @@ class ITimeCounter(ABC):
         This method should take the recorded time values (e.g., extract_time, chunk_time, graph_retriever_time, total_time, query_time) and return an instance of IGraphTimeCounterResponse with these values populated.
         Returns:
             IGraphTimeCounterResponse: An instance of IGraphTimeCounterResponse containing the recorded time values.
+        """
+        pass
+
+    @abstractmethod
+    def mapping_to_chat_response_time_counter(self, embedding_time: float, retrieval_time: float, llm_time: float, save_time: float = 0.0) -> IChatTimeCounter:
+        """
+        Map the recorded time values to an IChatTimeCounter dataclass instance for chat responses.
+        This method should take the recorded time values (e.g., embedding_time, retrieval_time, llm_time, save_time) and return an instance of IChatTimeCounter with these values populated.
+        Returns:
+            IChatTimeCounter: An instance of IChatTimeCounter containing the recorded time values.
         """
         pass
 

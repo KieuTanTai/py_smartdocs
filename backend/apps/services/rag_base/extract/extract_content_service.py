@@ -35,7 +35,7 @@ class ExtractContentService(IExtractContent):
         if provider is None:
             raise ValueError("Provider must be specified for extract_from_file_text")
         uploaded_file = self.storage.save_file(file_path)
-        ocr_extractor = self.factory.create_ocr_extractor(provider)
+        ocr_extractor = self.factory.create_ocr_extractor()
         ocr_response = ocr_extractor.process_ocr(uploaded_file)
         extracted_text = self.__process_ocr_response(ocr_response, source_log, call_by=call_by)
         return IExtractResponse(uploaded_file.id, extracted_text, ocr_response.model, ocr_response.usage_info.pages_processed, ocr_response.usage_info.doc_size_bytes)

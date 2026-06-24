@@ -14,20 +14,17 @@ class LLMOCRFactory(ILLMOCRFactory):
         self.config_provider = config_provider
         self.logger = logger
 
-    def create_ocr_extractor(self, provider_name: EProviderName) -> ILLMOCR:
+    def create_ocr_extractor(self) -> ILLMOCR:
         self.logger.info(
-            f"Creating LLM OCR Extractor for provider: {provider_name.value}",
+            "Creating Mistral LLM OCR Extractor",
             source=str(self.__class__),
         )
 
-        if provider_name == EProviderName.MISTRAL:
-            MISTRAL_CONFIG = self.config_provider.get_mistral_config()
-            return MistralLLMOCR(
-                api_key=MISTRAL_CONFIG["api_key"],
-                model=MISTRAL_CONFIG["ocr_model"],
-                provider_name=provider_name.value,
-                timeout_seconds=MISTRAL_CONFIG.get("timeout_seconds", 60.0),
-                logger=self.logger,
-            )
-        else:
-            raise ValueError(f"Unsupported provider: {provider_name.value}")
+        MISTRAL_CONFIG = self.config_provider.get_mistral_config()
+        return MistralLLMOCR(
+            api_key=MISTRAL_CONFIG["api_key"],
+            model=MISTRAL_CONFIG["ocr_model"],
+            provider_name=EProviderName.MISTRAL.value,
+            timeout_seconds=MISTRAL_CONFIG.get("timeout_seconds", 60.0),
+            logger=self.logger,
+        )

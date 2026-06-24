@@ -1,5 +1,6 @@
 import time
 
+from backend.apps.core.interfaces.dataclass.application.i_message_response import IChatTimeCounter
 from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IGraphTimeCounterResponse, IRetrievalTimeCounterResponse, ITimeCounterResponse
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
 
@@ -46,6 +47,16 @@ class TimeCounter(ITimeCounter):
             graph_retriever_time=graph_retriever_time,
             total_time=total_time,
             query_time=query_time
+        )
+    
+    def mapping_to_chat_response_time_counter(self, embedding_time: float, retrieval_time: float, llm_time: float, save_time: float = 0.0) -> IChatTimeCounter:
+        total_time = embedding_time + retrieval_time + llm_time + save_time
+        return IChatTimeCounter(
+            embedding_time=embedding_time,
+            retrieval_time=retrieval_time,
+            llm_time=llm_time,
+            save_time=save_time,
+            total_time=total_time
         )
 
     def mapping_to_retrieval_time_counter_response(self, retrieval_time: float, query_time: float) -> IRetrievalTimeCounterResponse:

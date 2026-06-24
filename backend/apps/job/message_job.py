@@ -58,42 +58,42 @@ class MessageJob(IMessageJob):
         self.message_database = cast(IMessageDatabase, self.database_provider.get_model_service(MessageModel))
         self.conversation_files_database = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
         self.document_database = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
-        
+
     def get_conversation(self, conversation_id: str) -> ConversationModel:
         return self.conversation_database.get_by_id(conversation_id)
-    
+
     def save_message(self, conversation: ConversationModel, is_user_send: bool, content: str) -> MessageModel:
         return self.message_database.create_message(conversation, is_user_send=is_user_send, content=content)
-    
+
     def build_prompt_and_retrieve(self, content: str, conversation: ConversationModel, provider: EProviderName, pipeline_type: EPipelineType, model_name: str, embedding_model_name: str = "gemini-embedding-2") -> tuple[str, list[IMessageJobContextHit]]:
         context_hits: list[IMessageJobContextHit] = []
         context_hits_dicts: list[dict] = []
-        
+
         if pipeline_type == EPipelineType.HYBRID:
             graph_context, context_hits = self.__thread_pool_executor_hybrid_search(content, conversation, provider, model_name, embedding_model_name)
             context_hits_dicts = [{"text": hit.text, "score": hit.score} for hit in context_hits]
             prompt = self.prompt_structure.build_prompt_for_graph_context(content, context_hits_dicts, graph_context)
-            
+
         elif pipeline_type == EPipelineType.GRAPH:
             graph_context = self.__thread_pool_executor_graph_search(content, conversation, provider, embedding_model_name)
             prompt = self.prompt_structure.build_prompt_for_graph_context(content, context_hits_dicts, graph_context)
-            
+
         else:
             context_hits = self.__retrieve_context_hits(content, conversation, provider, model_name, embedding_model_name)
             retrieval = [hit.text for hit in context_hits]
             prompt = self.prompt_structure.build_prompt(retrieval, content)
-            
+
         return prompt, context_hits
-    
+
     def generate_answer(self, provider: EProviderName, model_name: str, prompt: str) -> str:
         llm_client = self.llm_provider_factory.get_provider(provider)
-        
+
         self.logger.info(
             f"Generating assistant response for provider={provider.value}",
             source=str(self.__class__),
             method_call=self.generate_answer.__name__,
         )
-        
+
         response = llm_client.generate(ICompletionRequest(provider, model_name, prompt))
         return getattr(response, 'content', getattr(response, 'message_content', str(response)))
 
@@ -121,11 +121,11 @@ class MessageJob(IMessageJob):
         documents: list[ConversationFilesModel],
         bm25_store: ISpareVectorStoreService = None, #type: ignore
     ) -> tuple[list[IMessageJobContextHit], list[IMessageJobContextHit]]:
-        
+
         all_dense_hits: list[IMessageJobContextHit] = []
         all_sparse_hits: list[IMessageJobContextHit] = []
         document = self.document_database.get_by_conversation(conversation)
-        
+
         # ID dùng để search index (thường là ID của conversation hoặc document)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -140,12 +140,12 @@ class MessageJob(IMessageJob):
                 task_name = future_to_task[future] # Lấy tên tác vụ tương ứng với Future hiện tại
                 try:
                     result = future.result() # result là 1 list các IMessageJobContextHit
-                    
+
                     if task_name == "faiss_search":
                         all_dense_hits.extend(result)
                     elif task_name == "bm25_search":
                         all_sparse_hits.extend(result)
-                        
+
                 except Exception as exc:
                     self.logger.error(f"Vector search task '{task_name}' generated an exception: {exc}", 
                                       Path(__file__).name, str(self.__class__), self.__thread_pool_executor_vector_search.__name__)
@@ -153,7 +153,7 @@ class MessageJob(IMessageJob):
         # Sắp xếp lại danh sách kết quả theo điểm số giảm dần
         all_dense_hits.sort(key=lambda item: item.score, reverse=True)
         all_sparse_hits.sort(key=lambda item: item.score, reverse=True)
-        
+
         return all_dense_hits, all_sparse_hits
 
     def __thread_pool_executor_graph_search(self, content: str, conversation: ConversationModel, provider: EProviderName, embedding_model_name: str) -> str:
@@ -321,33 +321,45 @@ class MessageJob(IMessageJob):
             for text, spare_hit in zip(chunk_texts, sparse_hits):
                 spare_hit.text = text
         return sparse_hits
-    
+
     def get_conversation_title(self, conversation_id: str) -> str:
         conversation = self.conversation_database.get_by_id(conversation_id)
+        self.logger.info(f"Retrieved conversation title for {conversation_id}: {conversation.conversations_title}", Path(__file__).name, self.get_conversation_title.__name__)
         return conversation.conversations_title
 
     def get_messages(self, conversation_id: str, limit: int, offset: int) -> list[IMessageDTO]:
+        self.logger.info(f"Fetching messages for conversation {conversation_id} with limit={limit} and offset={offset}", Path(__file__).name, self.get_messages.__name__)
         conversation = self.conversation_database.get_by_id(conversation_id)
-        
+        self.logger.info(f"Retrieved conversation for {conversation_id}: {conversation.conversations_title}", Path(__file__).name, self.get_messages.__name__)
+
         # Lấy dữ liệu từ DB Service
         messages_qs = self.message_database.get_by_conversation(conversation)
+        self.logger.info(f"Retrieved {messages_qs.count()} messages for conversation {conversation_id}", Path(__file__).name, self.get_messages.__name__)
         paginated_qs = messages_qs.order_by("-messages_created_at")[offset : offset + limit]
-        
+        self.logger.info(f"Paginated messages: {len(paginated_qs)} messages returned for conversation {conversation_id}", Path(__file__).name, self.get_messages.__name__)
         # MAP ORM MODEL SANG DTO
         dtos = []
         for m in reversed(paginated_qs):
-            dtos.append(
-                IMessageDTO(
-                    id=str(m.messages_id), # Thay bằng tên trường id thực tế trong Model của bạn
-                    conversation_id=str(conversation_id),
-                    role="user" if m.messages_is_user_send else "assistant",
-                    content=m.messages_content,
-                    created_at=m.messages_created_at.isoformat()
-                )
+            dto = IMessageDTO(
+                id=str(
+                    m.messages_id
+                ),  # Thay bằng tên trường id thực tế trong Model của bạn
+                conversation_id=str(conversation_id),
+                role="user" if m.messages_is_user_send else "assistant",
+                content=m.messages_content,
+                created_at=m.messages_created_at.isoformat(),
             )
+            dtos.append(dto)
+            self.logger.info(f"dto created for message {m.messages_id} in conversation {conversation_id}: {dto}", Path(__file__).name, self.get_messages.__name__)
+            self.logger.info(f"Mapped message {m.messages_id} to DTO for conversation {conversation_id}", Path(__file__).name, self.get_messages.__name__)
+        self.logger.info(f"Total DTOs created: {len(dtos)} for conversation {conversation_id}", Path(__file__).name, self.get_messages.__name__)
         return dtos
 
     def count_messages(self, conversation_id: str) -> int:
         conversation = self.conversation_database.get_by_id(conversation_id)
-        
-        return self.message_database.get_by_conversation(conversation).count()
+        self.logger.info(f"Counting messages for conversation {conversation_id}", Path(__file__).name, self.count_messages.__name__)
+        self.logger.info(f"Retrieved message count for conversation {conversation_id}: {self.message_database.get_by_conversation(conversation).count()}", Path(__file__).name, self.count_messages.__name__)
+        count = self.message_database.get_by_conversation(conversation).count()
+        self.logger.info(f"Final message count for conversation {conversation_id}: {count}", Path(__file__).name, self.count_messages.__name__)
+        return count
+    

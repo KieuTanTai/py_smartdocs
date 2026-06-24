@@ -1,14 +1,24 @@
-FROM python:3.14
+FROM python:3.13-slim
+
 WORKDIR /app
 
-ENV PYTHONONLYWRITEBYTECODE=1
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+ENV TMPDIR=/shared-tmp
+ENV TMP=/shared-tmp
+ENV TEMP=/shared-tmp
 
-RUN pip install --no-cache-dir shiny httpx
+COPY frontend/requirements/dev.txt /app/frontend/requirements/dev.txt
+RUN pip install --no-cache-dir -r /app/frontend/requirements/dev.txt
 
-COPY index.py /app/index.py
-COPY assets /app/assets
+COPY frontend /app/frontend
+COPY backend /app/backend
+COPY sys_services /app/sys_services
+COPY app /app/app
+
+RUN mkdir -p /shared-tmp
 
 EXPOSE 8052
 
-CMD [ "shiny", "run", "index.py", "--server.address=0.0.0.0", "--server.port=8052" ]
+CMD ["shiny", "run", "frontend/app.py", "--host", "0.0.0.0", "--port", "8052"]

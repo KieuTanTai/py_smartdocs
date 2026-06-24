@@ -32,13 +32,15 @@ class MessageTask(IMessageTask):
         self.time_counter.reset()
         self.time_counter.start()
         
-        self.logger.info(f"Task Orchestrator Started for Conversation: {conversation_id}")
+        self.logger.info(f"Task Orchestrator Started for Conversation: {conversation_id}", Path(__file__).name, self.run.__name__)
 
         # STEP 1: LẤY PARAM CONVERSATION TẠI TASK 
         conversation = self.message_job.get_conversation(conversation_id)
 
         # STEP 2: LƯU TIN NHẮN CỦA USER
         self.message_job.save_message(conversation, is_user_send=True, content=content)
+        embedding_time_ms = self.time_counter.get_elapsed_time()
+        self.logger.info(f"User message saved. Embedding time: {embedding_time_ms:.2f}ms", Path(__file__).name, self.run.__name__)
 
         # STEP 3: GỌI HÀM LẤY CONTEXT TRÊN TASK
         prompt, context_hits = self.message_job.build_prompt_and_retrieve(
@@ -49,6 +51,8 @@ class MessageTask(IMessageTask):
             model_name=model_name,
             embedding_model_name=embedding_model_name
         )
+        retrieval_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Context retrieved. Retrieval time: {retrieval_time:.2f}ms", Path(__file__).name, self.run.__name__)
 
         # STEP 4: GỌI HÀM LLM TRÊN TASK
         assistant_content = self.message_job.generate_answer(
@@ -56,14 +60,18 @@ class MessageTask(IMessageTask):
             model_name=model_name,
             prompt=prompt
         )
+        llm_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"LLM response generated. LLM time: {llm_time:.2f}ms", Path(__file__).name, self.run.__name__)
 
         # STEP 5: LƯU TIN NHẮN ASSISTANT TẠI TASK
         self.message_job.save_message(conversation, is_user_send=False, content=assistant_content)
-
+        save_time = self.time_counter.get_elapsed_time()
+        self.logger.info(f"Assistant message saved. Save time: {save_time:.2f}ms", Path(__file__).name, self.run.__name__)
         # CHỐT THỜI GIAN
         elapsed = self.time_counter.get_elapsed_time()
-        self.logger.info(f"MessageTask End-to-End completed in {elapsed:.2f}ms")
+        self.logger.info(f"MessageTask End-to-End completed in {elapsed:.2f}ms", Path(__file__).name, self.run.__name__)
         
+        time_counter_response = self.time_counter.mapping_to_chat_response_time_counter(embedding_time=embedding_time_ms, retrieval_time=retrieval_time, llm_time=llm_time, save_time=save_time)
         # --- RETURN RESPONSE NÀY TRÊN TASK ---
         return IMessageJobResponse(
             conversation_id=conversation_id,
@@ -71,14 +79,15 @@ class MessageTask(IMessageTask):
             model=model_name,
             latency_ms=int(elapsed),
             mode=pipeline_type.value,
-            retrieval_hits=context_hits
+            retrieval_hits=context_hits,
+            time_counter=time_counter_response
         )
         
     def get_history(self, conversation_id: str, limit: int = 50, offset: int = 0) -> IChatHistoryResponse:
         self.time_counter.reset()
         self.time_counter.start()
         
-        self.logger.info(f"Task get_history started for: {conversation_id}")
+        self.logger.info(f"Task get_history started for: {conversation_id}", Path(__file__).name, self.get_history.__name__)
 
         # 1. GỌI JOB VÀ NHẬN VỀ KIỂU DỮ LIỆU PYTHON THUẦN (SẠCH)
         title = self.message_job.get_conversation_title(conversation_id)
@@ -87,13 +96,14 @@ class MessageTask(IMessageTask):
 
         # 2. CHỐT THỜI GIAN
         elapsed = self.time_counter.get_elapsed_time()
-        self.logger.info(f"Task get_history completed in {elapsed:.2f}ms")
-
-        # 3. ĐÓNG GÓI TRẢ CHO APPLICATION
-        return IChatHistoryResponse(
+        self.logger.info(f"Task get_history completed in {elapsed:.2f}ms", Path(__file__).name, self.get_history.__name__)
+        response = IChatHistoryResponse(
             conversation_id=str(conversation_id),
             conversation_title=title,
-            messages=formatted_messages, # Đã là List[IMessageDTO] từ Job đưa lên
+            messages=formatted_messages,  # Đã là List[IMessageDTO] từ Job đưa lên
             count=len(formatted_messages),
             total=total_messages
         )
+        self.logger.info(f"Task get_history response: {asdict(response)}", Path(__file__).name, self.get_history.__name__)
+        # 3. ĐÓNG GÓI TRẢ CHO APPLICATION
+        return response

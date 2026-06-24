@@ -39,6 +39,23 @@ app_ui = ui.page_fluid(
         ui.tags.script(src="js/upload/sidebar-upload.js"),
         ui.tags.script(src="js/upload/modal-upload.js"),
         ui.tags.script(src="js/model_settings.js"),
+        ui.tags.script("""
+            document.addEventListener("keydown", function(e) {
+                const el = e.target;
+
+                if (el.tagName === "TEXTAREA") {
+
+                    if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+
+                        // trigger send button
+                        document.querySelector("#send_message").click();
+                    }
+
+                    // Shift+Enter = default (newline)
+                }
+            });
+        """),
     ),
     ui.tags.div(
         ui.tags.div(class_="bg-orb orb-1"),
@@ -66,6 +83,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     docs = reactive.Value([])
     history = reactive.Value([])
     metrics = reactive.Value({})
+    upload_pipeline_metrics = reactive.Value({})
     status = reactive.Value(
         {"label": "Idle", "detail": "No requests yet", "kind": "idle"}
     )
@@ -75,7 +93,9 @@ def server(input: Any, output: Any, session: Any) -> None:
     provider = reactive.Value("auto")
     current_model = reactive.Value("auto")
     current_mode = reactive.Value("normal")
-    current_model_name = reactive.Value("gemini-3.1-flash-lite")
+    current_model_name = reactive.Value(
+        LIST_PROVIDERS[0].model_name if LIST_PROVIDERS else "auto"
+    )
     system_prompt = reactive.Value("")
     current_conversation_id = reactive.Value("")
     mock_on_fail = reactive.Value(True)
@@ -119,7 +139,7 @@ def server(input: Any, output: Any, session: Any) -> None:
         for msg in items:
             # FIX: Chuyển Dataclass object thành Dictionary an toàn
             msg_data = msg if isinstance(msg, dict) else getattr(msg, "__dict__", {})
-            
+
             role = msg_data.get("role", "assistant")
             classes = "message assistant" if role != "user" else "message user"
             meta = msg_data.get("meta") or {}
@@ -130,12 +150,12 @@ def server(input: Any, output: Any, session: Any) -> None:
                     parts.append(f"Provider: {meta['provider']}")
                 if meta.get("model"):
                     parts.append(f"Model: {meta['model']}")
-                
+
                 # Cập nhật lấy thời gian phản hồi (latency_ms) từ backend
                 latency = meta.get("latency_ms") or meta.get("total_ms")
                 if latency is not None:
                     parts.append(f"Total: {latency} ms")
-                    
+
                 if meta.get("error"):
                     parts.append("Error: API failed")
                 if parts:
@@ -239,22 +259,34 @@ def server(input: Any, output: Any, session: Any) -> None:
     def retrieval_panel() -> ui.Tag:
         payload = metrics.get()
         hits = payload.get("hits") or payload.get("retrieval_hits") or []
+        hits_str = "\n".join(str(hit.get("content", "-")) for hit in hits)
         if not hits:
             return ui.tags.div("Waiting for retrieval data.", class_="empty-state")
-        rows = [ui.tags.li(str(hit)) for hit in hits]
+        rows = [ui.tags.li(hits_str)]
         return ui.tags.ul(*rows, class_="mini-list")
 
     @render.ui
     def timing_panel() -> ui.Tag:
         payload = metrics.get()
+        upload_payload = upload_pipeline_metrics.get()
         if not payload:
             return ui.tags.div("No timing data yet.", class_="empty-state")
-        items = [
-            ("Embed", payload.get("embed_ms")),
-            ("Query", payload.get("query_ms")),
-            ("Response", payload.get("response_ms")),
-            ("Total", payload.get("total_ms")),
-        ]
+        if not upload_payload:
+            items = [
+                ("Embed: ", round(payload.get("time_counter", {}).get("embedding_time", 0.0), 3)),
+                ("Retrieve: ", round(payload.get("time_counter", {}).get("retrieval_time", 0.0), 3)),
+                ("Query: ", round(payload.get("time_counter", {}).get("llm_time", 0.0), 3)),
+                ("Save: ", round(payload.get("time_counter", {}).get("save_time", 0.0), 3)),
+                ("Response: ", round(payload.get("time_counter", {}).get("total_time", 0.0), 3)),
+            ]
+        else:
+            items = [
+                ("Extract: ", round(upload_payload.get(f"extract_time:.3f", 0.0), 3)),
+                ("Chunk: ", round(upload_payload.get(f"chunk_time:.3f", 0.0), 3)),
+                ("Embed: ", round(upload_payload.get(f"embedding_time:.3f", 0.0), 3)),
+                ("Save: ", round(upload_payload.get(f"save_time:.3f", 0.0), 3)),
+                ("Total: ", round(upload_payload.get(f"total_time:.3f", 0.0), 3)),
+            ]
         rows = [
             ui.tags.div(
                 ui.tags.span(label, class_="metric-label"),
@@ -432,6 +464,7 @@ def server(input: Any, output: Any, session: Any) -> None:
                 print("Document after normalization:", doc)
                 print("Current documents before indexing:", current_docs)
                 conversation_id.set(response.get("conversation_id") or "")
+                upload_pipeline_metrics.set(response.get("time_counter", {}))
                 try:
                     print("Document after indexing attempt:", doc)
                 except ApiError:
@@ -501,7 +534,7 @@ def server(input: Any, output: Any, session: Any) -> None:
         text = (input.chat_input() or "").strip()
         if not text:
             return
-        
+
         current = messages.get()
         current = current + [build_message("user", text)]
         messages.set(current)
@@ -509,16 +542,16 @@ def server(input: Any, output: Any, session: Any) -> None:
         was_new = conversation_name.get() is None
         current_conv_id = conversation_id.get()
         current_provider = current_model.get()
-        
+
         try:
             response = client().send_message(
                 conversation_id=current_conv_id,
                 content=text,
                 provider=current_provider
             )
-            
-            assistant_reply = response.get("assistant_message", "Không có phản hồi từ AI.")
-            
+
+            assistant_reply = response.get("conversation_messages", "Không có phản hồi từ AI.")
+
             if was_new:
                 title = text[:42] 
                 history.set([
@@ -532,19 +565,20 @@ def server(input: Any, output: Any, session: Any) -> None:
             # Bóc tách metrics trả về để hiển thị lên UI
             new_metrics = {
                 "provider": response.get("provider", current_provider),
-                "model": response.get("model", current_model.get()),
-                "latency_ms": response.get("latency_ms", 0),
+                "model": response.get("model_name", current_model_name.get()),
+                "time_counter": response.get("time_counter", {}),
                 "mode": current_mode.get(),
+                "hits": response.get("hits", []),
             }
-            
+
             messages.set(
                 messages.get()
                 + [build_message("assistant", assistant_reply, meta=new_metrics)]
             )
-            
+            upload_pipeline_metrics.set({}) # Reset upload pipeline metrics after sending a message
             metrics.set(new_metrics)
             set_status("Response ready", "Message received", "success")
-            
+
         except ApiError as exc:
             set_status("Request failed", str(exc), "error")
             messages.set(

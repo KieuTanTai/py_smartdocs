@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.application.i_message_response import IChatHistoryResponse, IMessageDTO, ISendMessageResponse
+from backend.apps.core.interfaces.dataclass.application.i_message_response import IChatHistoryResponse, IChatTimeCounter, IMessageDTO, ISendMessageResponse
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.interfaces.application.message.i_message_application import IMessageApllication
 from backend.apps.interfaces.tasks.i_message_task import IMessageTask
@@ -50,16 +50,18 @@ class MessageApplication(IMessageApllication):
                 embedding_model_name=embedding_model_name
             )
             print(f"ai_response: {asdict(ai_response)}")
+            time_counter_response = ai_response.time_counter
             # TRẢ VỀ OBJECT DATACLASS THAY VÌ DICT
             return ISendMessageResponse(
                 conversation_id=conversation_id,
                 user_message_id=getattr(ai_response, 'user_message_id', ""),
                 assistant_message_id=getattr(ai_response, 'assistant_message_id', ""),
                 assistant_message=getattr(ai_response, 'assistant_message', ""), 
-                latency_ms=getattr(ai_response, 'latency_ms', 0),
                 provider=provider_name,
                 model=model_name,
                 pipeline_type=pipeline_type,
+                retrieval_hits=getattr(ai_response, 'retrieval_hits', []),
+                time_counter=time_counter_response
             )
 
         except ValueError as e:

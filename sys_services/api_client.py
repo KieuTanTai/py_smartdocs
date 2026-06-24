@@ -60,7 +60,7 @@ class ApiClient:
         if is_multipart and "Content-Type" in headers:
             headers = {k: v for k, v in headers.items() if k != "Content-Type"}
         # return {}
-        
+
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 request = client.build_request(
@@ -92,7 +92,7 @@ class ApiClient:
             raise ApiError(
                 f"HTTP {exc.response.status_code}: {body_text}"
             ) from exc
-        
+
         content_type = response.headers.get("content-type", "")
         print(f"content_type:{content_type}")
         if "application/json" in content_type:
@@ -131,12 +131,12 @@ class ApiClient:
 
         return self._send_message_request(
             "POST", f"/api/documents/send_message/", provider, conversation_id, content)
-    
+
     def _send_message_request(self,method: str ,api_endpoint: str, provider_name:str , conversation_id, content:str) -> dict[str, Any]:
         url = f"{self.base_url}{api_endpoint}"
         print(f"url: {url}")
         headers = self._headers()
-        
+
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 request = client.build_request(
@@ -150,7 +150,7 @@ class ApiClient:
                 print(request.content)
 
                 response = client.send(request)
-                print(f"response: {response}")
+                print(f"response: {response.content}")
                 # response.raise_for_status()
         except httpx.RequestError as exc:
             print("fallback here")
@@ -168,13 +168,12 @@ class ApiClient:
             raise ApiError(
                 f"HTTP {exc.response.status_code}: {body_text}"
             ) from exc
-        
+
         content_type = response.headers.get("content-type", "")
         print(f"content_type:{content_type}")
         if "application/json" in content_type:
             return response.json()
-        return {"raw": response.text}
-        
+        return {"conversation_messages": response.text}
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
     def update_conversation_documents(
@@ -209,7 +208,7 @@ class ApiClient:
         url = f"{self.base_url}{api_endpoint}"
         print(f"url: {url}")
         headers = self._headers()
-        
+
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 request = client.build_request(
@@ -241,15 +240,13 @@ class ApiClient:
             raise ApiError(
                 f"HTTP {exc.response.status_code}: {body_text}"
             ) from exc
-        
+
         content_type = response.headers.get("content-type", "")
         print(f"content_type:{content_type}")
         if "application/json" in content_type:
             return response.json()
         return {"raw": response.text}
 
-
-    
     def delete_document(self, document_id: str) -> dict[str, Any]:
         return self._request("DELETE", f"/api/documents/{document_id}/")
 

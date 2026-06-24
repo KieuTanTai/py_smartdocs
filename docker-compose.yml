@@ -1,127 +1,114 @@
-# ============================================================
-# SmartDocs Production Docker Compose
-# ============================================================
-# Services:
-#   - nginx: reverse proxy (routes /api/* → backend, /* → frontend)
-#   - backend: Django API via Gunicorn
-#   - celery: Celery worker (async task processing)
-#   - celery-beat: Celery beat scheduler (periodic tasks)
-#   - redis: message broker + result backend
-#   - frontend: Shiny web UI
-#
-# Usage:
-#   docker compose -f docker-compose.yml --env-file .env up --build
-# ============================================================
-
-version: "3.9"
-
-x-common-env: &common-env
-  env_file:
-    - .env
-
 services:
-
-  # ── Redis ─────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
 
-  # ── Backend (Django + Gunicorn) ───────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    env_file:
+      - .env
     environment:
-      << : *common-env
-      DB_ENGINE: django.db.backends.mysql
+      DJANGO_SETTINGS_MODULE: app.settings.local
+      DEBUG: "1"
+      ALLOWED_HOSTS: localhost,127.0.0.1,backend,frontend,host.docker.internal
+      DB_ENGINE: django.db.backends.sqlite3
+      REDIS_ENDPOINT: redis://redis:6379
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      OLLAMA_BASE_URL: http://ollama:11434
+      TMPDIR: /shared-tmp
+      TMP: /shared-tmp
+      TEMP: /shared-tmp
     depends_on:
       redis:
         condition: service_healthy
+      ollama:
+        condition: service_started
+    ports:
+      - "8000:8000"
     volumes:
+      - ./db.sqlite3:/app/db.sqlite3
       - ./storage:/app/storage
-      - ./metadata:/app/metadata
-      - ./logs:/app/logs
-    command: >
-      gunicorn app.asgi:application
-      --bind 0.0.0.0:8000
-      --workers 4
-      --worker-class uvicorn.workers.UvicornWorker
-      --access-logfile -
-      --error-logfile -
+      - ./backend/metadata:/app/backend/metadata
+      - ./docs/logs:/app/docs/logs
+      - shared_tmp:/shared-tmp
 
-  # ── Celery Worker ──────────────────────────────────────────
   celery:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      << : *common-env
+      DJANGO_SETTINGS_MODULE: app.settings.local
+      DB_ENGINE: django.db.backends.sqlite3
+      REDIS_ENDPOINT: redis://redis:6379
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      OLLAMA_BASE_URL: http://ollama:11434
+      TMPDIR: /shared-tmp
+      TMP: /shared-tmp
+      TEMP: /shared-tmp
     depends_on:
       redis:
         condition: service_healthy
+      ollama:
+        condition: service_started
     volumes:
+      - ./db.sqlite3:/app/db.sqlite3
       - ./storage:/app/storage
-      - ./metadata:/app/metadata
-    command: celery -A backend.apps.tasks worker --loglevel=info
+      - ./backend/metadata:/app/backend/metadata
+      - ./docs/logs:/app/docs/logs
+      - shared_tmp:/shared-tmp
+    command: celery -A app.settings.local:_celery_app worker --loglevel=info
 
-  # ── Celery Beat (Periodic Tasks) ──────────────────────────
-  celery-beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    environment:
-      << : *common-env
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./storage:/app/storage
-      - ./metadata:/app/metadata
-    command: >
-      celery -A backend.apps.tasks beat
-      --loglevel=info
-      --scheduler celery_beat_sqlitedb.Scheduler
-
-  # ── Frontend (Shiny) ──────────────────────────────────────
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SMARTDOCS_API_BASE_URL: http://backend:8000
+      TMPDIR: /shared-tmp
+      TMP: /shared-tmp
+      TEMP: /shared-tmp
+    depends_on:
+      - backend
     ports:
       - "8001:8001"
-    environment:
-      << : *common-env
-      SMARTDOCS_API_BASE_URL: http://localhost:8000
     volumes:
-      - ./frontend:/app
-    # Shiny server in ShinyProxy mode is complex; simpler: use uvicorn
-    command: >
-      uvicorn
-      --host 0.0.0.0
-      --port 8001
-      shiny_asgi:app
+      - shared_tmp:/shared-tmp
 
 volumes:
   redis_data:
+  ollama_data:
+  shared_tmp:

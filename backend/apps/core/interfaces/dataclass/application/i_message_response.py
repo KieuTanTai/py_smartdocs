@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import Any, List
 
 from backend.apps.core.enums.e_pipeline_type import EPipelineType
 
@@ -25,7 +25,16 @@ class ISendMessageResponse:
     user_message_id: str
     assistant_message_id: str
     assistant_message: str
-    latency_ms: int
     provider: str
     model: str
     pipeline_type: EPipelineType
+    retrieval_hits: List[Any] = field(default_factory=list)
+    time_counter: IChatTimeCounter = field(default_factory=lambda: IChatTimeCounter(0.0, 0.0, 0.0))
+
+@dataclass
+class IChatTimeCounter:
+    embedding_time: float
+    retrieval_time: float
+    llm_time: float
+    save_time: float = 0.0
+    total_time: float = 0.0
