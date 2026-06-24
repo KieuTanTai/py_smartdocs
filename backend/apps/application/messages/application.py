@@ -3,6 +3,7 @@ Message Application Layer.
 Handles message-related business logic, validation, and orchestration.
 """
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict
 
@@ -48,6 +49,7 @@ class MessageApplication(IMessageApllication):
                 model_name=model_name,
                 embedding_model_name=embedding_model_name
             )
+            print(f"ai_response: {asdict(ai_response)}")
             # TRẢ VỀ OBJECT DATACLASS THAY VÌ DICT
             return ISendMessageResponse(
                 conversation_id=conversation_id,

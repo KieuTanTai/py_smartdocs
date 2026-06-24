@@ -75,9 +75,9 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
     )
     database_provider = providers.Singleton(DatabaseProvider, logger=log_pool)
-    #* singleton memory pool for faiss index, to avoid create multiple index for the same conversation, and to improve the performance of locate service by caching the index in memory. 
-    #* The pool is a dictionary with conversation_id as key and faiss index as value. 
-    #*The pool provides methods to add, get, remove and clear index in the pool, and it also logs the operations for debugging and monitoring purposes.
+    # * singleton memory pool for faiss index, to avoid create multiple index for the same conversation, and to improve the performance of locate service by caching the index in memory.
+    # * The pool is a dictionary with conversation_id as key and faiss index as value.
+    # *The pool provides methods to add, get, remove and clear index in the pool, and it also logs the operations for debugging and monitoring purposes.
     memory_pool = providers.Singleton(FaissMemoryPool, logger=log_pool) 
     # Storage
     llm_ocr_factory = providers.Singleton(LLMOCRFactory, config_provider=config_provider, logger=log_pool)
@@ -96,7 +96,7 @@ class BackendContainer(containers.DeclarativeContainer):
         storage=file_storage,
         logger=log_pool,
     )
-    
+
     time_counter = providers.Factory(TimeCounter)
 
     # Normalize
@@ -110,6 +110,7 @@ class BackendContainer(containers.DeclarativeContainer):
         RedisCacheSession,
         config_provider=config_provider,
         metadata_dir=METADATA_DIR,
+        memory_pool=memory_pool,
         logger=log_pool,
     )
 
@@ -156,7 +157,7 @@ class BackendContainer(containers.DeclarativeContainer):
         session_provider=neo4j_session,
         llm_prompt_structure=llm_prompt_structure
     )
-    
+
     delete_job = providers.Factory(
         DeleteJob,
         locate_service=locate_service,
@@ -193,7 +194,7 @@ class BackendContainer(containers.DeclarativeContainer):
         logger=log_pool,
         hybrid_search_service=hybrid_search_service
     )
-    
+
     upload_task = providers.Factory(
         UploadTask,
         upload_job=upload_job,
@@ -231,7 +232,7 @@ class BackendContainer(containers.DeclarativeContainer):
         llm_uploader=llm_uploader,
         logger=log_pool
     )
-    
+
     message_application = providers.Factory(
         MessageApplication,
         message_task=message_task,

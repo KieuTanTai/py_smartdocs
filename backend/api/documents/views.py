@@ -145,7 +145,7 @@ class SendMesssage(APIView):
     def post(self, request):
         self.sys_logger.info(f"Received message request: {request.data}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
         try:
-
+            
             message_app = _container.message_application()
             config_provider = _container.config_provider()
             user_input=request.data.get("content")
@@ -169,11 +169,13 @@ class SendMesssage(APIView):
             response_data=message_app.send_message(str(conversation_id), user_input, provider_name, model_name, embedding_model_name,pipeline_type, Path(__file__).name)
             print(f"response_data.user_message_id: {response_data.user_message_id}")
             print(f"response_data.assistant_message_id: {response_data.assistant_message_id}")
+            list_messages = message_app.get_conversation_messages(str(conversation_id),50,0,Path(__file__).name)
             response_json ={
                 "user_message_id": response_data.user_message_id,
                 "assistant_message_id": response_data.assistant_message_id,
                 "assistant_message": response_data.assistant_message,
-                "latency_ms": response_data.latency_ms
+                "latency_ms": response_data.latency_ms,
+                "conversation_messages": list_messages
             }
             return Response(response_json, status=status.HTTP_201_CREATED)
 

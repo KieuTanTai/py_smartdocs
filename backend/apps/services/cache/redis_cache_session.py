@@ -1,6 +1,6 @@
-
 from pathlib import Path
 
+from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.services.repository.i_connect_cache_session import IConnectCacheSession
 import redis
 
@@ -9,16 +9,24 @@ from backend.apps.core.interfaces.system.i_config import IConfigProvider
 from backend.apps.services.cache.radis_cache_service import RedisCacheService
 
 class RedisCacheSession(IConnectCacheSession):
-    def __init__(self, config_provider: IConfigProvider, metadata_dir: Path, logger):
+
+    def __init__(
+        self,
+        config_provider: IConfigProvider,
+        metadata_dir: Path,
+        memory_pool: IMemoryPool,
+        logger,
+    ):
         if config_provider is None:
             raise ValueError("Redis configuration must be provided")
         self.redis_client = self.__create_redis_client(config_provider)
         self.metadata_dir = metadata_dir
+        self.memory_pool = memory_pool
         self.logger = logger
 
     def connect(self, file_caller="") -> ICacheService:
         self.logger.info("Connecting to Redis cache session...", Path(__file__).name, file_caller, self.connect.__name__)
-        return RedisCacheService(redis_client=self.redis_client, metadata_dir=self.metadata_dir, logger=self.logger)
+        return RedisCacheService(redis_client=self.redis_client, metadata_dir=self.metadata_dir, memory_pool=self.memory_pool, logger=self.logger)
 
     def disconnect(self, file_caller=""):
         self.logger.info("Disconnecting from Redis cache session...", Path(__file__).name, file_caller, self.disconnect.__name__)

@@ -4,6 +4,7 @@ import uuid
 
 import faiss
 
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 
@@ -12,6 +13,36 @@ class FaissMemoryPool(IMemoryPool):
     def __init__(self, logger: ILogger):
         self.logger = logger
         self.pool = dict[Any, faiss.IndexFlatL2 | faiss.IndexIDMap]()
+        self.cache_pool = dict[str, list[ICacheParamValue]]()
+
+    def add_to_cache_pool(
+        self,
+        key: str,
+        values: list[ICacheParamValue],
+        file_caller: str = "",
+    ) -> dict[str, Any]:
+        try:
+            if key not in self.cache_pool:
+                self.cache_pool[key] = []
+            self.cache_pool[key].extend(values)
+            self.logger.info(f"Added cache params to cache pool for key {key}",
+                Path(__file__).name, call_by=file_caller, method_call=self.add_to_cache_pool.__name__)
+            return {"status": "success", "message": f"Cache params added to cache pool for key {key}"}
+        except Exception as e:
+            self.logger.error(f"Failed to add cache params to cache pool for key {key}: {str(e)}", Path(__file__).name, call_by=file_caller, method_call=self.add_to_cache_pool.__name__)
+            return {"status": "error", "message": f"Failed to add cache params to cache pool for key {key}"}
+
+    def get_from_cache_pool(self, key: str, file_caller: str = "") -> list[ICacheParamValue] | None:
+        try:
+            value = self.cache_pool.get(key)
+            if value is None:
+                self.logger.warning(f"No cache params found in cache pool for key {key}", Path(__file__).name, call_by=file_caller, method_call=self.get_from_cache_pool.__name__)
+            else:
+                self.logger.info(f"Retrieved cache params from cache pool for key {key}", Path(__file__).name, call_by=file_caller, method_call=self.get_from_cache_pool.__name__)
+            return value
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve cache params from cache pool for key {key}: {str(e)}", Path(__file__).name, call_by=file_caller, method_call=self.get_from_cache_pool.__name__)
+            return None
 
     def add_to_pool(
         self,

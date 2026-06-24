@@ -5,12 +5,44 @@ import uuid
 from anyio import Path
 import faiss
 
+from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
+
 class IMemoryPool(ABC):
     """
     Contract for Faiss Memory Pool Service.
     This service manages the in-memory storage of Faiss indices for active conversations, allowing for efficient retrieval and management of indices during the conversation lifecycle.
     Key is type Any to allow flexibility in using either conversation_id (str) or faiss_file_id (uuid.UUID) as the key for indexing the Faiss indices in the memory pool.
     """
+    @abstractmethod
+    def add_to_cache_pool(
+        self,
+        key: str,
+        values: list[ICacheParamValue],
+        file_caller: str = "",
+    ) -> dict[str, list[ICacheParamValue]]:
+        """
+        Adds cache parameters to the cache pool.
+        Args:
+            key (str): The unique identifier for the cache parameters.
+            values (list[ICacheParamValue]): The cache parameters to be added to the pool.
+            file_caller (str): The file name of the caller (for logging purposes).
+        Returns:
+            dict[str, list[ICacheParamValue]]: A dictionary containing the result of the operation.
+        """
+        pass
+
+    @abstractmethod
+    def get_from_cache_pool(self, key: str, file_caller: str = "") -> list[ICacheParamValue] | None:
+        """
+        Retrieves cache parameters from the cache pool based on the key.
+        Args:
+            key (str): The unique identifier for the cache parameters to retrieve.
+            file_caller (str): The file name of the caller (for logging purposes).
+        Returns:
+            list[ICacheParamValue] | None: The list of cache parameters associated with the given key, or None if not found.
+        """
+        pass
+
     @abstractmethod
     def add_to_pool(
         self,

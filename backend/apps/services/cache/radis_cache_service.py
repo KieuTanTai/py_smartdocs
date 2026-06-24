@@ -7,16 +7,18 @@ import numpy as np
 import redis
 from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICacheParam, ICacheParamValue
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
+from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.utils.path_file_helper import clear_all_files_on_path, create_path_file, delete_file_metadata_with_file_name
 
 
 class RedisCacheService(ICacheService):
-    def __init__(self, redis_client: redis.Redis, metadata_dir: Path, logger: ILogger):
+    def __init__(self, memory_pool: IMemoryPool, redis_client: redis.Redis, metadata_dir: Path, logger: ILogger):
         if not redis_client:
             raise ValueError("redis_client is required")
         self.redis_client = redis_client
         self.logger = logger
+        self.memory_pool = memory_pool
 
         self.metadata_dir = metadata_dir/ "cache"
         self.metadata_dir.mkdir(parents=True, exist_ok=True)
@@ -27,6 +29,7 @@ class RedisCacheService(ICacheService):
         value_str = self.__convert_to_serializable(input.key, input.values, input.expire)
         self.pipeline.set(input.key, value_str, ex=input.expire)
         self.pipeline.execute()
+        self.memory_pool.add_to_cache_pool(input.key, input.values, file_caller=file_caller)
         self.logger.info(f"Cache key: {input.key} set", Path(__file__).name, file_caller, self.set.__name__)
         return self.__write_metadata(input.key, value_str)
     
@@ -39,9 +42,9 @@ class RedisCacheService(ICacheService):
 
     def get(self, key: str, file_caller: str = "") -> ICacheParam | None:
         self.logger.info(f"Getting cache key: {key}", Path(__file__).name, file_caller, self.get.__name__)
-        result = self.redis_client.get(key)
+        result = self.memory_pool.get_from_cache_pool(key, file_caller=file_caller)
         self.logger.info(f"Cache key: {key} retrieved with value: {result}", Path(__file__).name, file_caller, self.get.__name__)
-        return self.__convert_to_origin_type(result)
+        return ICacheParam(key=key, values=result) if result is not None else None
 
     def load_from_file(self, key: str, file_caller: str = "") -> ICacheParam | None:
         self.logger.info(f"Loading cache key: {key} from file", Path(__file__).name, file_caller, self.load_from_file.__name__)
