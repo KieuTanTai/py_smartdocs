@@ -22,14 +22,18 @@ class LLMOCRFactory(ILLMOCRFactory):
             source=str(self.__class__),
         )
 
+        # TEMPORARY FIX: Use Generic OCR for all providers due to Mistral SDK OCR attribute issue
+        # TODO: Re-enable MistralLLMOCR when SDK is fixed or upgraded
         if provider_name == EProviderName.MISTRAL:
-            MISTRAL_CONFIG = self.config_provider.get_mistral_config()
-            return MistralLLMOCR(
-                api_key=MISTRAL_CONFIG["api_key"],
-                model=MISTRAL_CONFIG["ocr_model"],
+            self.logger.warning(
+                f"Mistral OCR temporarily disabled due to SDK issues. Using Generic OCR instead.",
+                source=str(self.__class__),
+            )
+            # Fallback to generic OCR
+            return GenericOCR(
                 provider_name=provider_name.value,
-                timeout_seconds=MISTRAL_CONFIG.get("timeout_seconds", 60.0),
                 logger=self.logger,
+                storage_dir=METADATA_DIR,
             )
         elif provider_name in [EProviderName.GEMINI, EProviderName.OLLAMA]:
             # Use generic OCR for providers without dedicated OCR support

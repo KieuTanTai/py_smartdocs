@@ -29,7 +29,18 @@ class MistralLLMOCR(ILLMOCR):
         self.provider_name = provider_name
         self.timeout_seconds = timeout_seconds
         self.logger = logger
-        self.client = Mistral(api_key=self.api_key)
+        try:
+            self.client = Mistral(api_key=self.api_key)
+            self.logger.info(
+                f"Successfully initialized Mistral client",
+                source=str(self.__class__), call_by="__init__", method_call="__init__"
+            )
+        except Exception as e:
+            self.logger.error(
+                f"Failed to initialize Mistral client: {e}",
+                source=str(self.__class__), call_by="__init__", method_call="__init__"
+            )
+            raise ValueError(f"Failed to initialize Mistral client. Please check your internet connection: {e}")
 
     # region - Public Methods
     def process_ocr(
@@ -64,7 +75,7 @@ class MistralLLMOCR(ILLMOCR):
 
     def __execute_ocr(self, document: Dict[str, Any], uploaded_pdf: ICreateFileResponse, call_by: str = "") -> IOCRResponse:
         try:
-            # Call Mistral OCR API
+            # Call Mistral OCR API with timeout from configuration
             native_ocr_response = self.client.ocr.process(
                 model=self.model,
                 document=document,
@@ -81,6 +92,12 @@ class MistralLLMOCR(ILLMOCR):
                 source=str(self.__class__), call_by=call_by, method_call=self.process_ocr.__name__
             )
             return ocr_response
+        except TimeoutError as te:
+            self.logger.error(
+                f"Timeout error during OCR processing (timeout: {self.timeout_seconds}s) - {te}",
+                source=str(self.__class__), call_by=call_by, method_call=self.__execute_ocr.__name__
+            )
+            raise ValueError(f"OCR processing timed out after {self.timeout_seconds} seconds. Please try with a smaller file or increase timeout.")
         except Exception as e:
             self.logger.error(
                 f"Error during OCR processing - {e}",
@@ -117,11 +134,11 @@ class MistralLLMOCR(ILLMOCR):
 
 
     def __get_mime_type(self, file_response: ICreateFileResponse, call_by: str = "") -> str:
-        if hasattr(file_response, "mimetype"):
+        if hasattr(file_response, "mimetype") and file_response.mimetype:
             return str(file_response.mimetype)
         else:
             self.logger.warning(
-                f"File response does not have 'mimetype' attribute. Defaulting to 'application/pdf'.",
+                f"File response does not have 'mimetype' attribute or mimetype is None. Defaulting to 'application/pdf'.",
                 source=str(self.__class__), call_by=call_by, method_call=self.__get_mime_type.__name__
             )
             return "application/pdf"

@@ -170,11 +170,16 @@ class DocumentUploadView(APIView):
             return Response(response_data, status=status.HTTP_201_CREATED)
             
         except ValueError as e:
-            sys_logger.error(f"Validation Error: {e}", source="DocumentUploadView", call_by="post", method_call="upload_document")
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            error_msg = str(e)
+            sys_logger.error(f"Validation Error: {error_msg}", source="DocumentUploadView", call_by="post", method_call="upload_document")
+            sys_logger.flush()
+            return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            sys_logger.error(f"Upload failed: {e}\n{traceback.format_exc()}", source="DocumentUploadView", call_by="post")
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            error_msg = str(e)
+            traceback_str = traceback.format_exc()
+            sys_logger.error(f"Upload failed: {error_msg}\n{traceback_str}", source="DocumentUploadView", call_by="post")
+            sys_logger.flush()
+            return Response({"error": error_msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         finally:
             sys_logger.flush()
 

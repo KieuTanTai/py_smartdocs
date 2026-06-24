@@ -31,6 +31,28 @@ class MistralUploader(ILLMUploader):
                 f"Uploaded file to Mistral: '{file_path}'",
                 source=str(self.__class__),
             )
+            
+            # Detect mimetype from file extension if not provided by API
+            detected_mimetype = getattr(upload_response, 'mimetype', None)
+            if not detected_mimetype:
+                # Fallback to detect from file extension
+                suffix = file_path.suffix.lower()
+                mimetype_map = {
+                    '.pdf': 'application/pdf',
+                    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    '.txt': 'text/plain',
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png',
+                    '.tif': 'image/tiff',
+                    '.tiff': 'image/tiff',
+                }
+                detected_mimetype = mimetype_map.get(suffix, 'application/pdf')
+                self.logger.warning(
+                    f"MIME type not provided by Mistral API for file '{file_path.name}'. Detected from extension: {detected_mimetype}",
+                    source=str(self.__class__),
+                )
+            
             # Convert to ICreateFileResponse
             return ICreateFileResponse(
                 id=getattr(upload_response, 'id', ''),
@@ -39,7 +61,7 @@ class MistralUploader(ILLMUploader):
                 created_at=getattr(upload_response, 'created_at', 0),
                 filename=getattr(upload_response, 'filename', file_path.name),
                 purpose=getattr(upload_response, 'purpose', 'ocr'),
-                mimetype=getattr(upload_response, 'mimetype', None)
+                mimetype=detected_mimetype
             )
         except Exception as e:
             self.logger.error(

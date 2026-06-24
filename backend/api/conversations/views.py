@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import json
 import time
+import traceback
 from pathlib import Path
 from typing import cast
 from uuid import UUID
@@ -351,88 +352,98 @@ class MessageListView(APIView):
         if not content:
             return Response({"error": "Message content is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Save user message
-        MessageModel.objects.create(
-            messages_conversation=conv,
-            messages_is_user_send=True,
-            messages_content=content
-        )
-
-        # 2. Get attached indexed documents
-        # Note: DocumentModel has a OneToOne relationship with ConversationModel
         try:
-            doc = DocumentModel.objects.get(documents_conversation=conv)
-            attached_docs = [doc]  # The main document associated with this conversation
-        except DocumentModel.DoesNotExist:
-            attached_docs = []
-
-        # 3. Retrieve context via FAISS vector search (with keyword fallback)
-        start_retrieval = time.time()
-        context_text, context_hits = _build_rag_context(attached_docs, content, top_k=5)
-        retrieval_ms = int((time.time() - start_retrieval) * 1000)
-
-        # 4. Build prompt
-        system_prompt = "You are a helpful assistant. Answer based ONLY on the provided context. Do NOT make up answers."
-        llm_prompt = f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nUser: {content}\n\nAssistant:"
-
-        # 5. Resolve provider/model
-        provider_name, model_name = _resolve_provider_model(
-            request.data.get("provider", "auto"),
-            request.data.get("model", "auto"),
-        )
-
-        # 6. Call LLM with retry + circuit breaker
-        start_llm = time.time()
-        answer = ""
-        used_mock = False
-        used_provider = provider_name
-
-        try:
-            answer, used_provider = call_llm_with_resilience(
-                provider_name=provider_name,
-                model_name=model_name,
-                prompt=llm_prompt,
-                max_retries=2,
+            # 1. Save user message
+            MessageModel.objects.create(
+                messages_conversation=conv,
+                messages_is_user_send=True,
+                messages_content=content
             )
-        except Exception as exc:
+
+            # 2. Get attached indexed documents
+            # Note: DocumentModel has a OneToOne relationship with ConversationModel
+            try:
+                doc = DocumentModel.objects.get(documents_conversation=conv)
+                attached_docs = [doc]  # The main document associated with this conversation
+            except DocumentModel.DoesNotExist:
+                attached_docs = []
+
+            # 3. Retrieve context via FAISS vector search (with keyword fallback)
+            start_retrieval = time.time()
+            context_text, context_hits = _build_rag_context(attached_docs, content, top_k=5)
+            retrieval_ms = int((time.time() - start_retrieval) * 1000)
+
+            # 4. Build prompt
+            system_prompt = "You are a helpful assistant. Answer based ONLY on the provided context. Do NOT make up answers."
+            llm_prompt = f"System prompt: {system_prompt}\n\nContext from documents:\n{context_text}\n\nUser: {content}\n\nAssistant:"
+
+            # 5. Resolve provider/model
+            provider_name, model_name = _resolve_provider_model(
+                request.data.get("provider", "auto"),
+                request.data.get("model", "auto"),
+            )
+
+            # 6. Call LLM with retry + circuit breaker
+            start_llm = time.time()
+            answer = ""
+            used_mock = False
+            used_provider = provider_name
+
+            try:
+                answer, used_provider = call_llm_with_resilience(
+                    provider_name=provider_name,
+                    model_name=model_name,
+                    prompt=llm_prompt,
+                    max_retries=2,
+                )
+            except Exception as exc:
+                DEFAULT_LOGGER.error(
+                    f"All LLM providers failed after retries: {exc}. Using mock response.",
+                    source="MessageListView",
+                )
+                if context_text:
+                    answer = (
+                        f"⚠️ **Khong the ket noi den model {provider_name} ({model_name}).**\n\n"
+                        f"Duoi day la noi dung tai lieu trich xuat tu ngon ngu (Simulated Response):\n\n"
+                        f"{context_text}"
+                    )
+                else:
+                    answer = (
+                        f"⚠️ **Khong the ket noi den model {provider_name} ({model_name}).**\n\n"
+                        f"Khong tim thay ngon ngu phu hop trong tai lieu de tra loi."
+                    )
+                used_mock = True
+
+            llm_ms = int((time.time() - start_llm) * 1000)
+            total_ms = int((time.time() - start_retrieval) * 1000)
+
+            # 7. Save assistant message
+            MessageModel.objects.create(
+                messages_conversation=conv,
+                messages_is_user_send=False,
+                messages_content=answer
+            )
+
+            return Response({
+                "conversation_id": str(conv.conversations_id),
+                "assistant": answer,
+                "used_mock": used_mock,
+                "metrics": {
+                    "provider": used_provider,
+                    "model": model_name,
+                    "total_ms": total_ms,
+                    "embed_ms": retrieval_ms,
+                    "query_ms": retrieval_ms,
+                    "response_ms": llm_ms,
+                    "retrieval_hits": context_hits
+                }
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
             DEFAULT_LOGGER.error(
-                f"All LLM providers failed after retries: {exc}. Using mock response.",
+                f"Error processing message: {e}\n{traceback.format_exc()}",
                 source="MessageListView",
             )
-            if context_text:
-                answer = (
-                    f"⚠️ **Khong the ket noi den model {provider_name} ({model_name}).**\n\n"
-                    f"Duoi day la noi dung tai lieu trich xuat tu ngon ngu (Simulated Response):\n\n"
-                    f"{context_text}"
-                )
-            else:
-                answer = (
-                    f"⚠️ **Khong the ket noi den model {provider_name} ({model_name}).**\n\n"
-                    f"Khong tim thay ngon ngu phu hop trong tai lieu de tra loi."
-                )
-            used_mock = True
-
-        llm_ms = int((time.time() - start_llm) * 1000)
-        total_ms = int((time.time() - start_retrieval) * 1000)
-
-        # 7. Save assistant message
-        MessageModel.objects.create(
-            messages_conversation=conv,
-            messages_is_user_send=False,
-            messages_content=answer
-        )
-
-        return Response({
-            "conversation_id": str(conv.conversations_id),
-            "assistant": answer,
-            "used_mock": used_mock,
-            "metrics": {
-                "provider": used_provider,
-                "model": model_name,
-                "total_ms": total_ms,
-                "embed_ms": retrieval_ms,
-                "query_ms": retrieval_ms,
-                "response_ms": llm_ms,
-                "retrieval_hits": context_hits
-            }
-        }, status=status.HTTP_200_OK)
+            return Response({
+                "error": f"Failed to process message: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

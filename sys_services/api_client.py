@@ -17,11 +17,11 @@ class ApiError(RuntimeError):
 
 
 class ApiClient:
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 60.0) -> None:
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 300.0) -> None:
         self.base_url = (
             base_url or os.getenv("SMARTDOCS_API_BASE_URL") or DEFAULT_BASE_URL
         ).rstrip("/")
-        self.timeout = timeout
+        self.timeout = timeout  # Increased from 60s to 300s (5 minutes) for large files
         self._access_token: Optional[str] = None
         self._refresh_token: Optional[str] = None
 

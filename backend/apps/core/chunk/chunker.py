@@ -8,7 +8,7 @@ class Chunker(IChunking):
     def __init__(
         self,
         logger: ILogger,
-        chunk_size: int = 1000,
+        chunk_size: int = 2000,
         overlap: int = 200,
     ):
         self.chunk_size = chunk_size
