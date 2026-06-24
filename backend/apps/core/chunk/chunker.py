@@ -1,6 +1,7 @@
 from langchain_text_splitters import NLTKTextSplitter
 from backend.apps.core.interfaces.core.chunk.i_chunking import IChunking
 from backend.apps.core.interfaces.system.i_logging import ILogger
+import nltk
 
 
 class Chunker(IChunking):
@@ -16,6 +17,7 @@ class Chunker(IChunking):
 
     def create_chunks(self, normalized_document: str) -> list[str]:
         try:
+            nltk.download("punkt_tab")
             text_splitter = NLTKTextSplitter(
                 chunk_size=self.chunk_size, chunk_overlap=self.overlap
             )

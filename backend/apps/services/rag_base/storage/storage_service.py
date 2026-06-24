@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 
 from backend.apps.core.interfaces.services.rag_base.storage.i_create_file_response import (
     ICreateFileResponse,
@@ -89,7 +90,7 @@ class FileStorageService(IFileStorage):
                 f"File '{destination_path}' already exists in storage directory. It will be overwritten.",
                 source=str(self.__class__),
             )
-        file_path.rename(destination_path)
+        shutil.copy2(file_path,destination_path)
         self.logger.info(
             f"Moved file '{file_path}' to storage directory '{self.storage_dir}'",
             source=str(self.__class__),

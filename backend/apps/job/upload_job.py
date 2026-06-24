@@ -29,6 +29,7 @@ from backend.apps.core.interfaces.services.rag_base.database.i_conversation_data
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
 from backend.apps.core.interfaces.services.rag_base.database.i_document_database import IDocumentDatabase
+from backend.apps.core.interfaces.services.rag_base.locate.i_spare_vector_store_service import ISpareVectorStoreService
 from backend.apps.core.interfaces.services.rag_base.locate.i_vector_db_service import IVectorDBService
 from backend.apps.core.interfaces.services.rag_base.locate.neo4j.i_neo4j_service import (
     INeo4jService,
@@ -197,9 +198,9 @@ class UploadJob(IUploadJob):
             provider, embed_stack, conversation_id, ids, file_caller=file_caller
         )
 
-        bm25_response = self.__save_to_bm25(
-            provider, chunk_texts, conversation_id, file_caller=file_caller
-        )
+        # bm25_response = self.__save_to_bm25(
+        #     provider, chunk_texts, conversation_id, file_caller=file_caller
+        # )
 
         return IUploadResponse(
             conversation_id=conversation_id,
@@ -208,7 +209,7 @@ class UploadJob(IUploadJob):
             vector_ids=ids.tolist(),
             embeddings_stack=embed_stack,
             faiss_upsert=faiss_upsert_response,
-            bm25_upsert=bm25_response,
+            # bm25_upsert=bm25_response,
             created_at= np.datetime64("now"),
         )
 
@@ -224,9 +225,10 @@ class UploadJob(IUploadJob):
         embedding_request = ICompletionRequest(provider, embedding_model_name, "summarize document")
         embedding_result = llm_client.embedding(embedding_request, file_caller=self.summarize_document.__name__).embedding
         original_texts = self.__get_orriginal_texts(self.faiss_store, faiss_index, conversation_id, embedding_result, cache_param_values, file_caller)
-        
+        print("HELLO")        
         template = self.llm_prompt_structure.build_summary_prompt(original_texts)
         request = ICompletionRequest(provider, model_name, template)
+        print("hello")
         return llm_client.generate(request, file_caller=self.summarize_document.__name__)
 
     def step_cache(
@@ -329,7 +331,9 @@ class UploadJob(IUploadJob):
         chunk_keys_tuples = []
         for idx, chunk in enumerate(chunk_texts):
             chunk_key_str = f"{file_id}:{idx}"
+            self.logger.info(f"key_str: {chunk_key_str}",Path(__file__).name, Path(__file__).name, self.build_chunk_keys.__name__)
             chunk_key_hash = hash_to_numpy_int64_by_str_content(chunk_key_str)
+            self.logger.info(f"key_hash: {chunk_key_hash}", Path(__file__).name, Path(__file__).name, self.build_chunk_keys.__name__) 
             chunk_keys_tuples.append((chunk_key_hash, chunk))
         if not chunk_keys_tuples:
             self.logger.error(
@@ -441,17 +445,6 @@ class UploadJob(IUploadJob):
                 f"No chunk texts to save for provider {provider} for document ids: {document_ids}"
             )
 
-        if len(chunk_texts) != len(ids):
-            self.logger.error(
-                f"Length of chunk texts {len(chunk_texts)} does not match length of ids {len(ids)} for provider {provider} for document ids: {document_ids}",
-                Path(__file__).name,
-                file_caller,
-                self.step_save.__name__,
-            )
-            raise ValueError(
-                f"Length of chunk texts {len(chunk_texts)} does not match length of ids {len(ids)} for provider {provider} for document ids: {document_ids}"
-            )
-
     def __save_to_faiss(
         self,
         provider: EProviderName,
@@ -483,50 +476,50 @@ class UploadJob(IUploadJob):
         )
         return upsert_response, index
 
-    def __save_to_bm25(
-        self,
-        provider: EProviderName,
-        chunk_texts: list[str],
-        file_name: uuid.UUID,
-        file_caller: str = "",
-    ) -> IVectorDBUpsertResponse | None:
-        if chunk_texts is None or len(chunk_texts) == 0:
-            self.logger.warning(
-                f"No chunk texts to save to BM25 for provider {provider} with file name: {file_name}",
-                Path(__file__).name,
-                file_caller,
-                self.__save_to_bm25.__name__,
-            )
-            return None
-        self.logger.info(
-            f"Saving chunk texts to BM25 for provider {provider} with file name: {file_name}",
-            Path(__file__).name,
-            file_caller,
-            self.__save_to_bm25.__name__,
-        )
-        vector_store = self.locate_service.get_vector_store(EBackendStorageName.BM25)
+    # def __save_to_bm25(
+    #     self,
+    #     provider: EProviderName,
+    #     chunk_texts: list[str],
+    #     file_name: uuid.UUID,
+    #     file_caller: str = "",
+    # ) -> IVectorDBUpsertResponse | None:
+    #     if chunk_texts is None or len(chunk_texts) == 0:
+    #         self.logger.warning(
+    #             f"No chunk texts to save to BM25 for provider {provider} with file name: {file_name}",
+    #             Path(__file__).name,
+    #             file_caller,
+    #             self.__save_to_bm25.__name__,
+    #         )
+    #         return None
+    #     self.logger.info(
+    #         f"Saving chunk texts to BM25 for provider {provider} with file name: {file_name}",
+    #         Path(__file__).name,
+    #         file_caller,
+    #         self.__save_to_bm25.__name__,
+    #     )
+    #     vector_store = self.locate_service.get_vector_store(EBackendStorageName.BM25)
 
-        if not isinstance(vector_store, IVectorStoreService) or vector_store is None:
-            self.logger.error(
-                f"Vector store service for BM25 is not properly initialized",
-                Path(__file__).name,
-                file_caller,
-                self.__save_to_bm25.__name__,
-            )
-            raise ValueError(
-                "Vector store service for BM25 is not properly initialized"
-            )
+    #     if not isinstance(vector_store, ISpareVectorStoreService) or vector_store is None:
+    #         self.logger.error(
+    #             f"Vector store service for BM25 is not properly initialized",
+    #             Path(__file__).name,
+    #             file_caller,
+    #             self.__save_to_bm25.__name__,
+    #         )
+    #         raise ValueError(
+    #             "Vector store service for BM25 is not properly initialized"
+    #         )
 
-        upsert_response = vector_store.upsert(
-            chunk_texts, file_name, file_caller=self.__save_to_bm25.__name__
-        )
-        self.logger.info(
-            f"Saved chunk texts to BM25 with:\n    id: {upsert_response.id}\n    file name: {file_name}\n    provider: {provider}",
-            Path(__file__).name,
-            file_caller,
-            self.__save_to_bm25.__name__,
-        )
-        return upsert_response
+    #     upsert_response = vector_store.upsert(
+    #         chunk_texts, file_name, file_caller=self.__save_to_bm25.__name__
+    #     )
+    #     self.logger.info(
+    #         f"Saved chunk texts to BM25 with:\n    id: {upsert_response.id}\n    file name: {file_name}\n    provider: {provider}",
+    #         Path(__file__).name,
+    #         file_caller,
+    #         self.__save_to_bm25.__name__,
+    #     )
+    #     return upsert_response
 
     def __convert_to_cache_param_value(
         self, chunk_responses: list[IChunkResponse]
@@ -562,7 +555,7 @@ class UploadJob(IUploadJob):
         filtered_cache_values = [
             rows_by_id[int(index)] for index in indices if int(index) in rows_by_id
         ]
-
+        print("PPEE")
         original_texts = [value.text_value for value in filtered_cache_values]
         self.logger.info(
             "Retrieved original texts for summarization: {}".format(

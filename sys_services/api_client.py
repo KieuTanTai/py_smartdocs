@@ -5,6 +5,8 @@ import httpx
 from typing import Any, Dict, Optional
 
 from pathlib import Path
+
+from regex import D
 from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest, ISendMessageRequest
@@ -65,12 +67,13 @@ class ApiClient:
                 )
 
                 print("REQUEST HEADERS")
-                print(request.headers)
+                print(request)
 
                 response = client.send(request)
                 print(f"response: {response}")
-                response.raise_for_status()
+                # response.raise_for_status()
         except httpx.RequestError as exc:
+            print("fallback here")
             raise ApiError(f"Request failed: {exc}") from exc
         except httpx.HTTPStatusError as exc:
             # Safely read response body, handling non-UTF-8 content (e.g. HTML error pages)
@@ -85,7 +88,6 @@ class ApiClient:
             raise ApiError(
                 f"HTTP {exc.response.status_code}: {body_text}"
             ) from exc
-
         
         content_type = response.headers.get("content-type", "")
         print(f"content_type:{content_type}")
@@ -161,15 +163,56 @@ class ApiClient:
             print(f"files: {files}")
             data = {"source": source}
             print(f"data:{data}")
-            paths:list[Path] = []
-            for path in file_info["datapath"]:
-                paths.append(path)
-            payload = {"document_urls": paths, "type": EPipelineType.BASE.value}
             # Multipart requests don't use JSON headers
-            resp = self._request("POST", "/api/documents/upload/",json = payload)
+            resp = self._upload_request("POST", "/api/documents/upload/", files,provider, [file_info["datapath"]], EPipelineType.BASE.value, "")
             print(f"Upload response:")
             return resp
 
+    def _upload_request(self,method: str ,api_endpoint: str, file_info: dict,provider_name:str ,document_urls: list[Path], type:str, conversation_id) -> dict[str, Any]:
+        url = f"{self.base_url}{api_endpoint}"
+        print(f"url: {url}")
+        headers = self._headers()
+        
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                request = client.build_request(
+                    method,
+                    url,
+                    headers=headers,
+                    json={"provider": provider_name,"document_urls": document_urls ,"type": type,"conversation_id": conversation_id },
+                )
+
+                print("REQUEST HEADERS")
+                print(request.content)
+
+                response = client.send(request)
+                print(f"response: {response}")
+                # response.raise_for_status()
+        except httpx.RequestError as exc:
+            print("fallback here")
+            raise ApiError(f"Request failed: {exc}") from exc
+        except httpx.HTTPStatusError as exc:
+            # Safely read response body, handling non-UTF-8 content (e.g. HTML error pages)
+            raw_body = exc.response.content
+            try:
+                body_text = raw_body.decode("utf-8")
+            except UnicodeDecodeError:
+                try:
+                    body_text = raw_body.decode("latin-1")
+                except Exception:
+                    body_text = raw_body.decode("utf-8", errors="replace")
+            raise ApiError(
+                f"HTTP {exc.response.status_code}: {body_text}"
+            ) from exc
+        
+        content_type = response.headers.get("content-type", "")
+        print(f"content_type:{content_type}")
+        if "application/json" in content_type:
+            return response.json()
+        return {"raw": response.text}
+
+
+    
     def delete_document(self, document_id: str) -> dict[str, Any]:
         return self._request("DELETE", f"/api/documents/{document_id}/")
 

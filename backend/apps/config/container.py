@@ -79,7 +79,6 @@ class BackendContainer(containers.DeclarativeContainer):
     #* The pool is a dictionary with conversation_id as key and faiss index as value. 
     #*The pool provides methods to add, get, remove and clear index in the pool, and it also logs the operations for debugging and monitoring purposes.
     memory_pool = providers.Singleton(FaissMemoryPool, logger=log_pool) 
-
     # Storage
     llm_ocr_factory = providers.Singleton(LLMOCRFactory, config_provider=config_provider, logger=log_pool)
     llm_uploader = providers.Factory(MistralUploader, logger=log_pool)

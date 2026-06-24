@@ -20,7 +20,7 @@ def test_nltk_text_splitter():
     except LookupError as e:
         print(f"Error occurred while downloading NLTK data: {e}")
     except ValueError as e:
-        nltk.download("punkt_tab")
+        nltk.download("punkt")
         test_nltk_text_splitter()
     except Exception as e:
         print(f"An unexpected error occurred: {e}")

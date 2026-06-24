@@ -184,7 +184,7 @@ class UploadTask(IUploadTask):
     def __execute_base_pipeline_with_paths(
         self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str
     ) -> IUploadResponse:
-
+        print(f"Provider name: {provider.value} : {provider}")
         # start extract time counter
         self.time_counter.reset()
         self.time_counter.start()
@@ -234,6 +234,7 @@ class UploadTask(IUploadTask):
 
         # start summarize time counter
         # * Step 6: Sumarize the document and get the summary text
+        print("SI<<")
         summarize = self.upload_job.summarize_document(upload_response.faiss_index, upload_response.conversation_id, cache_param_values, provider, model_name, file_caller=self.__execute_base_pipeline_with_paths.__name__)
         upload_response.summarize = summarize
         summarize_time = self.time_counter.get_elapsed_time()

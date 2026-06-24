@@ -17,6 +17,9 @@ def sha256_text_content(content: str) -> str:
     hash_object = hashlib.sha256(content.encode("utf-8"))
     return hash_object.hexdigest()
 
+
 def hash_to_numpy_int64_by_str_content(content: str) -> np.int64:
-    """Convert a SHA-256 hash string to a 64-bit integer."""
-    return np.int64(hash(content) & 0xffffffffffffffff)  # Use the first 16 characters (64 bits) of the hash
+    sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+    # lấy 16 ký tự đầu (64-bit)
+    return np.int64(int(sha[-6:], 16))

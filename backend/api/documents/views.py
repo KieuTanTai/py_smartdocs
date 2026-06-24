@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from email import message
 import hashlib
 import json
@@ -12,6 +13,7 @@ import traceback
 from ollama import embed
 
 from backend.apps.config import container
+from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.interfaces.dataclass.application.i_message_response import ISendMessageResponse
 from backend.apps.core.interfaces.dataclass.request.i_create_conversation_request import ICreateConversationRequest, IGetConversationRequest, IGetMessageByConversationRequest, ISendMessageRequest
 from backend.apps.core.interfaces.system.i_config import IConfigProvider
@@ -53,26 +55,31 @@ class DocumentListView(APIView):
 class DocumentUploadView(APIView):
     def post(self, request):
         sys_logger = _container.log_pool() 
-
-        uploaded_file = request.FILES.get("file")
+        uploaded_file = request.data.get("document_urls")
         if not uploaded_file:
             return Response(
                 {"error": "No file uploaded"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        paths = [Path(file) for file in uploaded_file]
         provider_name = EProviderName(request.data.get("provider"))
         config_provider = _container.config_provider()
         embeding_model_name = get_embedding_model(config_provider,provider_name)
         model_name = get_model_name(config_provider, provider_name)
+        type = EPipelineType(request.data.get("type"))
+        sys_logger.info(f"{provider_name}",
+                         Path(__file__).name)
+        sys_logger.flush()
         create_req = ICreateConversationRequest(
-            provider_name,
-            model_name,
-            request.data.get("document_urls"),
-            uploaded_file,
-            request.data.get("type"),
-            request.data.get("conversation_id"),
-            embeding_model_name,
+            provider=provider_name,
+            model_name=model_name,
+            document_urls=request.data.get("document_urls"),
+            document_paths=paths,
+            type=type,
+            conversation_id=request.data.get("conversation_id"),
+            embedding_model_name=embeding_model_name,
         )
+        print(asdict(create_req))
         if not uploaded_file:
             sys_logger.warning("No file uploaded in request", source="DocumentUploadView", call_by="post")
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
