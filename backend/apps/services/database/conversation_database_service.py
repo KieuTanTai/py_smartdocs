@@ -45,7 +45,7 @@ class ConversationDatabaseService(IConversationDatabase):
         return ConversationModel.objects.filter(conversations_name=conversations_name)
 
     def get_by_document(self, document: DocumentModel) -> QuerySet[ConversationModel]:
-        return ConversationModel.objects.filter(conversations_faiss_index=document)
+        return ConversationModel.objects.filter(document=document)
 
     def list(self, **filters: Any) -> QuerySet[ConversationModel]:
         queryset = ConversationModel.objects.all()

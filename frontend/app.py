@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import os
+import sys
+from pathlib import Path
+
+# Add project root to Python search path to resolve imports correctly
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 import json
 import time
 from typing import Any, Dict, List, Optional
@@ -114,9 +121,18 @@ def server(input: Any, output: Any, session: Any) -> None:
 
         rows = []
         for msg in items:
+            # Convert IChatMessage to dict if needed
+            if not isinstance(msg, dict):
+                msg = msg.__dict__ if hasattr(msg, '__dict__') else {}
+            
             role = msg.get("role", "assistant")
             classes = "message assistant" if role != "user" else "message user"
             meta = msg.get("meta") or {}
+            
+            # Convert meta to dict if needed
+            if not isinstance(meta, dict):
+                meta = meta.__dict__ if hasattr(meta, '__dict__') else {}
+            
             meta_line = None
             if role != "user" and meta:
                 parts = []
@@ -406,6 +422,11 @@ def server(input: Any, output: Any, session: Any) -> None:
         source = upload_source.get()
         current_docs = docs.get()
         current_provider = current_model.get()
+        
+        # Convert "auto" to a valid provider
+        if current_provider == "auto":
+            current_provider = "gemini"  # Default to gemini if auto is selected
+        
         for info in files:
             try:
                 print("provider", current_provider)
@@ -415,6 +436,14 @@ def server(input: Any, output: Any, session: Any) -> None:
                 print("Response from upload:", response)
                 print("Document after normalization:", doc)
                 print("Current documents before indexing:", current_docs)
+                
+                # IMPORTANT FIX: Save conversation_id from upload response
+                # This ensures messages are sent to the correct conversation
+                upload_conversation_id = response.get("conversation_id")
+                if upload_conversation_id:
+                    conversation_name.set(upload_conversation_id)
+                    print(f"Set conversation_id to: {upload_conversation_id}")
+                
                 try:
                     print("Document after indexing attempt:", doc)
                 except ApiError:
@@ -506,12 +535,12 @@ def server(input: Any, output: Any, session: Any) -> None:
             current_mode.get(),
             allow_mock=mock_on_fail.get(),
         )
-        conversation_name.set(response.get("conversation_name"))
-        if was_new and response.get("conversation_name"):
+        conversation_name.set(response.get("conversation_id"))
+        if was_new and response.get("conversation_id"):
             history.set(
                 [
                     {
-                        "id": response.get("conversation_name"),
+                        "id": response.get("conversation_id"),
                         "title": text[:42],
                         "when": time.strftime("%H:%M"),
                     }
@@ -519,15 +548,20 @@ def server(input: Any, output: Any, session: Any) -> None:
                 + history.get()
             )
         meta = response.get("metrics") or {}
+        # Convert IChatMetrics to dict if needed
+        if not isinstance(meta, dict):
+            meta = meta.__dict__ if hasattr(meta, '__dict__') else {}
         if response.get("error"):
             meta = {**meta, "error": response.get("error")}
         messages.set(
             messages.get()
             + [build_message("assistant", response["assistant"], meta=meta)]
         )
+        # Ensure meta is dict before spreading
+        meta_dict = meta if isinstance(meta, dict) else {}
         metrics.set(
             {
-                **meta,
+                **meta_dict,
                 "provider": provider.get(),
                 "model": current_model.get(),
                 "mode": current_mode.get(),

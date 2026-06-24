@@ -65,12 +65,16 @@ class DocumentDatabaseService(IDocumentDatabase):
     def update(self, model_id: Any, **fields: Any) -> DocumentModel:
         document = self.get_by_id(model_id)
 
+        updated_fields = {}
         for field_name, value in fields.items():
-            if field_name == "file_path" and isinstance(value, Path):
+            if field_name == "file_path":
+                field_name = "documents_file_path"
+            if field_name == "documents_file_path" and isinstance(value, Path):
                 value = str(value)
             setattr(document, field_name, value)
+            updated_fields[field_name] = value
 
-        document.save(update_fields=list(fields.keys()))
+        document.save(update_fields=list(updated_fields.keys()))
         return document
 
     def update_status(self, document_id: Any, status: EDocumentStatus) -> DocumentModel:

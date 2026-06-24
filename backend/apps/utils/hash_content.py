@@ -19,4 +19,5 @@ def sha256_text_content(content: str) -> str:
 
 def hash_to_numpy_int64_by_str_content(content: str) -> np.int64:
     """Convert a SHA-256 hash string to a 64-bit integer."""
-    return np.int64(hash(content) & 0xffffffffffffffff)  # Use the first 16 characters (64 bits) of the hash
+    val = hash(content) & 0xffffffffffffffff
+    return np.uint64(val).view(np.int64)

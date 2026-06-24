@@ -198,7 +198,7 @@ class UploadJob(IUploadJob):
         )
 
         bm25_response = self.__save_to_bm25(
-            provider, chunk_texts, conversation_id, file_caller=file_caller
+            provider, chunk_texts, conversation_id, ids=ids, file_caller=file_caller
         )
 
         return IUploadResponse(
@@ -488,6 +488,7 @@ class UploadJob(IUploadJob):
         provider: EProviderName,
         chunk_texts: list[str],
         file_name: uuid.UUID,
+        ids: np.ndarray | None = None,
         file_caller: str = "",
     ) -> IVectorDBUpsertResponse | None:
         if chunk_texts is None or len(chunk_texts) == 0:
@@ -506,7 +507,8 @@ class UploadJob(IUploadJob):
         )
         vector_store = self.locate_service.get_vector_store(EBackendStorageName.BM25)
 
-        if not isinstance(vector_store, IVectorStoreService) or vector_store is None:
+        from backend.apps.core.interfaces.services.rag_base.locate.i_spare_vector_store_service import ISpareVectorStoreService
+        if not isinstance(vector_store, ISpareVectorStoreService) or vector_store is None:
             self.logger.error(
                 f"Vector store service for BM25 is not properly initialized",
                 Path(__file__).name,
@@ -517,8 +519,13 @@ class UploadJob(IUploadJob):
                 "Vector store service for BM25 is not properly initialized"
             )
 
+        if ids is not None and len(ids) == len(chunk_texts):
+            index_dict = {ids[i]: chunk_texts[i] for i in range(len(ids))}
+        else:
+            index_dict = {i: text for i, text in enumerate(chunk_texts)}
+
         upsert_response = vector_store.upsert(
-            chunk_texts, file_name, file_caller=self.__save_to_bm25.__name__
+            index_dict, file_name, file_caller=self.__save_to_bm25.__name__
         )
         self.logger.info(
             f"Saved chunk texts to BM25 with:\n    id: {upsert_response.id}\n    file name: {file_name}\n    provider: {provider}",

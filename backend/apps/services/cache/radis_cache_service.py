@@ -47,9 +47,13 @@ class RedisCacheService(ICacheService):
         self.logger.info(f"Loading cache key: {key} from file", Path(__file__).name, file_caller, self.load_from_file.__name__)
         metadata_file_path = self.metadata_dir / f"{key}.json"
         if not metadata_file_path.exists():
-            self.logger.warning(f"Metadata file for cache key: {key} does not exist at path: {metadata_file_path}", Path(__file__).name, file_caller, self.load_from_file.__name__)
-            return None
-        with open(metadata_file_path, "r") as f:
+            found_paths = list(self.metadata_dir.glob(f"**/{key}.json"))
+            if found_paths:
+                metadata_file_path = found_paths[0]
+            else:
+                self.logger.warning(f"Metadata file for cache key: {key} does not exist at path: {metadata_file_path}", Path(__file__).name, file_caller, self.load_from_file.__name__)
+                return None
+        with open(metadata_file_path, "r", encoding="utf-8") as f:
             value_str = f.read()
         self.logger.info(f"Cache key: {key} loaded from file with value: {value_str}", Path(__file__).name, file_caller, self.load_from_file.__name__)
         return self.__convert_to_origin_type(value_str)
@@ -81,7 +85,7 @@ class RedisCacheService(ICacheService):
         except json.JSONDecodeError as e:
             self.logger.error(f"Error decoding cache value for metadata: {e}", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
             return None
-        with open(destination_path, "w") as f:
+        with open(destination_path, "w", encoding="utf-8") as f:
             json.dump(input_value_json, f, ensure_ascii=False, indent=4)
         self.logger.info(f"Metadata for cache key: {key} written to '{destination_path}'", Path(__file__).name, Path(__file__).name, self.__write_metadata.__name__)
         return destination_path

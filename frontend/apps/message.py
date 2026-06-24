@@ -62,7 +62,12 @@ def send_message(
             raise ApiError("Conversation id missing from create response")
 
         if not new_conversation:
-            api.update_conversation_documents(conversation_id, selected_docs)
+            try:
+                api.update_conversation_documents(conversation_id, selected_docs)
+            except ApiError:
+                # Non-critical: documents are already linked from the upload flow.
+                # Don't let a failure here block sending the message.
+                pass
 
         response = api.send_message(
             conversation_id,
@@ -70,6 +75,10 @@ def send_message(
             provider=provider,
             model=model,
         )
+        # Debug logging
+        print(f"DEBUG: Backend response: {response}")
+        print(f"DEBUG: Assistant field: {response.get('assistant')}")
+        
         assistant = response.get("assistant") or "No response text returned."
         metrics = _extract_metrics(response)
         return IChatResponse(

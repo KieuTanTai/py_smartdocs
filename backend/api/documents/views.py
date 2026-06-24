@@ -5,6 +5,7 @@ import hashlib
 import json
 from logging import config
 import os
+import tempfile
 import time
 from pathlib import Path
 import traceback
@@ -20,6 +21,7 @@ import numpy as np
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from backend.apps.services.chat.models import DocumentModel
 from backend.apps.core.normalize.normalize import Normalize
@@ -28,6 +30,7 @@ from backend.apps.llm.llm_provider_factory import LLMProviderFactory
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest
 from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.enums.e_backend_storage_name import EBackendStorageName
+from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.services.rag_base.locate.locate_service import LocateService
 
 from backend.apps.application.conversations.application import ConversationApplication
@@ -51,35 +54,79 @@ class DocumentListView(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 class DocumentUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    
     def post(self, request):
         sys_logger = _container.log_pool() 
 
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
+            sys_logger.error(f"No file in request.FILES. FILES keys: {list(request.FILES.keys())}, POST keys: {list(request.POST.keys())}", source="DocumentUploadView", call_by="post")
             return Response(
                 {"error": "No file uploaded"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        provider_name = EProviderName(request.data.get("provider"))
-        config_provider = _container.config_provider()
-        embeding_model_name = get_embedding_model(config_provider,provider_name)
-        model_name = get_model_name(config_provider, provider_name)
-        create_req = ICreateConversationRequest(
-            provider_name,
-            model_name,
-            request.data.get("document_urls"),
-            uploaded_file,
-            request.data.get("type"),
-            request.data.get("conversation_id"),
-            embeding_model_name,
-        )
-        if not uploaded_file:
-            sys_logger.warning("No file uploaded in request", source="DocumentUploadView", call_by="post")
-            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        sys_logger.info(f"Received file upload: {uploaded_file.name}, size: {uploaded_file.size}", source="DocumentUploadView", call_by="post")
+
+        # Save uploaded file to a temporary file on disk using its original name
+        temp_dir = Path(tempfile.gettempdir()) / "smartdocs_uploads"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_file_path = temp_dir / uploaded_file.name
 
         try:
+            with open(temp_file_path, "wb") as f:
+                for chunk in uploaded_file.chunks():
+                    f.write(chunk)
+
+            # Validate and convert provider
+            provider_str = request.POST.get("provider") or request.data.get("provider", "gemini")
+            provider_str = provider_str.lower()
+            valid_providers = {"gemini", "mistral", "ollama"}
+            
+            # Convert "auto" to default provider
+            if provider_str == "auto" or provider_str not in valid_providers:
+                provider_str = "gemini"  # Default provider
+            
+            try:
+                provider_name = EProviderName(provider_str)
+            except ValueError:
+                return Response(
+                    {"error": f"Invalid provider: {provider_str}. Valid options: {', '.join(valid_providers)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            config_provider = _container.config_provider()
+            embeding_model_name = get_embedding_model(config_provider, provider_name)
+            model_name = get_model_name(config_provider, provider_name)
+            
+            sys_logger.info(f"Using provider: {provider_name.value}, model: {model_name}, embedding: {embeding_model_name}", source="DocumentUploadView", call_by="post")
+
+            document_urls = request.POST.get("document_urls") or request.data.get("document_urls")
+            if not document_urls:
+                document_urls = []
+            elif isinstance(document_urls, str):
+                try:
+                    document_urls = json.loads(document_urls)
+                except Exception:
+                    document_urls = [document_urls]
+
+            pipeline_type_str = request.POST.get("type") or request.data.get("type") or "base"
+            try:
+                pipeline_type = EPipelineType(pipeline_type_str)
+            except ValueError:
+                pipeline_type = EPipelineType.BASE
+
+            create_req = ICreateConversationRequest(
+                provider=provider_name,
+                model_name=model_name,
+                document_urls=document_urls,
+                document_paths=[temp_file_path],
+                type=pipeline_type,
+                conversation_id=request.POST.get("conversation_id") or request.data.get("conversation_id"),
+                embedding_model_name=embeding_model_name,
+            )
+
             conversation = _container.conversation_application()
-        
             cons = conversation.create_init_conversation()
             create_req.conversation_id = cons.conversations_id
             doc_app = _container.document_application()
@@ -89,7 +136,41 @@ class DocumentUploadView(APIView):
             conversation.rename_conversation(str(cons.conversations_id), response.info.conversation_title, Path(__file__).name)
             
             sys_logger.info(f"File uploaded successfully: {conversation.list_conversations}", source="DocumentUploadView", call_by="post")
-            return Response(response, status=status.HTTP_201_CREATED)
+            
+            # Get the created document ID to return to the caller
+            doc_id = None
+            try:
+                doc_obj = DocumentModel.objects.filter(documents_conversation=cons).first()
+                if doc_obj:
+                    doc_id = str(doc_obj.document_id)
+            except Exception as e:
+                sys_logger.error(f"Error getting document ID: {e}", source="DocumentUploadView", call_by="post")
+
+            # Convert response to JSON-serializable format
+            response_data = {
+                "id": doc_id,
+                "document_id": doc_id,
+                "conversation_id": str(cons.conversations_id),
+                "conversation_name": response.info.conversation_name,
+                "conversation_title": response.info.conversation_title,
+                "provider": response.info.provider.value,
+                "model_name": response.info.model_name,
+                "summarize": response.info.summarize,
+                "document_urls": response.info.document_urls,
+                "document_paths": [str(path) for path in response.info.document_paths],
+                "type": response.info.type.value,
+            }
+            
+            if response.time_counter:
+                response_data["time_counter"] = {
+                    "extract_time": response.time_counter.extract_time,
+                    "chunk_time": response.time_counter.chunk_time,
+                    "embedding_time": response.time_counter.embedding_time,
+                    "save_time": response.time_counter.save_time,
+                    "total_time": response.time_counter.total_time,
+                }
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
             
         except ValueError as e:
             sys_logger.error(f"Validation Error: {e}", source="DocumentUploadView", call_by="post", method_call="upload_document")
@@ -98,6 +179,11 @@ class DocumentUploadView(APIView):
             sys_logger.error(f"Upload failed: {e}\n{traceback.format_exc()}", source="DocumentUploadView", call_by="post")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         finally:
+            try:
+                if temp_file_path.exists():
+                    temp_file_path.unlink()
+            except Exception:
+                pass
             sys_logger.flush()
 
 class ConversationListView(APIView):

@@ -21,9 +21,20 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 # Fix Windows console encoding for emoji/Unicode
-if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+if sys.platform == "win32" and 'pytest' not in sys.modules:
+    if not hasattr(sys.stdout, '_utf8_wrapped'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+            sys.stdout._utf8_wrapped = True
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+            sys.stderr._utf8_wrapped = True
+        except (AttributeError, ValueError, io.UnsupportedOperation):
+            pass
+
+# Add project root to python path to resolve imports correctly
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # ──────────────────────────────────────────────────────────────
 # Setup Django

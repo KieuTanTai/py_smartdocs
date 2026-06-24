@@ -28,7 +28,16 @@ class MistralLLMOCR(ILLMOCR):
         self.provider_name = provider_name
         self.timeout_seconds = timeout_seconds
         self.logger = logger
-        self.client = Mistral(api_key=self.api_key)
+        try:
+            # Initialize Mistral client without timeout parameter (not supported in constructor)
+            self.client = Mistral(api_key=self.api_key)
+        except TypeError as e:
+            # Handle version compatibility: older versions may not support certain params
+            logger.error(f"Failed to initialize Mistral client: {e}", source=str(self.__class__), call_by="__init__", method_call="__init__")
+            raise ValueError(f"Failed to initialize Mistral client. Please check your internet connection: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error initializing Mistral client: {e}", source=str(self.__class__), call_by="__init__", method_call="__init__")
+            raise ValueError(f"Failed to initialize Mistral client: {e}")
 
     # region - Public Methods
     def process_ocr(

@@ -20,14 +20,18 @@ class LLMOCRFactory(ILLMOCRFactory):
             source=str(self.__class__),
         )
 
-        if provider_name == EProviderName.MISTRAL:
-            MISTRAL_CONFIG = self.config_provider.get_mistral_config()
-            return MistralLLMOCR(
-                api_key=MISTRAL_CONFIG["api_key"],
-                model=MISTRAL_CONFIG["ocr_model"],
-                provider_name=provider_name.value,
-                timeout_seconds=MISTRAL_CONFIG.get("timeout_seconds", 60.0),
-                logger=self.logger,
+        if provider_name != EProviderName.MISTRAL:
+            self.logger.warning(
+                f"Provider {provider_name.value} does not support OCR. Falling back to Mistral for document extraction.",
+                source=str(self.__class__),
             )
-        else:
-            raise ValueError(f"Unsupported provider: {provider_name.value}")
+            provider_name = EProviderName.MISTRAL
+
+        MISTRAL_CONFIG = self.config_provider.get_mistral_config()
+        return MistralLLMOCR(
+            api_key=MISTRAL_CONFIG["api_key"],
+            model=MISTRAL_CONFIG["ocr_model"],
+            provider_name=provider_name.value,
+            timeout_seconds=MISTRAL_CONFIG.get("timeout_seconds", 60.0),
+            logger=self.logger,
+        )

@@ -101,17 +101,18 @@ class FaissService(IVectorStoreService):
     # helper method to validate input numpy array, it will check if the input is empty, has zero rows, and has the correct dtype. It will also reshape 1D float32 input to 2D if necessary, and log the validation process.
     def __validate_input(self, input: np.ndarray, input_type: Any):
         if (input.dtype != input_type):
-            raise ValueError(f"Input dtype {input.dtype} does not match expected type {input_type}")
+            self.logger.warning(f"Input dtype {input.dtype} does not match expected type {input_type}, attempting to convert",
+                Path(__file__).name, Path(__file__).name)
+            try:
+                input = np.asarray(input, dtype=input_type)
+            except Exception as e:
+                raise ValueError(f"Input dtype {input.dtype} does not match expected type {input_type} and conversion failed: {e}")
         if (input.size == 0):
             return input  # Return empty array as-is (valid for ids when no IDs are provided)
         if (input.shape[0] == 0):
             self.logger.error("Input cannot have zero rows",
                 Path(__file__).name, Path(__file__).name)
             raise ValueError("Input cannot have zero rows")
-        if (input.dtype != input_type):
-            self.logger.warning(f"Input dtype {input.dtype} does not match expected type {input_type}, attempting to convert",
-                Path(__file__).name, Path(__file__).name)
-            input = np.asarray(input, dtype=input_type)
         if (input.ndim == 1 and input_type == np.float32):
             self.logger.info("Input is 1D, reshaping to 2D with one row",
                 Path(__file__).name, Path(__file__).name)

@@ -49,11 +49,12 @@ def _search_all_documents(
     locate_service = LocateService(metadata_dir=METADATA_DIR, logger=DEFAULT_LOGGER)
     faiss_service = locate_service.get_vector_store(EBackendStorageName.FAISS)
 
-    indexed_docs = DocumentModel.objects.filter(status="indexed")
+    from pathlib import Path
+    indexed_docs = DocumentModel.objects.filter(documents_status="indexed")
     all_results: list[dict] = []
 
     for doc in indexed_docs:
-        vector_id = str(doc.faiss_index_id)
+        vector_id = str(doc.document_id)
         try:
             load_resp = faiss_service.load(vector_id)
             index = load_resp.index
@@ -79,11 +80,11 @@ def _search_all_documents(
             if idx in chunk_texts:
                 all_results.append({
                     "document_id": vector_id,
-                    "document_title": doc.faiss_index_file_name,
+                    "document_title": Path(doc.documents_file_path).name if doc.documents_file_path else "Untitled",
                     "chunk_idx": int(idx),
                     "text": chunk_texts[idx],
                     "score": round(float(dist), 4),
-                    "status": doc.status,
+                    "status": doc.documents_status,
                 })
 
     # Sort by score (ascending distance = more similar)

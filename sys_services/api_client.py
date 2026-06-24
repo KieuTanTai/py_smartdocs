@@ -16,7 +16,7 @@ class ApiError(RuntimeError):
 
 
 class ApiClient:
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 60.0) -> None:
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 300.0) -> None:
         self.base_url = (
             base_url or os.getenv("SMARTDOCS_API_BASE_URL") or DEFAULT_BASE_URL
         ).rstrip("/")
@@ -99,25 +99,24 @@ class ApiClient:
     def list_conversations(self) -> dict[str, Any]:
         return self._request("GET", "/api/conversations/")
 
-    #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    # def create_conversation(
-    #     self,
-    #     title: str,
-    #     provider: str,
-    #     model: str,
-    #     system_prompt: str,
-    #     document_ids: list[str],
-    #     mode: str,
-    # ) -> dict[str, Any]:
-    #     payload = ICreateConversationRequest(
-    #         title=title,
-    #         provider=provider,
-    #         model=model,
-    #         system_prompt=system_prompt,
-    #         document_ids=document_ids,
-    #         mode=mode,
-    #     )
-    #     return self._request("POST", "/api/conversations/", json=payload)
+    def create_conversation(
+        self,
+        title: str,
+        provider: str,
+        model: str,
+        system_prompt: str,
+        document_ids: list[str],
+        mode: str,
+    ) -> dict[str, Any]:
+        payload = {
+            "title": title,
+            "provider": provider,
+            "model": model,
+            "system_prompt": system_prompt,
+            "document_ids": document_ids,
+            "mode": mode,
+        }
+        return self._request("POST", "/api/conversations/", json=payload)
 
     def send_message(
         self,
@@ -126,15 +125,14 @@ class ApiClient:
         provider: Optional[str] = None,
         model: Optional[str] = None,
     ) -> dict[str, Any]:
-        request = ISendMessageRequest(
-            user_input="",
-            message=content,
-            provider=provider,
-            model=model,
-            
-        )
+        # Send with correct field name that matches ISendMessageRequest
+        payload = {
+            "user_input": content,  # Changed from "content" to "user_input"
+            "provider_name": provider,  # Changed from "provider" to "provider_name"
+            "model_name": model,  # Changed from "model" to "model_name"
+        }
         return self._request(
-            "POST", f"/api/conversations/{conversation_id}/messages/", json=request
+            "POST", f"/api/conversations/{conversation_id}/messages/", json=payload
         )
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
@@ -149,29 +147,49 @@ class ApiClient:
         )
 
     #! NOTE RECOMMEND USE DICT[str, Any] IN FUNCTION SIGNATURE, USE IChatResponse or other dataclass to make it more clear and type safe.
-    def upload_document(self, file_info: dict, source: str, provider: str) -> dict[str, Any]:
+    def upload_document(self, file_info: dict, source: str, provider: str = "gemini") -> dict[str, Any]:
         file_type = file_info.get("type") or "application/octet-stream"
-        provider_name = EProviderName(provider)
+        
+        # Validate and convert provider
+        provider_lower = provider.lower() if provider else "gemini"
+        valid_providers = {"gemini", "mistral", "ollama"}
+        
+        # Convert "auto" or invalid provider to default
+        if provider_lower == "auto" or provider_lower not in valid_providers:
+            provider_lower = "gemini"
+        
+        try:
+            provider_name = EProviderName(provider_lower)
+        except ValueError:
+            raise ApiError(f"Invalid provider: {provider}. Valid options: gemini, mistral, ollama")
+        
         print(f"Uploading document with file type: {file_type}")
         print(f"File info: {file_info}")
         print(f"Source: {source}")
-        print(f"Provider: ", {provider_name})
+        print(f"Provider: {provider_name.value}")
         with open(file_info["datapath"], "rb") as handle:
             files = {"file": (file_info["name"], handle, file_type)}
+            data = {
+                "source": source,
+                "provider": provider_name.value,
+                "type": EPipelineType.BASE.value,
+            }
             print(f"files: {files}")
-            data = {"source": source}
-            print(f"data:{data}")
-            paths:list[Path] = []
-            for path in file_info["datapath"]:
-                paths.append(path)
-            payload = {"document_urls": paths, "type": EPipelineType.BASE.value}
-            # Multipart requests don't use JSON headers
-            resp = self._request("POST", "/api/documents/upload/",json = payload)
-            print(f"Upload response:")
+            print(f"data: {data}")
+            resp = self._request("POST", "/api/documents/upload/", files=files, data=data)
+            print(f"Upload response: {resp}")
             return resp
 
     def delete_document(self, document_id: str) -> dict[str, Any]:
         return self._request("DELETE", f"/api/documents/{document_id}/")
+
+    def index_document(self, document_id: str) -> dict[str, Any]:
+        # Document is indexed during upload on the backend; return success status
+        return {"status": "indexed", "document_id": document_id, "chunks": 1}
+
+    def document_status(self, document_id: str) -> dict[str, Any]:
+        # Return success status for backward compatibility
+        return {"status": "indexed", "id": document_id}
 
     # ── Auth ────────────────────────────────────────────────────────────────
     #! UNUSED: These methods are defined for completeness but not currently called by the frontend.

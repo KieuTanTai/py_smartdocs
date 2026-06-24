@@ -15,6 +15,7 @@ from backend.apps.core.enums.e_provider_name import EProviderName
 from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import ICacheResponse, IChunkResponse
 from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
+from backend.apps.core.interfaces.services.rag_base.database.i_conversation_cache_database import IConversationCacheDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
@@ -22,7 +23,7 @@ from backend.apps.core.interfaces.services.rag_base.database.i_document_database
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.core.interfaces.dataclass.tasks.i_upload_response import IEmbedResponse, IExtractMapping, IGraphRagParam, IGraphRagUploadResponse, IUploadResponse
 from backend.apps.core.interfaces.system.i_time_counter import ITimeCounter
-from backend.apps.services.chat.models import ConversationFilesModel, ConversationModel, DocumentModel
+from backend.apps.services.chat.models import ConversationCacheModel, ConversationFilesModel, ConversationModel, DocumentModel
 from backend.apps.interfaces.tasks.i_upload_task import IUploadTask
 from backend.apps.interfaces.job.i_upload_job import IUploadJob
 
@@ -44,6 +45,7 @@ class UploadTask(IUploadTask):
         self.document_database: IDocumentDatabase = cast(IDocumentDatabase, self.database_provider.get_model_service(DocumentModel))
         self.conversation_files_database = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
         self.conversation_database = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
+        self.conversation_cache_database = cast(IConversationCacheDatabase, self.database_provider.get_model_service(ConversationCacheModel))
 
     # --- MAIN ENTRY POINT ---
     @property
@@ -108,7 +110,7 @@ class UploadTask(IUploadTask):
         document = self.document_database.update_status(document_id, status) 
         if file_path:
             document.documents_file_path = str(file_path)
-            document.save(update_fields=["file_path"])
+            document.save(update_fields=["documents_file_path"])
         self.logger.info(f"Updated document model with ID {document.pk} and file path {file_path}", source=Path(__file__).name, call_by=self.__update_document_status_and_path.__name__, method_call=self.__update_document_status_and_path.__name__)
         return document
 
@@ -139,6 +141,7 @@ class UploadTask(IUploadTask):
 
         # * Step 3: Cache the chunks
         cache_response = self.__cache(conversation_model.conversations_id, chunk_responses)
+        self.__save_or_update_cache_metadata(conversation_model, cache_response.path)
 
         # start graph retriever time counter
         # * Step 3: Create graph retriever
@@ -215,11 +218,12 @@ class UploadTask(IUploadTask):
         # start save time counter
         # * Step 4: Cache the chunks and embeddings, and get the cache paths
         cache_response = self.__cache(conversation_model.conversations_id, chunk_responses)
+        self.__save_or_update_cache_metadata(conversation_model, cache_response.path)
         cache_param_values  = cache_response.cache_param.values
 
         # * Step 5: Save the embeddings to vector store and update document model with file path and status
         try:
-            upload_response = self.__upload_to_vector_store(provider, document_ids, document.pk, embeddings, chunk_texts, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+            upload_response = self.__upload_to_vector_store(provider, document_ids, conversation_model.conversations_id, document.pk, embeddings, chunk_texts, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
             upload_response.conversation_files = self.__create_conversation_file_model(self.__build_documents(document_ids, document))
             upload_response.conversation_cache_path = cache_response.path
         except Exception as exc:
@@ -254,18 +258,18 @@ class UploadTask(IUploadTask):
         self.logger.info(f"Built document tuples: {[(doc.pk, doc_id) for doc, doc_id in result]}", source=Path(__file__).name, call_by=self.__build_documents.__name__, method_call=self.__build_documents.__name__)
         return result
 
-    def __upload_to_vector_store(self, provider: EProviderName, document_ids: list[str], conversation_id: uuid.UUID,
+    def __upload_to_vector_store(self, provider: EProviderName, document_ids: list[str], conversation_id: uuid.UUID, document_id: uuid.UUID,
                                  embedding_batches: list[np.ndarray], chunk_texts: list[str] = [], ids: np.ndarray = np.ndarray([], dtype=np.int64), file_caller: str = "") -> IUploadResponse:
         try:            
             upload_response = self.upload_job.step_save(provider, conversation_id, document_ids, embedding_batches, chunk_texts, ids, file_caller=self.__upload_to_vector_store.__name__)
             if upload_response is None:
-                self.__update_document_status_and_path(conversation_id, EDocumentStatus.FAILED)
+                self.__update_document_status_and_path(document_id, EDocumentStatus.FAILED)
                 raise ValueError(f"Failed to save embeddings for provider {provider} and document ids: {document_ids}")
         except Exception as exc:
-            self.__update_document_status_and_path(conversation_id, EDocumentStatus.FAILED)
+            self.__update_document_status_and_path(document_id, EDocumentStatus.FAILED)
             self.logger.error(f"Error saving embeddings to vector store for document ids {document_ids} and provider {provider}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.__upload_to_vector_store.__name__)
             raise exc
-        self.__update_document_status_and_path(conversation_id, EDocumentStatus.INDEXED)
+        self.__update_document_status_and_path(document_id, EDocumentStatus.INDEXED)
         return upload_response
 
     def __embed_chunks(self, chunk_responses: list[IChunkResponse], provider: EProviderName) -> tuple[list[IEmbedResponse], list[np.ndarray]]:
@@ -277,17 +281,29 @@ class UploadTask(IUploadTask):
 
     def __chunk(self, contents: list[IExtractMapping]) -> tuple[list[IChunkResponse], list[str]]:
         chunk_responses = list[IChunkResponse]()
-        texts = []
+        all_chunk_texts = []
         for content in contents:
             id = content.extract_content.document_id
-            texts.append(content.extract_content.extracted_text)
-            chunk_response = self.upload_job.step_chunk(id, texts[-1], file_caller=self.__chunk.__name__)
+            chunk_response = self.upload_job.step_chunk(id, content.extract_content.extracted_text, file_caller=self.__chunk.__name__)
             chunk_responses.append(chunk_response)
-        return chunk_responses, texts
+            all_chunk_texts.extend(chunk_response.chunk_texts)
+        return chunk_responses, all_chunk_texts
 
     def __cache(self, conversation_id: uuid.UUID, chunk_responses: list[IChunkResponse]) -> ICacheResponse:
         cache_response = self.upload_job.step_cache(conversation_id, chunk_responses, file_caller=self.__cache.__name__)
         return cache_response
+
+    def __save_or_update_cache_metadata(self, conversation_model: ConversationModel, cache_path: Path) -> None:
+        try:
+            cache_model = self.conversation_cache_database.get_by_conversation(conversation_model)
+            self.conversation_cache_database.update(cache_model.pk, file_path=cache_path)
+            self.logger.info(f"Updated conversation cache database metadata for conversation {conversation_model.pk}", source=Path(__file__).name, call_by=self.__save_or_update_cache_metadata.__name__, method_call=self.__save_or_update_cache_metadata.__name__)
+        except Exception:
+            self.conversation_cache_database.create_conversation_cache(
+                conversation=conversation_model,
+                file_path=cache_path
+            )
+            self.logger.info(f"Created conversation cache database metadata for conversation {conversation_model.pk}", source=Path(__file__).name, call_by=self.__save_or_update_cache_metadata.__name__, method_call=self.__save_or_update_cache_metadata.__name__)
 
     def __extract_contents_and_get_document_ids(self, file_paths: list[Path], provider: EProviderName, file_caller: str = "") -> tuple[list[IExtractMapping], list[str]]:
         contents = list[IExtractMapping]()

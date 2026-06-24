@@ -51,6 +51,19 @@ class LogPool(ILogger):
         method_call: str,
     ) -> None:
         """Đẩy log vào pool trên RAM """
+        # Ensure all strings are properly encoded to avoid charmap issues
+        try:
+            if isinstance(message, str):
+                message = message.encode('utf-8', errors='replace').decode('utf-8')
+            if isinstance(source, str):
+                source = source.encode('utf-8', errors='replace').decode('utf-8')
+            if isinstance(call_by, str):
+                call_by = call_by.encode('utf-8', errors='replace').decode('utf-8')
+            if isinstance(method_call, str):
+                method_call = method_call.encode('utf-8', errors='replace').decode('utf-8')
+        except:
+            pass  # If encoding fails, use original strings
+            
         with self._lock:
             self._pool.append({
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -81,12 +94,22 @@ class LogPool(ILogger):
             path = self.__ensure_file_log_path(folder_name)
             self.__write_log_to_file(log_lines, path)
 
-            # Đồng thời đẩy ra console để theo dõi realtime lúc chạy server
-            sys.stdout.write(f"--- Flushed {len(self._pool)} logs from pool to {path} ---\n")
-            sys.stdout.flush()
+            # Đồng thời đẩy ra console để theo dõi realtime lúc chạy chạy server
+            try:
+                sys.stdout.write(f"--- Flushed {len(self._pool)} logs from pool to {path} ---\n")
+                sys.stdout.flush()
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                # Fallback for console encoding issues on Windows
+                try:
+                    print(f"--- Flushed {len(self._pool)} logs from pool to {path} ---")
+                except:
+                    pass  # Silently ignore if console output fails
         except Exception as e:
-            sys.stderr.write(f"Failed to flush log pool: {e}\n")
-            sys.stderr.flush()
+            try:
+                sys.stderr.write(f"Failed to flush log pool: {e}\n")
+                sys.stderr.flush()
+            except:
+                pass  # Silently ignore if console output fails
         finally:
             self._pool.clear()  # Chắc chắn xóa pool sau khi đã flush
 

@@ -28,6 +28,7 @@ from backend.apps.services.chat.models import (
     ConversationModel,
     DocumentModel,
     MessageModel,
+    ConversationCacheModel,
 )
 from backend.apps.services.database.conversation_file_database_service import (
     ConversationFileDatabaseService,
@@ -40,6 +41,9 @@ from backend.apps.services.database.document_database_service import (
 )
 from backend.apps.services.database.message_database_service import (
     MessageDatabaseService,
+)
+from backend.apps.services.database.conversation_cache_database_service import (
+    ConversationCacheDatabaseService,
 )
 
 
@@ -56,6 +60,7 @@ class DatabaseProvider(IDatabaseProvider):
         conversation_database: IModelDatabase[ConversationModel] | None = None,
         conversation_file_database: IModelDatabase[ConversationFilesModel] | None = None,
         conversation_message_database: IModelDatabase[MessageModel] | None = None,
+        conversation_cache_database: IModelDatabase[ConversationCacheModel] | None = None,
     ):
         self.logger = logger
         self._services: dict[type[Model], IModelDatabase[Any]] = {
@@ -66,6 +71,9 @@ class DatabaseProvider(IDatabaseProvider):
             ),
             MessageModel: (
                 conversation_message_database or MessageDatabaseService()
+            ),
+            ConversationCacheModel: (
+                conversation_cache_database or ConversationCacheDatabaseService()
             ),
         }
 

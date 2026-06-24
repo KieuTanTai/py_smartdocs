@@ -3,6 +3,19 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Ensure UTF-8 encoding for Windows compatibility  
+import sys
+import io
+if sys.platform == 'win32' and 'pytest' not in sys.modules:
+    if not hasattr(sys.stdout, '_utf8_wrapped'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._utf8_wrapped = True
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._utf8_wrapped = True
+        except (AttributeError, ValueError, io.UnsupportedOperation):
+            pass
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / ".env")
 

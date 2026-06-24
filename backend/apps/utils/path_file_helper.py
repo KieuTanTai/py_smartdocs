@@ -23,10 +23,15 @@ def is_existed_in_metadata(metadata_dir: Path, name: Any, file_type: str, logger
     """Check if a metadata file with the given name and type exists in the metadata directory. It will log the existence check and return the path if the file exists, or None if it does not."""
 
     metadata_path = metadata_dir / f"{datetime.now().strftime('%Y-%m-%d')}" / f"{name}.{file_type}"
-    is_existed = metadata_path if metadata_path.exists() else None
+    if metadata_path.exists():
+        is_existed = metadata_path
+    else:
+        found_paths = list(metadata_dir.glob(f"**/{name}.{file_type}"))
+        is_existed = found_paths[0] if found_paths else None
+
     if logger is not None:
         if is_existed:
-            logger.info(f"Metadata for '{name}' already exists at '{metadata_path}'", Path(__file__).name, method_call=is_existed_in_metadata.__name__)
+            logger.info(f"Metadata for '{name}' already exists at '{is_existed}'", Path(__file__).name, method_call=is_existed_in_metadata.__name__)
         else:
             logger.info(f"Metadata for '{name}' does not exist in '{metadata_dir}'", Path(__file__).name, method_call=is_existed_in_metadata.__name__)
     return is_existed

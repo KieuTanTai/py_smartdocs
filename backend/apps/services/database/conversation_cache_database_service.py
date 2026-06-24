@@ -34,8 +34,6 @@ class ConversationCacheDatabaseService(IConversationCacheDatabase):
         return self.create(
             conversation_cache_conversation=conversation,
             conversation_cache_file_path=str(file_path) if file_path is not None else None,
-            conversation_cache_status=status,
-            conversation_cache_content=content,
             conversation_cache_is_active=is_active,
             **extra_fields,
         )
@@ -67,12 +65,16 @@ class ConversationCacheDatabaseService(IConversationCacheDatabase):
     def update(self, model_id: Any, **fields: Any) -> ConversationCacheModel:
         document = self.get_by_id(model_id)
 
+        updated_fields = {}
         for field_name, value in fields.items():
-            if field_name == "file_path" and isinstance(value, Path):
+            if field_name == "file_path":
+                field_name = "conversation_cache_file_path"
+            if field_name == "conversation_cache_file_path" and isinstance(value, Path):
                 value = str(value)
             setattr(document, field_name, value)
+            updated_fields[field_name] = value
 
-        document.save(update_fields=list(fields.keys()))
+        document.save(update_fields=list(updated_fields.keys()))
         return document
 
     def update_status(self, document_id: Any, status: EDocumentStatus) -> ConversationCacheModel:

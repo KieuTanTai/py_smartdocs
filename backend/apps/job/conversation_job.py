@@ -53,7 +53,7 @@ class ConversationJob(IConversationJob):
         self.conversation_files_database: IConversationFileDatabase = cast(IConversationFileDatabase, self.database_provider.get_model_service(ConversationFilesModel))
         self.message_database: IMessageDatabase = cast(IMessageDatabase, self.database_provider.get_model_service(MessageModel))
         self.conversation_database: IConversationDatabase = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
-        self.conversation_cache_database: IConversationCacheDatabase = cast(IConversationCacheDatabase, self.database_provider.get_model_service(ConversationModel))
+        self.conversation_cache_database: IConversationCacheDatabase = cast(IConversationCacheDatabase, self.database_provider.get_model_service(ConversationCacheModel))
 
     def check_documents_ready(self, conversation: ConversationModel, file_caller: str = "") -> bool:
         try:
@@ -89,8 +89,10 @@ class ConversationJob(IConversationJob):
             return conversation
 
         except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
             self.logger.error(
-                f"Error creating initial conversation: {str(e)}",
+                f"Error creating initial conversation: {str(e)}\nTraceback:\n{tb}",
                 source=Path(__file__).name,
                 call_by=file_caller,
                 method_call=self.create_init_conversation.__name__,
@@ -267,7 +269,6 @@ class ConversationJob(IConversationJob):
             )
 
             service = cast(ICacheService, self.cache_session.connect(file_caller))
-            service.clear(file_caller)
             cache_param = service.load_from_file(
                 str(conversation.conversations_id), file_caller
             )
@@ -279,6 +280,10 @@ class ConversationJob(IConversationJob):
                     method_call=self.load_cache.__name__,
                 )
                 return None
+            
+            # Repopulate Redis cache without overwriting the metadata file
+            service.set_unpersisted(cache_param, file_caller)
+
             self.logger.info(
                 f"Successfully loaded cache for conversation {conversation.conversations_id}.",
                 source=Path(__file__).name,

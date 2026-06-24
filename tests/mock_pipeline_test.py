@@ -8,9 +8,15 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Fix Windows console encoding for Unicode/Emojis
-if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+if sys.platform == "win32" and 'pytest' not in sys.modules:
+    if not hasattr(sys.stdout, '_utf8_wrapped'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+            sys.stdout._utf8_wrapped = True
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+            sys.stderr._utf8_wrapped = True
+        except (AttributeError, ValueError, io.UnsupportedOperation):
+            pass
 
 # Setup Django configuration
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings.local")

@@ -1,6 +1,9 @@
 import os
+import time
+import random
 import numpy as np
 from google import genai
+from google.genai import errors
 from backend.apps.core.interfaces.dataclass.i_dataclass_transaction import ICompletionRequest, IEmbeddingResponse
 from backend.apps.core.interfaces.dataclass.response.i_generate_response import IGenerateResponse, IGenerateResponseMetadata
 from backend.apps.core.interfaces.llm.i_llm_client import ILLMClient
@@ -28,10 +31,47 @@ class GeminiClient(ILLMClient):
     def generate(self, request: ICompletionRequest, file_caller: str = "") -> IGenerateResponse:
         self.logger.info("Sending request to Gemini API.", source=str(self.__class__), call_by=file_caller, method_call=self.generate.__name__)
 
-        response = self.client.models.generate_content(
-            model=request.model,
-            contents=[{"parts": [{"text": request.prompt}]}],
-        )
+        max_retries = 5
+        base_delay = 1.0
+        response = None
+
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=request.model,
+                    contents=[{"parts": [{"text": request.prompt}]}],
+                )
+                break
+            except errors.APIError as e:
+                status_code = getattr(e, 'code', None)
+                if status_code in [429, 500, 503, 504] and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    self.logger.warning(
+                        f"Gemini API error {status_code} during generate. Retrying in {delay:.2f}s... (Attempt {attempt+1}/{max_retries})",
+                        source=str(self.__class__),
+                        call_by=file_caller,
+                        method_call=self.generate.__name__
+                    )
+                    time.sleep(delay)
+                else:
+                    raise e
+            except Exception as e:
+                import httpx
+                if isinstance(e, (httpx.RequestError, httpx.HTTPStatusError)) and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    self.logger.warning(
+                        f"Network/HTTP error during generate: {e}. Retrying in {delay:.2f}s... (Attempt {attempt+1}/{max_retries})",
+                        source=str(self.__class__),
+                        call_by=file_caller,
+                        method_call=self.generate.__name__
+                    )
+                    time.sleep(delay)
+                else:
+                    raise e
+
+        if response is None:
+            raise ValueError("Failed to generate content from Gemini API: No response received.")
+
         if response.text is None:
             self.logger.error("Response from Gemini API does not contain text.", source=str(self.__class__), call_by=file_caller, method_call=self.generate.__name__)
             raise ValueError("Response from Gemini API does not contain text.")
@@ -46,10 +86,48 @@ class GeminiClient(ILLMClient):
         self.logger.info(
             "Generating embedding from Gemini API.", source=str(self.__class__), call_by=file_caller, method_call=self.embedding.__name__
         )
-        response = self.client.models.embed_content(
-            model=request.model,
-            contents=request.prompt,
-        )
+
+        max_retries = 5
+        base_delay = 1.0
+        response = None
+
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.embed_content(
+                    model=request.model,
+                    contents=request.prompt,
+                )
+                break
+            except errors.APIError as e:
+                status_code = getattr(e, 'code', None)
+                if status_code in [429, 500, 503, 504] and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    self.logger.warning(
+                        f"Gemini API error {status_code} during embedding. Retrying in {delay:.2f}s... (Attempt {attempt+1}/{max_retries})",
+                        source=str(self.__class__),
+                        call_by=file_caller,
+                        method_call=self.embedding.__name__
+                    )
+                    time.sleep(delay)
+                else:
+                    raise e
+            except Exception as e:
+                import httpx
+                if isinstance(e, (httpx.RequestError, httpx.HTTPStatusError)) and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    self.logger.warning(
+                        f"Network/HTTP error during embedding: {e}. Retrying in {delay:.2f}s... (Attempt {attempt+1}/{max_retries})",
+                        source=str(self.__class__),
+                        call_by=file_caller,
+                        method_call=self.embedding.__name__
+                    )
+                    time.sleep(delay)
+                else:
+                    raise e
+
+        if response is None:
+            raise ValueError("Failed to generate embedding from Gemini API: No response received.")
+
         if not response.embeddings:
             self.logger.error("Response from Gemini API does not contain embeddings.", source=str(self.__class__), call_by=file_caller, method_call=self.embedding.__name__)
             raise ValueError("Response from Gemini API does not contain embeddings.")

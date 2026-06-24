@@ -38,7 +38,12 @@ class ExtractContentService(IExtractContent):
         ocr_extractor = self.factory.create_ocr_extractor(provider)
         ocr_response = ocr_extractor.process_ocr(uploaded_file)
         extracted_text = self.__process_ocr_response(ocr_response, source_log, call_by=call_by)
-        return IExtractResponse(uploaded_file.id, extracted_text, ocr_response.model, ocr_response.usage_info.pages_processed, ocr_response.usage_info.doc_size_bytes)
+        
+        # Safely get page_processed and doc_size_bytes from usage_info
+        page_processed = getattr(ocr_response.usage_info, 'page_processed', None) or getattr(ocr_response.usage_info, 'pages_processed', 0)
+        doc_size_bytes = getattr(ocr_response.usage_info, 'doc_size_bytes', None)
+        
+        return IExtractResponse(uploaded_file.id, extracted_text, ocr_response.model, page_processed, doc_size_bytes)
 
     def __process_ocr_response(self, ocr_response: OCRResponse, source_log: str, call_by: str = "") -> str:
         extracted_text = "\n".join([page.markdown for page in ocr_response.pages])
