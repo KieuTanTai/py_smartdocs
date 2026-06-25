@@ -180,7 +180,6 @@ class SendMesssage(APIView):
             print(f"last_message: {last_message.content if last_message else 'No messages found'}")
             self.sys_logger.info(f"Message processed successfully for conversation {conversation_id}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
             self.sys_logger.info(f"messages_str: {messages_str}", source="MessageListViewByConversation", call_by="post", method_call="send_message")
-
             response_json ={
                 "user_message_id": response_data.user_message_id,
                 "assistant_message_id": response_data.assistant_message_id,

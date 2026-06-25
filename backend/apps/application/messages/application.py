@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 from backend.apps.core.enums.e_pipeline_type import EPipelineType
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.application.i_message_response import IChatHistoryResponse, IChatTimeCounter, IMessageDTO, ISendMessageResponse
+from backend.apps.core.interfaces.dataclass.application.i_message_response import IChatHistoryResponse, ISendMessageResponse
 from backend.apps.core.interfaces.system.i_logging import ILogger
 from backend.apps.interfaces.application.message.i_message_application import IMessageApllication
 from backend.apps.interfaces.tasks.i_message_task import IMessageTask

@@ -264,7 +264,7 @@ def server(input: Any, output: Any, session: Any) -> None:
         #get hits content as string and score if available
         hits_str = "\n".join(
             [
-                f"{hit.get('content', '-')}"
+                f"{hit.get('text', '-')}"
                 + (f" (Score: {hit.get('score')})" if hit.get("score") is not None else "")
                 for hit in hits
             ]
