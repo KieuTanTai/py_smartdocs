@@ -317,8 +317,8 @@ class ConversationJob(IConversationJob):
 
             service = cast(IVectorStoreService, self.locate_service.get_vector_store(EBackendStorageName.FAISS))
             response = service.load(conversation.conversations_id)
-
-            if response.index and response.is_success:
+            add_pool_response = self.memory_pool.add_to_pool(conversation.conversations_id, response.index, file_caller)
+            if response.index and response.is_success and add_pool_response:
                 self.logger.info(
                     f"Successfully loaded FAISS index for conversation {conversation.conversations_id}.",
                     source=Path(__file__).name,

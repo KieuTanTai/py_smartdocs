@@ -12,6 +12,7 @@ from backend.apps.core.interfaces.dataclass.cache.i_cache_param_value import ICa
 from backend.apps.core.interfaces.dataclass.locate.i_neo4j_search_request import INeo4jSearchRequest
 from backend.apps.core.interfaces.llm.i_llm_prompt_structure import ILLMPromptStructure
 from backend.apps.core.interfaces.services.cache.i_cache_service import ICacheService
+from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_file_database import IConversationFileDatabase
 from backend.apps.core.interfaces.services.rag_base.database.i_database_provider import IDatabaseProvider
@@ -43,6 +44,7 @@ class MessageJob(IMessageJob):
     def __init__(self, llm_provider_factory: ILLMProviderFactory, config_provider: IConfigProvider, 
                  database_provider: IDatabaseProvider, prompt_structure: ILLMPromptStructure,
                  locate_service: ILocateService, cache_session: IConnectCacheSession, 
+                 memory_pool: IMemoryPool,
                  logger: ILogger, hybrid_search_service: IHybridSearchService, extract_service: IExtractContent, neo4j_service: INeo4jService):
         self.llm_provider_factory = llm_provider_factory
         self.config_provider = config_provider
@@ -52,6 +54,7 @@ class MessageJob(IMessageJob):
         self.cache_session = cache_session
         self.logger = logger
         self.hybrid_search_service = hybrid_search_service
+        self.memory_pool = memory_pool
         self.extract_service = extract_service
         self.neo4j_service = neo4j_service
         self.conversation_database = cast(IConversationDatabase, self.database_provider.get_model_service(ConversationModel))
@@ -126,29 +129,12 @@ class MessageJob(IMessageJob):
         all_sparse_hits: list[IMessageJobContextHit] = []
         document = self.document_database.get_by_conversation(conversation)
 
-        # ID dùng để search index (thường là ID của conversation hoặc document)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            # Dùng Dictionary để lưu trữ tác vụ: key là object Future, value là tên tác vụ (string)
-            future_to_task = {
-                executor.submit(self.__faiss_search, conversation.conversations_id, query_embedding, faiss_store): "faiss_search",
-                # executor.submit(self.__bm25_search, search_id, content, bm25_store): "bm25_search"
-            }
-
-            # Thu hoạch kết quả khi bất kỳ công nhân nào làm xong
-            for future in concurrent.futures.as_completed(future_to_task):
-                task_name = future_to_task[future] # Lấy tên tác vụ tương ứng với Future hiện tại
-                try:
-                    result = future.result() # result là 1 list các IMessageJobContextHit
-
-                    if task_name == "faiss_search":
-                        all_dense_hits.extend(result)
-                    elif task_name == "bm25_search":
-                        all_sparse_hits.extend(result)
-
-                except Exception as exc:
-                    self.logger.error(f"Vector search task '{task_name}' generated an exception: {exc}", 
-                                      Path(__file__).name, str(self.__class__), self.__thread_pool_executor_vector_search.__name__)
+        # ID dùng để search index (thường là ID của conversation hoặc document)        
+        try:
+            faiss_search = self.__faiss_search(conversation.conversations_id, query_embedding, faiss_store)
+            all_dense_hits.extend(faiss_search)
+        except Exception as exc:
+            self.logger.error(f"FAISS search failed for conversation {conversation.conversations_id}: {exc}", Path(__file__).name, self.__thread_pool_executor_vector_search.__name__)
 
         # Sắp xếp lại danh sách kết quả theo điểm số giảm dần
         all_dense_hits.sort(key=lambda item: item.score, reverse=True)
@@ -233,6 +219,10 @@ class MessageJob(IMessageJob):
             response = cache_service.get(str(conversation_id), file_caller=self.__load_document_chunk_metadata.__name__)
             if response and response.values:
                 return response.values
+            else:
+                response = cache_service.load_from_file(str(conversation_id), file_caller=self.__load_document_chunk_metadata.__name__)
+                if response and response.values:
+                    return response.values
             raise ValueError(f"No cache data found for conversation_id {conversation_id}")
         finally:
             self.cache_session.disconnect(file_caller=self.__load_document_chunk_metadata.__name__)
@@ -291,9 +281,18 @@ class MessageJob(IMessageJob):
     def __faiss_search(self, conversation_id: uuid.UUID, query_embedding: np.ndarray, faiss_store: IVectorStoreService) -> list[IMessageJobContextHit]:
         dense_hits: list[IMessageJobContextHit] = []
         meta = self.__load_document_chunk_metadata(conversation_id)
-        load_faiss = faiss_store.load(conversation_id, file_caller=self.__faiss_search.__name__)
-        if load_faiss.is_success and load_faiss.index is not None:
-            query_res = faiss_store.search(load_faiss.index, conversation_id, query_embedding, limit=5, file_caller=self.__faiss_search.__name__)
+        load_faiss = None
+        try:
+            load_faiss = self.memory_pool.get_from_pool(conversation_id)
+        except Exception as exc:
+            self.logger.error(f"Error occurred while fetching FAISS index for conversation {conversation_id}: {exc}", source=str(self.__class__), method_call=self.__faiss_search.__name__)
+            load_faiss = faiss_store.load(conversation_id, file_caller=self.__faiss_search.__name__)
+            if load_faiss.is_success and load_faiss.index is not None:
+                self.memory_pool.add_to_pool(conversation_id, load_faiss.index)
+                self.logger.info(f"FAISS index for conversation {conversation_id} added to memory pool", source=str(self.__class__), method_call=self.__faiss_search.__name__)
+        
+        if load_faiss:
+            query_res = faiss_store.search(load_faiss, conversation_id, query_embedding, limit=5, file_caller=self.__faiss_search.__name__)
             self.logger.info(f"FAISS search returned {len(query_res.indices)} hits for conversation {conversation_id}", source=str(self.__class__), method_call=self.__faiss_search.__name__)
             chunk_texts = self.__resolve_chunk_texts(query_res.indices, meta)
             self.logger.info(f"Resolved {len(chunk_texts)} chunk texts for conversation {conversation_id}", source=str(self.__class__), method_call=self.__faiss_search.__name__)

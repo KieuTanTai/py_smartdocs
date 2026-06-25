@@ -52,10 +52,11 @@ class FaissService(IVectorStoreService):
         self.logger.info(f"Searching FAISS index for conversation_id '{conversation_id}' with query vector of shape {query_vector.shape}",
             Path(__file__).name, file_caller, method_call=self.search.__name__)
         distances, indices = index.search(query_vector, limit)
-        if (allow_ids is not None or chunk_file_map is not None):
-            distances, indices = self.__filter_output_search_results(distances, indices, allow_ids, chunk_file_map, file_caller)
-            self.logger.info(f"FAISS search results for conversation_id '{conversation_id}': distances={distances}, indices={indices}",
-                Path(__file__).name, file_caller, method_call=self.search.__name__)
+        print(f"FAISS search results for conversation_id '{conversation_id}': distances={distances}, indices={indices}")
+        # if (allow_ids is not None or chunk_file_map is not None):
+        #     distances, indices = self.__filter_output_search_results(distances, indices, allow_ids, chunk_file_map, file_caller)
+        self.logger.info(f"FAISS search results for conversation_id '{conversation_id}': distances={distances}, indices={indices}",
+            Path(__file__).name, file_caller, method_call=self.search.__name__)
         return IVectorDBQueryResponse(id=conversation_id, distances=distances.tolist()[0], indices=indices.tolist()[0])
 
     def delete(self, conversation_id: uuid.UUID, file_caller: str = "") -> IVectorDBDeleteResponse:

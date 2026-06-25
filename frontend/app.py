@@ -259,7 +259,14 @@ def server(input: Any, output: Any, session: Any) -> None:
     def retrieval_panel() -> ui.Tag:
         payload = metrics.get()
         hits = payload.get("hits") or payload.get("retrieval_hits") or []
-        hits_str = "\n".join(str(hit.get("content", "-")) for hit in hits)
+        #get hits content as string and score if available
+        hits_str = "\n".join(
+            [
+                f"<li>{hit.get('content', '-')}</li>"
+                + (f" (Score: {hit.get('score')})" if hit.get("score") is not None else "")
+                for hit in hits
+            ]
+        )
         if not hits:
             return ui.tags.div("Waiting for retrieval data.", class_="empty-state")
         rows = [ui.tags.li(hits_str)]

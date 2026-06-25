@@ -22,7 +22,7 @@ def _pipeline_type_value(pipeline_type: str) -> str:
 
 
 class ApiClient:
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 60.0) -> None:
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 160.0) -> None:
         self.base_url = (
             base_url or os.getenv("SMARTDOCS_API_BASE_URL") or DEFAULT_BASE_URL
         ).rstrip("/")

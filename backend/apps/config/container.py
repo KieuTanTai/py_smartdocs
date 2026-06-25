@@ -176,6 +176,7 @@ class BackendContainer(containers.DeclarativeContainer):
         prompt_structure=llm_prompt_structure,
         locate_service=locate_service,
         cache_session=cache_session,
+        memory_pool=memory_pool,
         logger=log_pool,
         hybrid_search_service=hybrid_search_service,
         extract_service=extract_content_service,

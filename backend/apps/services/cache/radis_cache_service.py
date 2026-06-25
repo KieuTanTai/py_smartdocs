@@ -58,7 +58,10 @@ class RedisCacheService(ICacheService):
         with open(metadata_file_path, "r") as f:
             value_str = f.read()
         self.logger.info(f"Cache key: {key} loaded from file with value: {value_str}", Path(__file__).name, file_caller, self.load_from_file.__name__)
-        return self.__convert_to_origin_type(value_str)
+        result = self.__convert_to_origin_type(value_str)
+        if result is not None:
+            self.memory_pool.add_to_cache_pool(key, result.values, file_caller=file_caller)
+        return result
 
     def delete(self, key: str, file_caller: str = "") -> int:
         self.logger.info(f"Deleting cache key: {key}", Path(__file__).name, file_caller, self.delete.__name__)
