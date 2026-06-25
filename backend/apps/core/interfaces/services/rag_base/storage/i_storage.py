@@ -20,13 +20,14 @@ class IFileStorage(ABC):
     """
 
     @abstractmethod
-    def save_file(self, file_path: Path) -> ICreateFileResponse:
+    def save_file(self, file_path: Path, file_name: str, call_by: str = "") -> ICreateFileResponse:
         """
         Save uploaded file to storage.
 
         Args:
             file_path: Path to the file to save
-            document_name: Name of the document
+            file_name: Name of the file
+            call_by: Optional string indicating the caller of this method for logging purposes
 
         Returns:
             ICreateFileResponse: Response object with file information

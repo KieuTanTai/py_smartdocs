@@ -54,13 +54,13 @@ class UploadTask(IUploadTask):
 
     # * New run method to handle for new interface with file paths,
     # * this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
-    def run_with_paths(self, conversation_id: uuid.UUID, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_caller: str = "") -> IUploadResponse:
+    def run_with_paths(self, conversation_id: uuid.UUID, file_paths: list[Path], provider_name: EProviderName, model_name: str, file_name: str, file_caller: str = "") -> IUploadResponse:
         self.logger.info(f"Starting UploadTask with file paths {file_paths} and provider {provider_name} called by {file_caller}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
         try:
             # Chạy luồng lõi
             conversation_model = self.conversation_database.get_by_id(conversation_id)
             print("path: ", conversation_model.conversations_id)
-            result_dataclass = self.__execute_base_pipeline_with_paths(conversation_model, file_paths, provider_name, model_name)
+            result_dataclass = self.__execute_base_pipeline_with_paths(conversation_model, file_paths, provider_name, model_name, file_name)
             # Lưu index vào memory pool
             self.logger.info(f"Adding FAISS index to memory pool with file ID {result_dataclass.conversation_id} for file paths {file_paths}", source=Path(__file__).name, call_by=file_caller, method_call=self.run_with_paths.__name__)
             self.memory_pool.add_to_pool(result_dataclass.conversation_id, result_dataclass.faiss_index, file_caller)
@@ -127,7 +127,7 @@ class UploadTask(IUploadTask):
         self.time_counter.start()
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
         document = self.__create_document_model(conversation_model)
-        contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
+        contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, "", file_caller=self.__execute_pipeline_create_retriever_with_paths.__name__)
         extract_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed text extraction and normalization for file paths {file_paths} in {extract_time:.2f} seconds", source=Path(__file__).name, 
                          call_by=self.__execute_pipeline_create_retriever_with_paths.__name__, method_call=self.__execute_pipeline_create_retriever_with_paths.__name__)
@@ -183,7 +183,7 @@ class UploadTask(IUploadTask):
 
     # * New method to handle for new interface with file paths, this will help to reduce the time of upload document, and also can handle multiple upload document at the same time
     def __execute_base_pipeline_with_paths(
-        self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str
+        self, conversation_model: ConversationModel, file_paths: list[Path], provider: EProviderName, model_name: str, file_name: str
     ) -> IUploadResponse:
         print(f"Provider name: {provider.value} : {provider}")
         # start extract time counter
@@ -193,7 +193,7 @@ class UploadTask(IUploadTask):
         document = self.__create_document_model(conversation_model)
 
         # * Step 1: Extract text from files and normalize it, then store the extracted text in dict_contents and get document ids
-        contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_caller=self.__execute_base_pipeline_with_paths.__name__)
+        contents, document_ids = self.__extract_contents_and_get_document_ids(file_paths, provider, file_name, file_caller=self.__execute_base_pipeline_with_paths.__name__)
         extract_time = self.time_counter.get_elapsed_time()
         self.logger.info(f"Completed text extraction and normalization for file paths {file_paths} in {extract_time:.2f} seconds", source=Path(__file__).name, 
                          call_by=self.__execute_base_pipeline_with_paths.__name__, method_call=self.__execute_base_pipeline_with_paths.__name__)
@@ -303,7 +303,7 @@ class UploadTask(IUploadTask):
         cache_response = self.upload_job.step_cache(conversation_id, chunk_responses, file_caller=self.__cache.__name__)
         return cache_response
 
-    def __extract_contents_and_get_document_ids(self, file_paths: list[Path], provider: EProviderName, file_caller: str = "") -> tuple[list[IExtractMapping], list[str]]:
+    def __extract_contents_and_get_document_ids(self, file_paths: list[Path], provider: EProviderName, file_name: str, file_caller: str = "") -> tuple[list[IExtractMapping], list[str]]:
         contents = list[IExtractMapping]()
         for file_path in file_paths:
             self.logger.info(
@@ -312,6 +312,6 @@ class UploadTask(IUploadTask):
                 call_by=file_caller,
                 method_call=self.__extract_contents_and_get_document_ids.__name__,
             )
-            extracted_text = self.upload_job.step_extract_and_normalize(file_path, provider, file_caller=self.__extract_contents_and_get_document_ids.__name__)
+            extracted_text = self.upload_job.step_extract_and_normalize(file_path, provider, file_name, file_caller=self.__extract_contents_and_get_document_ids.__name__)
             contents.append(IExtractMapping(file_path, extracted_text))
         return contents, [content.extract_content.document_id for content in contents]

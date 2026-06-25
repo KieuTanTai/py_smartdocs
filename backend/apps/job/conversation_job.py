@@ -287,6 +287,14 @@ class ConversationJob(IConversationJob):
                 call_by=file_caller,
                 method_call=self.load_cache.__name__,
             )
+            response = self.memory_pool.add_to_cache_pool(str(conversation.conversations_id), cache_param.values, file_caller)
+            if not response:
+                self.logger.warning(
+                    f"Failed to add cache to memory pool for conversation {conversation.conversations_id}.",
+                    source=Path(__file__).name,
+                    call_by=file_caller,
+                    method_call=self.load_cache.__name__,
+                )
             return cache_param
         except Exception as e:
             self.logger.error(

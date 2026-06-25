@@ -21,6 +21,7 @@ class IExtractContent(ABC):
         self,
         file_path: Path,
         provider: EProviderName,
+        file_name: str,
         call_by: str = "",
     ) -> IExtractResponse:
         """
@@ -29,6 +30,7 @@ class IExtractContent(ABC):
         Args:
             file_path: Path to file
             provider: LLM provider to use for OCR extraction
+            file_name: Name of the file
             call_by: Optional string indicating the caller of this method for logging purposes
         Returns:
             IExtractResponse containing extracted text and metadata

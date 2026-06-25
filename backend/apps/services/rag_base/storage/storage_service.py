@@ -32,8 +32,14 @@ class FileStorageService(IFileStorage):
         self.uploader = uploader
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
-    def save_file(self, file_path: Path) -> ICreateFileResponse:
-        new_file_path = self.__check_all(file_path=file_path)
+    def save_file(self, file_path: Path, file_name: str, call_by: str = "") -> ICreateFileResponse:
+        new_file_path = self.__check_all(file_path, file_name)
+        self.logger.info(
+            f"Saving file '{new_file_path}' to storage with name '{file_name}'",
+            source = Path(__file__).name,
+            method_call=self.save_file.__name__,
+            call_by=call_by,
+        )
         return self.uploader.upload_file(new_file_path)
 
     def load_file(self, file_id: str) -> IGetFileResponse:
@@ -48,25 +54,25 @@ class FileStorageService(IFileStorage):
         return float(file_info.size_bytes)
 
     def __check_and_move_file_to_storage_dir(
-        self, mime_type: EMimeType, file_path: Path
+        self, mime_type: EMimeType, file_path: Path, file_name: str
     ) -> Path:
         # check file_path is within storage_dir or not ? if not move this file to storage_dir
         if not self.storage_dir in file_path.parents:
             try:
-                return self.__move_file_to_storage_dir(mime_type, file_path)
+                return self.__move_file_to_storage_dir(mime_type, file_path, file_name)
             except Exception as e:
                 self.logger.error(
                     f"Error moving file to storage directory: {e}. This will fallback to copying the file to storage directory.",
                     source=str(self.__class__),
                 )
-                return self.__copy_file_to_storage_dir(mime_type, file_path)
+                return self.__copy_file_to_storage_dir(mime_type, file_path, file_name)
         return file_path
 
-    def __copy_file_to_storage_dir(self, mime_type: EMimeType, file_path: Path) -> Path:
+    def __copy_file_to_storage_dir(self, mime_type: EMimeType, file_path: Path, file_name: str) -> Path:
         base_dir = get_dir_by_mime_type(self.storage_dir, mime_type, self.logger)
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        destination_path = base_dir / file_path.name
+        destination_path = base_dir / file_name
         if destination_path.exists():
             self.logger.warning(
                 f"File '{destination_path}' already exists in storage directory. It will be overwritten.",
@@ -80,11 +86,11 @@ class FileStorageService(IFileStorage):
         )
         return destination_path
 
-    def __move_file_to_storage_dir(self, mime_type: EMimeType, file_path: Path) -> Path:
+    def __move_file_to_storage_dir(self, mime_type: EMimeType, file_path: Path, file_name: str) -> Path:
         base_dir = get_dir_by_mime_type(self.storage_dir, mime_type, self.logger)
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        destination_path = base_dir / file_path.name
+        destination_path = base_dir / file_name
         if destination_path.exists():
             self.logger.warning(
                 f"File '{destination_path}' already exists in storage directory. It will be overwritten.",
@@ -97,8 +103,8 @@ class FileStorageService(IFileStorage):
         )
         return destination_path
 
-    def __check_all(self, file_path: Path) -> Path:
+    def __check_all(self, file_path: Path, file_name: str) -> Path:
         check_file_path(file_path, self.logger)
         check_storage_dir_exists_and_accessible(self.storage_dir, self.logger)
         mime_type = get_mime_type_from_path(file_path)
-        return self.__check_and_move_file_to_storage_dir(mime_type, file_path)
+        return self.__check_and_move_file_to_storage_dir(mime_type, file_path, file_name)

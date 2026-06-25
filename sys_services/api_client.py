@@ -193,6 +193,7 @@ class ApiClient:
         print(f"Uploading document with file type: {file_type}")
         print(f"File info: {file_info}")
         print(f"Source: {source}")
+        name = file_info.get("name", "unknown")
         print(f"Provider: ", {provider_name})
         with open(file_info["datapath"], "rb") as handle:
             files = {"file": (file_info["name"], handle, file_type)}
@@ -200,11 +201,11 @@ class ApiClient:
             data = {"source": source}
             print(f"data:{data}")
             # Multipart requests don't use JSON headers
-            resp = self._upload_request("POST", "/api/documents/upload/", files,provider, [file_info["datapath"]], EPipelineType.BASE.value, "")
+            resp = self._upload_request("POST", "/api/documents/upload/", name, provider, [file_info["datapath"]], EPipelineType.BASE.value, "")
             print(f"Upload response:")
             return resp
 
-    def _upload_request(self,method: str ,api_endpoint: str, file_info: dict,provider_name:str ,document_urls: list[Path], type:str, conversation_id) -> dict[str, Any]:
+    def _upload_request(self,method: str ,api_endpoint: str, name: str, provider_name:str ,document_urls: list[Path], type:str, conversation_id) -> dict[str, Any]:
         url = f"{self.base_url}{api_endpoint}"
         print(f"url: {url}")
         headers = self._headers()
@@ -215,7 +216,7 @@ class ApiClient:
                     method,
                     url,
                     headers=headers,
-                    json={"provider": provider_name,"document_urls": document_urls ,"type": type,"conversation_id": conversation_id },
+                    json={"name": name, "provider": provider_name, "document_urls": document_urls, "type": type, "conversation_id": conversation_id},
                 )
 
                 print("REQUEST HEADERS")

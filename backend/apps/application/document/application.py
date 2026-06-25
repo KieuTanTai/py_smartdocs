@@ -89,7 +89,7 @@ class DocumentApplication(IDocumentApplication):
                 raise ValueError(f"ValueError conversation_id is required!")
             paths = request.document_paths if request.document_paths else []
             provider = request.provider
-            response = self.upload_task.run_with_paths(request.conversation_id, paths, provider, request.model_name)
+            response = self.upload_task.run_with_paths(request.conversation_id, paths, provider, request.model_name, request.file_name)
             return response
         except ValueError as ve:
             self.logger.error(f"ValueError running upload task for conversation_id: {request.conversation_id}, error: {str(ve)}",

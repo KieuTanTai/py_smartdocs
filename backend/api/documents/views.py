@@ -72,6 +72,7 @@ class DocumentUploadView(APIView):
                          Path(__file__).name)
         self.sys_logger.flush()
         create_req = ICreateConversationRequest(
+            file_name=request.data.get("name", ""),
             provider=provider_name,
             model_name=model_name,
             document_urls=request.data.get("document_urls"),

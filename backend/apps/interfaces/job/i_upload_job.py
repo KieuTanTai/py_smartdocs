@@ -29,13 +29,14 @@ class IUploadJob(ABC):
 
     @abstractmethod
     def step_extract_and_normalize(
-        self, file_path: Path, provider: EProviderName, file_caller: str = ""
+        self, file_path: Path, provider: EProviderName, file_name: str, file_caller: str = ""
     ) -> IExtractResponse:
         """
         extract and normalize text from file
         Args:
             file_path: real path of file to extract
             provider: provider name to use when extract (for example: google drive file may need google provider to extract)
+            file_name: name of the file
             file_caller: function name of caller for logging
         Returns:
             extracted and normalized text from file
@@ -44,13 +45,14 @@ class IUploadJob(ABC):
 
     @abstractmethod
     def step_extract(
-        self, file_path: Path, provider: EProviderName, file_caller: str = ""
+        self, file_path: Path, provider: EProviderName, file_name: str, file_caller: str = ""
     ) -> IExtractResponse:
         """
         extract text from file
         Args:
             file_path: real path of file or list of files to extract
             provider: provider name to use when extract (for example: google drive file may need google provider to extract)
+            file_name: name of the file
             file_caller: function name of caller for logging
         Returns:
             extracted text from file or list of files
@@ -58,11 +60,12 @@ class IUploadJob(ABC):
         pass
 
     @abstractmethod
-    def step_normalize(self, raw_text: str, file_caller: str = "") -> str:
+    def step_normalize(self, raw_text: str, file_name: str, file_caller: str = "") -> str:
         """
         normalize extracted text
         Args:
             raw_text: raw text to normalize
+            file_name: name of the file
             file_caller: function name of caller for logging
         Returns:
             normalized text

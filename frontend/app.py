@@ -84,6 +84,7 @@ def server(input: Any, output: Any, session: Any) -> None:
     history = reactive.Value([])
     metrics = reactive.Value({})
     upload_pipeline_metrics = reactive.Value({})
+    is_processing = reactive.Value(False)
     status = reactive.Value(
         {"label": "Idle", "detail": "No requests yet", "kind": "idle"}
     )
@@ -259,40 +260,43 @@ def server(input: Any, output: Any, session: Any) -> None:
     def retrieval_panel() -> ui.Tag:
         payload = metrics.get()
         hits = payload.get("hits") or payload.get("retrieval_hits") or []
+        print("Retrieval hits:", hits)
         #get hits content as string and score if available
         hits_str = "\n".join(
             [
-                f"<li>{hit.get('content', '-')}</li>"
+                f"{hit.get('content', '-')}"
                 + (f" (Score: {hit.get('score')})" if hit.get("score") is not None else "")
                 for hit in hits
             ]
         )
         if not hits:
             return ui.tags.div("Waiting for retrieval data.", class_="empty-state")
+        print("Retrieval hits string:", hits_str)
         rows = [ui.tags.li(hits_str)]
         return ui.tags.ul(*rows, class_="mini-list")
 
     @render.ui
     def timing_panel() -> ui.Tag:
-        payload = metrics.get()
+        payload  = metrics.get()
         upload_payload = upload_pipeline_metrics.get()
-        if not payload:
+        if not payload and not upload_payload:
             return ui.tags.div("No timing data yet.", class_="empty-state")
-        if not upload_payload:
+        if upload_payload:
+            items = [
+                ("Extract: ", round(upload_payload.get("extract_time", 0.0), 3)),
+                ("Chunk: ", round(upload_payload.get("chunk_time", 0.0), 3)),
+                ("Embed: ", round(upload_payload.get("embedding_time", 0.0), 3)),
+                ("Save: ", round(upload_payload.get("save_time", 0.0), 3)),
+                ("Total: ", round(upload_payload.get("total_time", 0.0), 3)),
+                ("Query: ", round(upload_payload.get("query_time", 0.0), 3)),
+            ]
+        else:
             items = [
                 ("Embed: ", round(payload.get("time_counter", {}).get("embedding_time", 0.0), 3)),
                 ("Retrieve: ", round(payload.get("time_counter", {}).get("retrieval_time", 0.0), 3)),
                 ("Query: ", round(payload.get("time_counter", {}).get("llm_time", 0.0), 3)),
                 ("Save: ", round(payload.get("time_counter", {}).get("save_time", 0.0), 3)),
                 ("Response: ", round(payload.get("time_counter", {}).get("total_time", 0.0), 3)),
-            ]
-        else:
-            items = [
-                ("Extract: ", round(upload_payload.get(f"extract_time:.3f", 0.0), 3)),
-                ("Chunk: ", round(upload_payload.get(f"chunk_time:.3f", 0.0), 3)),
-                ("Embed: ", round(upload_payload.get(f"embedding_time:.3f", 0.0), 3)),
-                ("Save: ", round(upload_payload.get(f"save_time:.3f", 0.0), 3)),
-                ("Total: ", round(upload_payload.get(f"total_time:.3f", 0.0), 3)),
             ]
         rows = [
             ui.tags.div(
@@ -416,6 +420,10 @@ def server(input: Any, output: Any, session: Any) -> None:
             return
         source = upload_source.get()
         current_docs = docs.get()
+        if is_processing.get() == True:
+            set_status("Upload in progress", "Please wait for the current upload to finish.", "warning")
+            return
+        is_processing.set(True)
         for info in files:
             try:
                 print("Upload modal info:", info)
@@ -448,6 +456,8 @@ def server(input: Any, output: Any, session: Any) -> None:
                 set_status("Upload failed", str(""), "error")
         docs.set(current_docs)
         ui.modal_remove()
+        is_processing.set(False)
+
 
     @reactive.effect
     @reactive.event(input.upload_files_sidebar)
@@ -458,6 +468,10 @@ def server(input: Any, output: Any, session: Any) -> None:
         source = upload_source.get()
         current_docs = docs.get()
         current_provider = current_model.get()
+        if is_processing.get() == True:
+            set_status("Upload in progress", "Please wait for the current upload to finish.", "warning")
+            return
+        is_processing.set(True)
         for info in files:
             try:
                 print("provider", current_provider)
@@ -471,7 +485,16 @@ def server(input: Any, output: Any, session: Any) -> None:
                 print("Document after normalization:", doc)
                 print("Current documents before indexing:", current_docs)
                 conversation_id.set(response.get("conversation_id") or "")
-                upload_pipeline_metrics.set(response.get("time_counter", {}))
+                print("response.get('time_counter'):", response.get("time_counter"))
+                new_metric = {
+                    'extract_time': response.get("time_counter", {}).get("extract_time", 0.0),
+                    'chunk_time': response.get("time_counter", {}).get("chunk_time", 0.0),
+                    'embedding_time': response.get("time_counter", {}).get("embedding_time", 0.0),
+                    'save_time': response.get("time_counter", {}).get("save_time", 0.0),
+                    'total_time': response.get("time_counter", {}).get("total_time", 0.0),
+                    'query_time': response.get("time_counter", {}).get("query_time", 0.0),
+                }
+                upload_pipeline_metrics.set(new_metric)
                 try:
                     print("Document after indexing attempt:", doc)
                 except ApiError:
@@ -487,6 +510,7 @@ def server(input: Any, output: Any, session: Any) -> None:
                 ]
                 set_status("Upload failed", str(exc), "error")
         docs.set(current_docs)
+        is_processing.set(False)
 
     @reactive.effect
     @reactive.event(input.drive_upload_complete)
@@ -497,6 +521,10 @@ def server(input: Any, output: Any, session: Any) -> None:
         response = payload.get("response") or {}
         file_name = payload.get("name") or "Drive file"
         current_docs = docs.get()
+        if is_processing.get() == True:
+            set_status("Upload in progress", "Please wait for the current upload to finish.", "warning")
+            return
+        is_processing.set(True)
         try:
             print("Drive upload payload:", payload)
             print("Drive upload response:", response)
@@ -513,6 +541,7 @@ def server(input: Any, output: Any, session: Any) -> None:
             print("Drive upload error:")
             set_status("Upload failed", str(exc), "error")
         docs.set(current_docs)
+        is_processing.set(False)
 
     @reactive.effect
     @reactive.event(input.drive_upload_error)
@@ -541,11 +570,13 @@ def server(input: Any, output: Any, session: Any) -> None:
         text = (input.chat_input() or "").strip()
         if not text:
             return
+        if is_processing.get() == True:
+            set_status("Processing", "Please wait for the current request to finish.", "warning")
+            return
 
         current = messages.get()
         current = current + [build_message("user", text)]
         messages.set(current)
-        ui.update_text_area("chat_input", value="")
         was_new = conversation_name.get() is None
         current_conv_id = conversation_id.get()
         current_provider = current_model.get()
@@ -556,9 +587,7 @@ def server(input: Any, output: Any, session: Any) -> None:
                 content=text,
                 provider=current_provider
             )
-
             assistant_reply = response.get("conversation_messages", "Không có phản hồi từ AI.")
-
             if was_new:
                 title = text[:42] 
                 history.set([
@@ -592,6 +621,10 @@ def server(input: Any, output: Any, session: Any) -> None:
                 messages.get()
                 + [build_message("assistant", "Đã xảy ra lỗi khi gọi API.", meta={"error": str(exc)})]
             )
+        finally:
+            is_processing.set(False)
+            ui.update_text_area("chat_input", value="")
+
     @reactive.effect
     @reactive.event(input.clear_chat)
     def _clear_chat() -> None:

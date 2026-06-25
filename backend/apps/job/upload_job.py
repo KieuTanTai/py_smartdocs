@@ -95,18 +95,18 @@ class UploadJob(IUploadJob):
         self.cache_database = cast(IConversationCacheDatabase, self.database_provider.get_model_service(ConversationCacheModel))
         
     def step_extract_and_normalize(
-        self, file_path: Path, provider: EProviderName, file_caller: str = ""
+        self, file_path: Path, provider: EProviderName, file_name: str, file_caller: str = ""
     ) -> IExtractResponse:
-        response = self.step_extract(file_path, provider, file_caller)
-        normalized_text = self.step_normalize(response.extracted_text, file_caller)
+        response = self.step_extract(file_path, provider, file_name, file_caller)
+        normalized_text = self.step_normalize(response.extracted_text, file_name, file_caller)
         response.extracted_text = normalized_text
         return response
 
     def step_extract(
-        self, file_path: Path, provider: EProviderName, file_caller: str = ""
+        self, file_path: Path, provider: EProviderName, file_name: str, file_caller: str = ""
     ) -> IExtractResponse:
         response = self.extract_service.extract(
-            file_path, provider
+            file_path, provider, file_name, Path(__file__).name + "->" + file_caller
         )
         self.logger.info(
             f"Extracted text from {file_path.name} with provider {provider}, some value return: {response.extracted_text[:100]}",
@@ -124,9 +124,9 @@ class UploadJob(IUploadJob):
             raise ValueError(f"Extracted text from {file_path.name} is empty.")
         return response
 
-    def step_normalize(self, raw_text: str, file_caller: str = "") -> str:
+    def step_normalize(self, raw_text: str, file_name: str, file_caller: str = "") -> str:
         self.logger.info(
-            f"Normalizing text, some value return: {raw_text[:100]}",
+            f"Normalizing text from {file_name}, some value return: {raw_text[:100]}",
             Path(__file__).name,
             file_caller,
             self.step_normalize.__name__,

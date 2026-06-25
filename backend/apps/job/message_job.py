@@ -258,7 +258,7 @@ class MessageJob(IMessageJob):
                 if file_path.exists():
                     try:
                         # Tiến hành trích xuất sử dụng đúng service đã được inject qua Container
-                        raw_texts = self.extract_service.extract(file_path, EProviderName.MISTRAL)
+                        raw_texts = self.extract_service.extract(file_path, EProviderName.MISTRAL, file_path.name)
                         if raw_texts and raw_texts.extracted_text:
                             document_texts.append(raw_texts.extracted_text)
                             self.logger.info(f"Fallback text extraction successful for conversation {id}", source=str(self.__class__))

@@ -29,12 +29,13 @@ class ExtractContentService(IExtractContent):
         self,
         file_path: Path,
         provider: EProviderName,
+        file_name: str,
         call_by: str = "",
     ) -> IExtractResponse:
         source_log = f"{Path(__file__).parent.absolute()}/{Path(__file__).name}"
         if provider is None:
             raise ValueError("Provider must be specified for extract_from_file_text")
-        uploaded_file = self.storage.save_file(file_path)
+        uploaded_file = self.storage.save_file(file_path, file_name, call_by=call_by)
         ocr_extractor = self.factory.create_ocr_extractor()
         ocr_response = ocr_extractor.process_ocr(uploaded_file)
         extracted_text = self.__process_ocr_response(ocr_response, source_log, call_by=call_by)
