@@ -3,6 +3,7 @@ Upload tasks module.
 Handles the execution flow for uploaded files via background workers.
 """
 
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 from typing import Any, cast
 from pathlib import Path
@@ -12,7 +13,6 @@ import numpy as np
 
 from backend.apps.core.enums.e_document_status import EDocumentStatus
 from backend.apps.core.enums.e_provider_name import EProviderName
-from backend.apps.core.interfaces.dataclass.response.i_conversation_response import IconversationDocumentGetResponse
 from backend.apps.core.interfaces.dataclass.tasks.i_chunk_and_cache_response import ICacheResponse, IChunkResponse
 from backend.apps.core.interfaces.services.cache.i_memory_pool import IMemoryPool
 from backend.apps.core.interfaces.services.rag_base.database.i_conversation_database import IConversationDatabase
@@ -222,13 +222,8 @@ class UploadTask(IUploadTask):
         # * Step 5: Save the embeddings to vector store and update document model with file path and status
         try:
             upload_response = self.__upload_to_vector_store(provider, document_ids, conversation_model.conversations_id, document.document_id, embeddings, chunk_texts, ids, file_caller=self.__execute_base_pipeline_with_paths.__name__)
-            print("HELLOSOD1123")
-            
             upload_response.conversation_files = self.__create_conversation_file_model(self.__build_documents(document_ids, document))
-            print("HELLOSOD53525")
-            
             upload_response.conversation_cache_path = cache_response.path
-            print("HELLOSOD")
         except Exception as exc:
             self.time_counter.stop()
             self.time_counter.reset()
@@ -305,13 +300,14 @@ class UploadTask(IUploadTask):
 
     def __extract_contents_and_get_document_ids(self, file_paths: list[Path], provider: EProviderName, file_name: str, file_caller: str = "") -> tuple[list[IExtractMapping], list[str]]:
         contents = list[IExtractMapping]()
-        for file_path in file_paths:
-            self.logger.info(
-                f"Extracting text from file {file_path}",
-                source=Path(__file__).name,
-                call_by=file_caller,
-                method_call=self.__extract_contents_and_get_document_ids.__name__,
-            )
-            extracted_text = self.upload_job.step_extract_and_normalize(file_path, provider, file_name, file_caller=self.__extract_contents_and_get_document_ids.__name__)
-            contents.append(IExtractMapping(file_path, extracted_text))
+        lens = len(file_paths)
+        with ThreadPoolExecutor(max_workers=lens) as executor:
+            futures = {executor.submit(self.upload_job.step_extract, file_path, provider, file_name, file_caller): file_path for file_path in file_paths}
+            for future in as_completed(futures):
+                try:
+                    content = IExtractMapping(futures[future], future.result())
+                    contents.append(content)
+                except Exception as exc:
+                    self.logger.error(f"Error extracting content from {futures[future]}: {exc}", source=Path(__file__).name, call_by=file_caller, method_call=self.__extract_contents_and_get_document_ids.__name__)
+                    raise exc
         return contents, [content.extract_content.document_id for content in contents]

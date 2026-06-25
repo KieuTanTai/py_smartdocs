@@ -855,6 +855,14 @@ summary.avatar-btn::-webkit-details-marker {
   cursor: pointer;
 }
 
+.retrieval-panel, .empty-state {
+  max-height: 300px;   /* giới hạn chiều cao */
+  overflow-y: auto;    /* bật scroll dọc */
+  overflow-x: hidden;  /* ẩn scroll ngang */
+  padding: 2px;
+  font-size: 12px;
+}
+
 .doc-card {
   flex: 1;
   display: flex;

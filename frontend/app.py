@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any, Dict, List, Optional
@@ -260,11 +261,10 @@ def server(input: Any, output: Any, session: Any) -> None:
     def retrieval_panel() -> ui.Tag:
         payload = metrics.get()
         hits = payload.get("hits") or payload.get("retrieval_hits") or []
-        print("Retrieval hits:", hits)
         #get hits content as string and score if available
         hits_str = "\n".join(
             [
-                f"{hit.get('text', '-')}"
+                f"{hit.get('text', '-----')}\n"
                 + (f" (Score: {hit.get('score')})" if hit.get("score") is not None else "")
                 for hit in hits
             ]
@@ -273,7 +273,10 @@ def server(input: Any, output: Any, session: Any) -> None:
             return ui.tags.div("Waiting for retrieval data.", class_="empty-state")
         print("Retrieval hits string:", hits_str)
         rows = [ui.tags.li(hits_str)]
-        return ui.tags.ul(*rows, class_="mini-list")
+        return ui.tags.div(
+            ui.tags.ul(*rows, class_="retrieval-list"),
+            class_="retrieval-panel",
+        )
 
     @render.ui
     def timing_panel() -> ui.Tag:
@@ -566,7 +569,8 @@ def server(input: Any, output: Any, session: Any) -> None:
     #! NOTE: using dataclass create by backend (core/interfaces/...) for create object instead of dict[str, Any] to make it more clear and type safe.
     @reactive.effect
     @reactive.event(input.send_message)
-    def _send_message() -> None:
+    async def _send_message() -> None:
+        await asyncio.sleep(0.2)  # Allow UI to update before processing
         text = (input.chat_input() or "").strip()
         if not text:
             return

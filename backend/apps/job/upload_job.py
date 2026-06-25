@@ -108,19 +108,7 @@ class UploadJob(IUploadJob):
         response = self.extract_service.extract(
             file_path, provider, file_name, Path(__file__).name + "->" + file_caller
         )
-        self.logger.info(
-            f"Extracted text from {file_path.name} with provider {provider}, some value return: {response.extracted_text[:100]}",
-            Path(__file__).name,
-            file_caller,
-            self.step_extract.__name__,
-        )
         if not response.extracted_text:
-            self.logger.error(
-                f"Extracted text from {file_path.name} is empty.",
-                Path(__file__).name,
-                file_caller,
-                self.step_extract.__name__,
-            )
             raise ValueError(f"Extracted text from {file_path.name} is empty.")
         return response
 
